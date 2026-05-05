@@ -1,0 +1,2 @@
+-keep class dev.goor.tv.data.model.** { *; }
+-keepattributes *Annotation*
