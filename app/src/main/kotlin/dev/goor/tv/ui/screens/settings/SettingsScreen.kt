@@ -1,0 +1,147 @@
+package dev.goor.tv.ui.screens.settings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.goor.tv.data.model.Source
+import dev.goor.tv.data.model.SourceType
+import org.koin.androidx.compose.koinViewModel
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onBack: () -> Unit,
+    vm: SettingsViewModel = koinViewModel(),
+) {
+    val sources by vm.sources.collectAsStateWithLifecycle()
+    val syncing by vm.syncing.collectAsStateWithLifecycle()
+    val syncingIds by vm.syncingIds.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Sources") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (syncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(end = 4.dp))
+                    }
+                    IconButton(onClick = { showAddDialog = true }, enabled = !syncing) {
+                        Icon(Icons.Default.Add, contentDescription = "Add source")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        LazyColumn(contentPadding = padding) {
+            items(sources, key = { it.id }) { source ->
+                SourceItem(
+                    source = source,
+                    isSyncing = source.id in syncingIds,
+                    onSync = { vm.syncSource(source) },
+                    onDelete = { vm.deleteSource(source) },
+                )
+                HorizontalDivider()
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddSourceDialog(
+            onDismiss = { showAddDialog = false },
+            onAddM3u = { name, url ->
+                vm.addM3uSource(name, url)
+                showAddDialog = false
+            },
+            onAddXtream = { name, url, user, pass ->
+                vm.addXtreamSource(name, url, user, pass)
+                showAddDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun SourceItem(source: Source, isSyncing: Boolean, onSync: () -> Unit, onDelete: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(source.name) },
+        supportingContent = { Text(source.type.name) },
+        trailingContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isSyncing) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                } else {
+                    IconButton(onClick = onSync) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                    }
+                }
+                IconButton(onClick = onDelete, enabled = !isSyncing) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun AddSourceDialog(
+    onDismiss: () -> Unit,
+    onAddM3u: (name: String, url: String) -> Unit,
+    onAddXtream: (name: String, url: String, user: String, pass: String) -> Unit,
+) {
+    var sourceType by remember { mutableStateOf(SourceType.M3U) }
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Source") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SourceType.entries.forEach { type ->
+                        FilterChip(
+                            selected = sourceType == type,
+                            onClick = { sourceType = type },
+                            label = { Text(type.name) }
+                        )
+                    }
+                }
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true)
+                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true)
+                if (sourceType == SourceType.XTREAM) {
+                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true)
+                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (sourceType == SourceType.M3U) onAddM3u(name, url)
+                else onAddXtream(name, url, username, password)
+            }) { Text("Add") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
