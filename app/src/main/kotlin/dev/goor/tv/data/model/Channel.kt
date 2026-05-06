@@ -22,4 +22,6 @@ data class Channel(
     val url: String,
     val group: String? = null,
     val logoUrl: String? = null,
+    val isFavorite: Boolean = false,
+    val lastWatchedAt: Long? = null,
 )

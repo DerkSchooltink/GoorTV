@@ -17,4 +17,7 @@ interface SourceDao {
 
     @Delete
     suspend fun delete(source: Source)
+
+    @Update
+    suspend fun update(source: Source)
 }
