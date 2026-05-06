@@ -27,6 +27,12 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = getByName("debug").signingConfig
+            matchingFallbacks += listOf("release")
+            isDebuggable = false
+        }
     }
 
     buildFeatures {
@@ -50,7 +56,11 @@ dependencies {
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
+    implementation(libs.room.paging)
     ksp(libs.room.compiler)
+
+    implementation(libs.paging.runtime)
+    implementation(libs.paging.compose)
 
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
