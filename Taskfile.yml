@@ -1,0 +1,54 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Assemble debug APK
+    cmd: ./gradlew assembleDebug
+
+  build:release:
+    desc: Assemble release APK
+    cmd: ./gradlew assembleRelease
+
+  install:
+    desc: Install debug APK on connected device
+    cmd: ./gradlew installDebug
+
+  run:
+    desc: Install and launch app
+    cmds:
+      - ./gradlew installDebug
+      - adb shell am start -n dev.goor.tv/.MainActivity
+
+  test:
+    desc: Run unit + instrumented tests
+    cmds:
+      - task: test:unit
+      - task: test:ui
+
+  test:unit:
+    desc: Run JVM unit tests
+    cmd: ./gradlew :app:testDebugUnitTest
+
+  test:ui:
+    desc: Run instrumented Compose UI tests (needs device/emulator)
+    cmd: ./gradlew :app:connectedDebugAndroidTest
+
+  maestro:
+    desc: Run all Maestro E2E flows
+    cmd: maestro test .maestro/
+
+  maestro:flow:
+    desc: Run a single Maestro flow (task maestro:flow -- 01_empty_state.yaml)
+    cmd: maestro test .maestro/{{.CLI_ARGS}}
+
+  lint:
+    desc: Run Android lint
+    cmd: ./gradlew :app:lint
+
+  logcat:
+    desc: Filtered logcat for GoorTV
+    cmd: adb logcat -s GoorTV:V AndroidRuntime:E
+
+  clean:
+    desc: Clean build artifacts
+    cmd: ./gradlew clean
