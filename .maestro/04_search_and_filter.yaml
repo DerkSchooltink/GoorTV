@@ -1,0 +1,17 @@
+appId: dev.goor.tv
+---
+# Verify search bar toggle behaviour (no network needed)
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+# Search bar is hidden initially
+- assertNotVisible: "Search channels…"
+
+# Tap the search icon — bar should appear
+- tapOn: "Search"
+- assertVisible: "Search channels…"
+
+# Tap Close search — bar should disappear
+- tapOn: "Close search"
+- assertNotVisible: "Search channels…"

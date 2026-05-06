@@ -1,0 +1,13 @@
+appId: dev.goor.tv
+---
+# Navigate to Settings via toolbar and return
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+- tapOn: "Settings"
+- assertVisible: "Sources"
+- assertVisible: "Add source"
+
+- tapOn: "Back"
+- assertVisible: "GoorTV"
