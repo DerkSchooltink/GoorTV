@@ -12,13 +12,15 @@ import org.koin.dsl.module
 
 val appModule = module {
     single {
-        Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db").build()
+        Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db")
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
     single { get<AppDatabase>().sourceDao() }
     single { get<AppDatabase>().channelDao() }
     single { SourceSyncService(get(), get()) }
 
-    viewModel { HomeViewModel(get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { params -> PlayerViewModel(params.get(), get()) }
     viewModel { SettingsViewModel(get(), get()) }
 }
