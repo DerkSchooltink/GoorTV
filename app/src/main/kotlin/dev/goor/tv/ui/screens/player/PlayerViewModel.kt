@@ -17,7 +17,11 @@ class PlayerViewModel(
 
     init {
         viewModelScope.launch {
-            _channel.value = channelDao.getById(channelId)
+            val ch = channelDao.getById(channelId)
+            _channel.value = ch
+            if (ch != null) {
+                channelDao.updateLastWatched(channelId, System.currentTimeMillis())
+            }
         }
     }
 }
