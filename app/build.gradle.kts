@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
 
     implementation(libs.coil.compose)
+    implementation(libs.compose.material.icons.extended)
 
     implementation(libs.jupnp)
     implementation(libs.jupnp.android)
