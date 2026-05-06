@@ -10,7 +10,9 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.Runs
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -116,12 +118,12 @@ class SettingsViewModelTest {
     fun `syncing is true while sync is in progress`() = runTest {
         val source = testSource(id = 1L)
         // Use a channel to pause the sync mid-flight
-        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<Unit>()
         coEvery { syncService.sync(source) } coAnswers { gate.await() }
 
         val vm = makeVm()
         // Launch sync without waiting
-        val job = kotlinx.coroutines.launch { vm.syncSource(source) }
+        val job = launch { vm.syncSource(source) }
         advanceUntilIdle()
 
         assertTrue(source.id in vm.syncingIds.value)
