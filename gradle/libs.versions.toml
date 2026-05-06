@@ -41,6 +41,7 @@ koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = 
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin-compose" }
 
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 
 jupnp = { group = "org.jupnp", name = "jupnp", version.ref = "jupnp" }
 jupnp-android = { group = "org.jupnp", name = "org.jupnp.android", version.ref = "jupnp" }
