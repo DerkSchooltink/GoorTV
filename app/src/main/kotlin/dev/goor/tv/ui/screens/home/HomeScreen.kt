@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,24 +16,33 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import dev.goor.tv.data.model.Channel
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onChannelClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     vm: HomeViewModel = koinViewModel(),
 ) {
-    val channels by vm.channels.collectAsStateWithLifecycle()
+    val pagingItems = vm.pagingData.collectAsLazyPagingItems()
     val groups by vm.groups.collectAsStateWithLifecycle()
     val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
     val selectedGroup by vm.selectedGroup.collectAsStateWithLifecycle()
@@ -40,11 +50,20 @@ fun HomeScreen(
     val isSyncing by vm.isSyncing.collectAsStateWithLifecycle()
     val sources by vm.sources.collectAsStateWithLifecycle()
     val recentlyWatched by vm.recentlyWatched.collectAsStateWithLifecycle()
+    val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
     val isDefaultView = searchQuery.isBlank() && selectedGroup == null && !showFavoritesOnly
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(syncErrors) {
+        if (syncErrors.isNotEmpty()) {
+            snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("GoorTV") },
@@ -106,20 +125,33 @@ fun HomeScreen(
                         onSettingsClick = onSettingsClick,
                         modifier = Modifier.fillMaxSize(),
                     )
-                    isSyncing && channels.isEmpty() -> Box(
+                    isSyncing && pagingItems.itemCount == 0 -> Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) { CircularProgressIndicator() }
-                    channels.isEmpty() -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
-                    else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
+                    else -> LazyColumn(modifier = Modifier.fillMaxSize().testTag("channel_list")) {
                         if (recentlyWatched.isNotEmpty() && isDefaultView) {
                             item(key = "recent_header") {
-                                Text(
-                                    "Recently Watched",
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "Recently Watched",
+                                        modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    IconButton(onClick = vm::clearRecentlyWatched) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "Clear recently watched",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                             }
                             item(key = "recent_row") {
                                 LazyRow(
@@ -137,18 +169,50 @@ fun HomeScreen(
                             }
                             item(key = "recent_divider") { HorizontalDivider() }
                         }
-                        items(channels, key = { it.id }) { channel ->
-                            ChannelItem(
-                                channel = channel,
-                                onClick = { onChannelClick(channel.id) },
-                                onFavoriteToggle = { vm.toggleFavorite(channel.id) },
-                            )
-                            HorizontalDivider()
+
+                        items(
+                            count = pagingItems.itemCount,
+                            key = pagingItems.itemKey { item ->
+                                when (item) {
+                                    is ChannelListItem.Header -> "header_${item.title}"
+                                    is ChannelListItem.Item -> item.channel.id
+                                }
+                            },
+                            contentType = pagingItems.itemContentType { item ->
+                                when (item) {
+                                    is ChannelListItem.Header -> "header"
+                                    is ChannelListItem.Item -> "channel"
+                                }
+                            },
+                        ) { index ->
+                            when (val item = pagingItems[index]) {
+                                is ChannelListItem.Header -> stickyGroupHeader(item.title)
+                                is ChannelListItem.Item -> ChannelItem(
+                                    channel = item.channel,
+                                    onClick = { onChannelClick(item.channel.id) },
+                                    onFavoriteToggle = { vm.toggleFavorite(item.channel.id) },
+                                )
+                                null -> {}
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun stickyGroupHeader(title: String) {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+        Text(
+            title,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -199,21 +263,49 @@ private fun FilterRow(
 
 @Composable
 private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(channel.name) },
-        supportingContent = channel.group?.let { group -> { Text(group) } },
-        leadingContent = { ChannelLogo(logoUrl = channel.logoUrl, size = 40) },
-        trailingContent = {
-            IconButton(onClick = onFavoriteToggle) {
-                Icon(
-                    if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = if (channel.isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                drawLine(
+                    color = dividerColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 0.5.dp.toPx(),
                 )
             }
-        },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+            .clickable(onClick = onClick)
+            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ChannelLogo(logoUrl = channel.logoUrl, size = 40)
+        Spacer(Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                channel.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (channel.group != null) {
+                Text(
+                    channel.group,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        IconButton(onClick = onFavoriteToggle) {
+            Icon(
+                if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = null,
+                tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
 }
 
 @Composable
@@ -247,8 +339,17 @@ private fun ChannelLogo(
     shape: Shape = CircleShape,
 ) {
     if (logoUrl != null) {
+        val sizePx = size * 2
+        val context = LocalContext.current
+        val request = remember(logoUrl, sizePx) {
+            ImageRequest.Builder(context)
+                .data(logoUrl)
+                .size(sizePx)
+                .crossfade(false)
+                .build()
+        }
         AsyncImage(
-            model = logoUrl,
+            model = request,
             contentDescription = null,
             modifier = Modifier.size(size.dp).clip(shape),
             contentScale = ContentScale.Crop,

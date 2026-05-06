@@ -2,13 +2,19 @@ package dev.goor.tv.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import androidx.paging.insertSeparators
+import androidx.paging.map
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
-import dev.goor.tv.data.model.Channel
 import dev.goor.tv.network.SourceSyncService
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
     private val channelDao: ChannelDao,
     private val sourceDao: SourceDao,
@@ -27,38 +33,44 @@ class HomeViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
+    private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
+    val syncErrors = _syncErrors.asStateFlow()
+
     val sources = sourceDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val allChannels = channelDao.getAll()
+    val groups = channelDao.getGroups()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val channels: StateFlow<List<Channel>> = combine(
-        allChannels, _searchQuery, _selectedGroup, _showFavoritesOnly,
-    ) { all, query, group, favOnly ->
-        all
-            .filter { group == null || it.group == group }
-            .filter { !favOnly || it.isFavorite }
-            .filter { query.isBlank() || it.name.contains(query, ignoreCase = true) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val groups: StateFlow<List<String>> = allChannels
-        .map { channels -> channels.mapNotNull { it.group }.distinct().sorted() }
+    val recentlyWatched = channelDao.getRecentlyWatched()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val recentlyWatched: StateFlow<List<Channel>> = allChannels
-        .map { channels ->
-            channels
-                .filter { it.lastWatchedAt != null }
-                .sortedByDescending { it.lastWatchedAt }
-                .take(10)
+    val pagingData = combine(_searchQuery, _selectedGroup, _showFavoritesOnly) {
+        query, group, favOnly -> Triple(query, group, favOnly)
+    }.flatMapLatest { (query, group, favOnly) ->
+        Pager(PagingConfig(pageSize = 30, prefetchDistance = 90, enablePlaceholders = false)) {
+            channelDao.getChannelsPaged(group, query, favOnly)
+        }.flow.map { paging ->
+            paging.map { ChannelListItem.Item(it) as ChannelListItem }
+                .insertSeparators { before, after ->
+                    if (group != null || query.isNotBlank() || favOnly) return@insertSeparators null
+                    val afterGroup = (after as? ChannelListItem.Item)?.channel?.group ?: return@insertSeparators null
+                    val beforeGroup = (before as? ChannelListItem.Item)?.channel?.group
+                    if (beforeGroup != afterGroup) ChannelListItem.Header(afterGroup) else null
+                }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.cachedIn(viewModelScope)
 
     init {
         viewModelScope.launch {
+            if (channelDao.count() == 0) sync()
+        }
+    }
+
+    fun sync() {
+        viewModelScope.launch {
             _isSyncing.value = true
-            syncService.syncAll()
+            _syncErrors.value = syncService.syncAll().map { it.message ?: "Unknown error" }
             _isSyncing.value = false
         }
     }
@@ -69,5 +81,9 @@ class HomeViewModel(
 
     fun toggleFavorite(channelId: Long) {
         viewModelScope.launch { channelDao.toggleFavorite(channelId) }
+    }
+
+    fun clearRecentlyWatched() {
+        viewModelScope.launch { channelDao.clearRecentlyWatched() }
     }
 }

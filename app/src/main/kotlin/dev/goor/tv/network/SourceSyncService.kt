@@ -1,5 +1,6 @@
 package dev.goor.tv.network
 
+import android.util.Log
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
@@ -8,13 +9,20 @@ import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.flow.first
 
+private val PREFIX_REGEX = Regex("""^[\[(]?([A-Z]{2,5})[)\]|:\s]""")
+
+fun extractPrefix(name: String): String? =
+    PREFIX_REGEX.find(name.trimStart())?.groupValues?.get(1)
+
 class SourceSyncService(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
 ) {
-    suspend fun syncAll() {
-        sourceDao.getAll().first().forEach { source ->
+    suspend fun syncAll(): List<Throwable> {
+        return sourceDao.getAll().first().mapNotNull { source ->
             runCatching { sync(source) }
+                .exceptionOrNull()
+                ?.also { Log.e("SourceSync", "Failed to sync '${source.name}': ${it.message}") }
         }
     }
 
@@ -31,9 +39,12 @@ class SourceSyncService(
         val userDataByUrl = existing.associate { it.url to Pair(it.isFavorite, it.lastWatchedAt) }
         val merged = fetched.map { ch ->
             val (fav, lastWatched) = userDataByUrl[ch.url] ?: Pair(false, null)
-            ch.copy(isFavorite = fav, lastWatchedAt = lastWatched)
+            ch.copy(
+                isFavorite = fav,
+                lastWatchedAt = lastWatched,
+                group = ch.group ?: extractPrefix(ch.name),
+            )
         }
-        channelDao.deleteBySource(source.id)
-        channelDao.insertAll(merged)
+        channelDao.replaceForSource(source.id, merged)
     }
 }
