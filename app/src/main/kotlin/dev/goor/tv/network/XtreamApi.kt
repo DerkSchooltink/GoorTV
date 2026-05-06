@@ -20,7 +20,9 @@ data class XtreamChannel(
 object XtreamApi {
     suspend fun fetchLiveChannels(source: Source): List<Channel> {
         val parsed = Url(source.url)
-        val base = "${parsed.protocol.name}://${parsed.host}:${parsed.specifiedPort}"
+        val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
+        val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
+                   else "${parsed.protocol.name}://${parsed.host}"
         val u = source.username
         val p = source.password
         val response = httpClient.get("$base/player_api.php?username=$u&password=$p&action=get_live_streams")
