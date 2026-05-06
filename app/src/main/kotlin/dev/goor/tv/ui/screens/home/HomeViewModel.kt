@@ -24,9 +24,6 @@ class HomeViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
-    private val _selectedGroup = MutableStateFlow<String?>(null)
-    val selectedGroup = _selectedGroup.asStateFlow()
-
     private val _showFavoritesOnly = MutableStateFlow(false)
     val showFavoritesOnly = _showFavoritesOnly.asStateFlow()
 
@@ -39,21 +36,18 @@ class HomeViewModel(
     val sources = sourceDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val groups = channelDao.getGroups()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     val recentlyWatched = channelDao.getRecentlyWatched()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val pagingData = combine(_searchQuery, _selectedGroup, _showFavoritesOnly) {
-        query, group, favOnly -> Triple(query, group, favOnly)
-    }.flatMapLatest { (query, group, favOnly) ->
+    val pagingData = combine(_searchQuery, _showFavoritesOnly) { query, favOnly ->
+        Pair(query, favOnly)
+    }.flatMapLatest { (query, favOnly) ->
         Pager(PagingConfig(pageSize = 30, prefetchDistance = 90, enablePlaceholders = false)) {
-            channelDao.getChannelsPaged(group, query, favOnly)
+            channelDao.getChannelsPaged(null, query, favOnly)
         }.flow.map { paging ->
             paging.map { ChannelListItem.Item(it) as ChannelListItem }
                 .insertSeparators { before, after ->
-                    if (group != null || query.isNotBlank() || favOnly) return@insertSeparators null
+                    if (query.isNotBlank() || favOnly) return@insertSeparators null
                     val afterGroup = (after as? ChannelListItem.Item)?.channel?.group ?: return@insertSeparators null
                     val beforeGroup = (before as? ChannelListItem.Item)?.channel?.group
                     if (beforeGroup != afterGroup) ChannelListItem.Header(afterGroup) else null
@@ -76,7 +70,6 @@ class HomeViewModel(
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
-    fun selectGroup(group: String?) { _selectedGroup.value = group }
     fun toggleFavoritesOnly() { _showFavoritesOnly.value = !_showFavoritesOnly.value }
 
     fun toggleFavorite(channelId: Long) {

@@ -13,4 +13,6 @@ data class Source(
     val url: String,
     val username: String? = null,
     val password: String? = null,
+    // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
+    val includedGroups: String? = "",
 )
