@@ -41,6 +41,21 @@ tasks:
     desc: Run a single Maestro flow (task maestro:flow -- 01_empty_state.yaml)
     cmd: maestro test .maestro/{{.CLI_ARGS}}
 
+  benchmark:
+    desc: Run scroll benchmark on connected device (needs benchmark build type)
+    cmd: ANDROID_SERIAL=$(adb devices | grep -v "List of" | head -1 | cut -f1) ./gradlew :benchmark:connectedBenchmarkAndroidTest
+
+  profile:
+    desc: Capture gfxinfo frame stats (scroll the app during the 8s window)
+    vars:
+      DEVICE:
+        sh: adb devices | grep -v "List of devices" | grep -v "(" | grep "device$" | head -1 | cut -f1
+    cmds:
+      - adb -s {{.DEVICE}} shell dumpsys gfxinfo dev.goor.tv reset
+      - echo ">>> Scroll the app now — capturing for 8 seconds..."
+      - sleep 8
+      - adb -s {{.DEVICE}} shell dumpsys gfxinfo dev.goor.tv framestats
+
   lint:
     desc: Run Android lint
     cmd: ./gradlew :app:lint
