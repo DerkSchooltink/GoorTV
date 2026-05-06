@@ -26,6 +26,11 @@ class SettingsViewModel(
     val syncing = _syncingIds.map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
+    val snackbarMessage = _snackbarMessage.asStateFlow()
+
+    fun clearSnackbar() { _snackbarMessage.value = null }
+
     fun addM3uSource(name: String, url: String) {
         viewModelScope.launch {
             val id = sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url))
@@ -40,6 +45,10 @@ class SettingsViewModel(
         }
     }
 
+    fun updateSource(source: Source) {
+        viewModelScope.launch { sourceDao.update(source) }
+    }
+
     fun deleteSource(source: Source) {
         viewModelScope.launch { sourceDao.delete(source) }
     }
@@ -48,6 +57,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             _syncingIds.update { it + source.id }
             runCatching { syncService.sync(source) }
+                .onFailure { _snackbarMessage.value = "Failed to sync \"${source.name}\": ${it.message}" }
             _syncingIds.update { it - source.id }
         }
     }
