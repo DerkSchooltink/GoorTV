@@ -11,13 +11,18 @@ interface ChannelDao {
     fun getAll(): Flow<List<Channel>>
 
     @Query("""
-        SELECT * FROM channels
-        WHERE (:group IS NULL OR `group` = :group)
-        AND (:query = '' OR name LIKE '%' || :query || '%')
-        AND (:favOnly = 0 OR isFavorite = 1)
-        ORDER BY `group`, name
+        SELECT c.* FROM channels c
+        JOIN sources s ON c.sourceId = s.id
+        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        AND (:group IS NULL OR c.`group` = :group)
+        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (:favOnly = 0 OR c.isFavorite = 1)
+        ORDER BY c.`group`, c.name
     """)
     fun getChannelsPaged(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+
+    @Query("SELECT DISTINCT `group` FROM channels WHERE sourceId = :sourceId AND `group` IS NOT NULL ORDER BY `group`")
+    fun getGroupsForSource(sourceId: Long): Flow<List<String>>
 
     @Query("SELECT DISTINCT `group` FROM channels WHERE `group` IS NOT NULL ORDER BY `group`")
     fun getGroups(): Flow<List<String>>

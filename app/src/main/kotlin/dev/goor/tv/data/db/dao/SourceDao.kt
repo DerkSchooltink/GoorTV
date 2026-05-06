@@ -20,4 +20,7 @@ interface SourceDao {
 
     @Update
     suspend fun update(source: Source)
+
+    @Query("UPDATE sources SET includedGroups = :groups WHERE id = :id")
+    suspend fun updateIncludedGroups(id: Long, groups: String?)
 }

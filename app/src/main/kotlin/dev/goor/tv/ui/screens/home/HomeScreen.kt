@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -43,9 +44,7 @@ fun HomeScreen(
     vm: HomeViewModel = koinViewModel(),
 ) {
     val pagingItems = vm.pagingData.collectAsLazyPagingItems()
-    val groups by vm.groups.collectAsStateWithLifecycle()
     val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
-    val selectedGroup by vm.selectedGroup.collectAsStateWithLifecycle()
     val showFavoritesOnly by vm.showFavoritesOnly.collectAsStateWithLifecycle()
     val isSyncing by vm.isSyncing.collectAsStateWithLifecycle()
     val sources by vm.sources.collectAsStateWithLifecycle()
@@ -53,7 +52,7 @@ fun HomeScreen(
     val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
-    val isDefaultView = searchQuery.isBlank() && selectedGroup == null && !showFavoritesOnly
+    val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(syncErrors) {
@@ -74,6 +73,13 @@ fun HomeScreen(
                             strokeWidth = 2.dp,
                         )
                         Spacer(Modifier.width(4.dp))
+                    }
+                    IconButton(onClick = vm::toggleFavoritesOnly) {
+                        Icon(
+                            if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (showFavoritesOnly) "Show all" else "Favourites",
+                            tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                        )
                     }
                     IconButton(onClick = {
                         searchActive = !searchActive
@@ -106,16 +112,6 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true,
-                )
-            }
-
-            if (sources.isNotEmpty()) {
-                FilterRow(
-                    groups = groups,
-                    selectedGroup = selectedGroup,
-                    showFavoritesOnly = showFavoritesOnly,
-                    onGroupSelected = vm::selectGroup,
-                    onFavoritesToggle = vm::toggleFavoritesOnly,
                 )
             }
 
@@ -213,51 +209,6 @@ private fun stickyGroupHeader(title: String) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-    }
-}
-
-@Composable
-private fun FilterRow(
-    groups: List<String>,
-    selectedGroup: String?,
-    showFavoritesOnly: Boolean,
-    onGroupSelected: (String?) -> Unit,
-    onFavoritesToggle: () -> Unit,
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
-            FilterChip(
-                selected = showFavoritesOnly,
-                onClick = onFavoritesToggle,
-                label = { Text("Favorites") },
-                leadingIcon = {
-                    Icon(
-                        if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                    )
-                },
-            )
-        }
-        if (groups.isNotEmpty()) {
-            item {
-                FilterChip(
-                    selected = selectedGroup == null,
-                    onClick = { onGroupSelected(null) },
-                    label = { Text("All") },
-                )
-            }
-            items(groups) { group ->
-                FilterChip(
-                    selected = selectedGroup == group,
-                    onClick = { onGroupSelected(if (selectedGroup == group) null else group) },
-                    label = { Text(group) },
-                )
-            }
-        }
     }
 }
 

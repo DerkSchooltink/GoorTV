@@ -2,6 +2,7 @@ package dev.goor.tv.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val sourceDao: SourceDao,
+    private val channelDao: ChannelDao,
     private val syncService: SourceSyncService,
 ) : ViewModel() {
     val sources = sourceDao.getAll()
@@ -51,6 +53,14 @@ class SettingsViewModel(
 
     fun deleteSource(source: Source) {
         viewModelScope.launch { sourceDao.delete(source) }
+    }
+
+    fun getGroupsForSource(sourceId: Long) = channelDao.getGroupsForSource(sourceId)
+
+    fun updateIncludedGroups(sourceId: Long, groups: Set<String>) {
+        viewModelScope.launch {
+            sourceDao.updateIncludedGroups(sourceId, if (groups.isEmpty()) "" else groups.joinToString("|"))
+        }
     }
 
     fun syncSource(source: Source) {

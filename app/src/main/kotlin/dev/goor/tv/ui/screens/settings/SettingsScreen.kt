@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,6 +30,7 @@ fun SettingsScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingSource by remember { mutableStateOf<Source?>(null) }
+    var groupsSource by remember { mutableStateOf<Source?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(snackbarMessage) {
@@ -67,6 +69,7 @@ fun SettingsScreen(
                     isSyncing = source.id in syncingIds,
                     onSync = { vm.syncSource(source) },
                     onEdit = { editingSource = source },
+                    onGroups = { groupsSource = source },
                     onDelete = { vm.deleteSource(source) },
                 )
                 HorizontalDivider()
@@ -98,6 +101,19 @@ fun SettingsScreen(
             }
         )
     }
+
+    groupsSource?.let { source ->
+        val availableGroups by vm.getGroupsForSource(source.id).collectAsStateWithLifecycle(emptyList())
+        GroupsDialog(
+            source = source,
+            availableGroups = availableGroups,
+            onDismiss = { groupsSource = null },
+            onConfirm = { selected ->
+                vm.updateIncludedGroups(source.id, selected)
+                groupsSource = null
+            },
+        )
+    }
 }
 
 @Composable
@@ -106,11 +122,19 @@ private fun SourceItem(
     isSyncing: Boolean,
     onSync: () -> Unit,
     onEdit: () -> Unit,
+    onGroups: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val groupCount = source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.size
     ListItem(
         headlineContent = { Text(source.name) },
-        supportingContent = { Text(source.type.name) },
+        supportingContent = {
+            Text(when {
+                source.includedGroups == null -> "${source.type.name} · all groups"
+                source.includedGroups.isBlank() -> "${source.type.name} · no groups selected"
+                else -> "${source.type.name} · $groupCount group${if (groupCount == 1) "" else "s"}"
+            })
+        },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isSyncing) {
@@ -121,6 +145,9 @@ private fun SourceItem(
                         Icon(Icons.Default.Refresh, contentDescription = "Sync")
                     }
                 }
+                IconButton(onClick = onGroups, enabled = !isSyncing) {
+                    Icon(Icons.Default.Tune, contentDescription = "Configure groups")
+                }
                 IconButton(onClick = onEdit, enabled = !isSyncing) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit")
                 }
@@ -129,6 +156,104 @@ private fun SourceItem(
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun GroupsDialog(
+    source: Source,
+    availableGroups: List<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit,
+) {
+    val initial = remember(source.includedGroups) {
+        source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    }
+    var selected by remember { mutableStateOf(initial) }
+    var search by remember { mutableStateOf("") }
+
+    val visible = remember(search, availableGroups) {
+        if (search.isBlank()) availableGroups
+        else availableGroups.filter { it.contains(search, ignoreCase = true) }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Groups — ${source.name}") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    label = { Text("Filter groups") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        if (search.isNotEmpty()) {
+                            IconButton(onClick = { search = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                            }
+                        }
+                    },
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = { selected = (selected + visible).toMutableSet() }) {
+                        Text(if (search.isBlank()) "All" else "Select matching")
+                    }
+                    TextButton(onClick = {
+                        selected = if (search.isBlank()) mutableSetOf()
+                                   else (selected - visible.toSet()).toMutableSet()
+                    }) {
+                        Text(if (search.isBlank()) "None" else "Deselect matching")
+                    }
+                }
+                HorizontalDivider()
+                if (availableGroups.isEmpty()) {
+                    Text(
+                        "No groups found. Sync the source first.",
+                        modifier = Modifier.padding(vertical = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        items(visible) { group ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selected = if (group in selected)
+                                            (selected - group).toMutableSet()
+                                        else
+                                            (selected + group).toMutableSet()
+                                    }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = group in selected,
+                                    onCheckedChange = { checked ->
+                                        selected = if (checked) (selected + group).toMutableSet()
+                                                   else (selected - group).toMutableSet()
+                                    },
+                                )
+                                Text(group, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
     )
 }
 
