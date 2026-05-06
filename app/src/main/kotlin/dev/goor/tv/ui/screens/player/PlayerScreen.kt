@@ -1,12 +1,19 @@
 package dev.goor.tv.ui.screens.player
 
 import android.app.Activity
+import android.view.View
 import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,6 +32,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import dev.goor.tv.dlna.DlnaDevice
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -35,17 +43,22 @@ fun PlayerScreen(
     vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }),
 ) {
     val channel by vm.channel.collectAsStateWithLifecycle()
+    val dlnaDevices by vm.dlnaDevices.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
 
     val player = remember { ExoPlayer.Builder(context).build() }
     var hasError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isBuffering by remember { mutableStateOf(true) }
+    val showControls = remember { mutableStateOf(false) }
+    var showCastDialog by remember { mutableStateOf(false) }
 
     channel?.let { ch ->
         LaunchedEffect(ch.url) {
             hasError = false
             errorMessage = null
+            isBuffering = true
             player.setMediaItem(MediaItem.fromUri(ch.url))
             player.prepare()
             player.play()
@@ -54,8 +67,12 @@ fun PlayerScreen(
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                isBuffering = state == Player.STATE_BUFFERING
+            }
             override fun onPlayerError(error: PlaybackException) {
                 hasError = true
+                isBuffering = false
                 errorMessage = error.message ?: "Playback failed"
             }
         }
@@ -84,14 +101,17 @@ fun PlayerScreen(
                         this.player = player
                         setShowNextButton(false)
                         setShowPreviousButton(false)
+                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->
+                            showControls.value = v == View.VISIBLE
+                        })
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        // Loading overlay
-        if (channel == null) {
+        // Loading / buffering overlay
+        if (channel == null || (isBuffering && !hasError)) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White,
@@ -129,6 +149,31 @@ fun PlayerScreen(
                             player.play()
                         }
                     }) { Text("Retry") }
+                }
+            }
+        }
+
+        // Cast footer — synced with ExoPlayer controller visibility
+        AnimatedVisibility(
+            visible = showControls.value && !hasError,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                IconButton(onClick = { showCastDialog = true }) {
+                    Icon(
+                        Icons.Default.Cast,
+                        contentDescription = "Cast to device",
+                        tint = if (dlnaDevices.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.White,
+                    )
                 }
             }
         }
@@ -176,4 +221,50 @@ fun PlayerScreen(
             }
         }
     }
+
+    if (showCastDialog) {
+        CastDialog(
+            devices = dlnaDevices,
+            onDismiss = { showCastDialog = false },
+            onSelect = { device ->
+                vm.castTo(device)
+                showCastDialog = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun CastDialog(
+    devices: List<DlnaDevice>,
+    onDismiss: () -> Unit,
+    onSelect: (DlnaDevice) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Cast to device") },
+        text = {
+            if (devices.isEmpty()) {
+                Text(
+                    "Searching for DLNA renderers on your network…",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                LazyColumn {
+                    items(devices, key = { it.udn }) { device ->
+                        TextButton(
+                            onClick = { onSelect(device) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(device.name, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
