@@ -1,0 +1,9 @@
+appId: dev.goor.tv
+---
+# Verify fresh-install empty state
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- assertVisible: "GoorTV"
+- assertVisible: "No sources added"
+- assertVisible: "Add a source"

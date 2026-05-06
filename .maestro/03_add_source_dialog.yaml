@@ -1,0 +1,26 @@
+appId: dev.goor.tv
+---
+# Open the add-source dialog, fill it in, and verify the source appears
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+# Navigate to Settings via the empty state CTA
+- tapOn: "Add a source"
+- assertVisible: "Sources"
+
+# Open add-source dialog
+- tapOn: "Add source"
+- assertVisible: "Add Source"
+- assertVisible: "M3U"
+- assertVisible: "XTREAM"
+
+# Fill in name and URL
+- tapOn: "Name"
+- inputText: "Demo Channels"
+- tapOn: "URL"
+- inputText: "https://iptv-org.github.io/iptv/index.m3u"
+
+# Dismiss — don't trigger an actual network call in CI
+- tapOn: "Cancel"
+- assertNotVisible: "Add Source"
