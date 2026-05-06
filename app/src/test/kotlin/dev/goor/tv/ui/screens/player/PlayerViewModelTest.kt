@@ -7,11 +7,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.Runs
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -48,18 +50,17 @@ class PlayerViewModelTest {
     fun `lastWatchedAt is updated with current timestamp when channel exists`() = runTest {
         val channel = testChannel(id = 5L)
         val beforeMs = System.currentTimeMillis()
+        val tsSlot = slot<Long>()
         coEvery { channelDao.getById(5L) } returns channel
-        coEvery { channelDao.updateLastWatched(any(), any()) } just Runs
+        coEvery { channelDao.updateLastWatched(any(), capture(tsSlot)) } just Runs
 
         PlayerViewModel(channelId = 5L, channelDao = channelDao)
         advanceUntilIdle()
 
-        coVerify {
-            channelDao.updateLastWatched(
-                id = eq(5L),
-                timestamp = and(gte(beforeMs), lte(System.currentTimeMillis())),
-            )
-        }
+        coVerify { channelDao.updateLastWatched(id = 5L, timestamp = any()) }
+        val afterMs = System.currentTimeMillis()
+        assertTrue("timestamp should be >= beforeMs", tsSlot.captured >= beforeMs)
+        assertTrue("timestamp should be <= afterMs", tsSlot.captured <= afterMs)
     }
 
     @Test
