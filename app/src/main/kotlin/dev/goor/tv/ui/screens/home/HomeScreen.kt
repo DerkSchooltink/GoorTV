@@ -40,6 +40,7 @@ import androidx.paging.compose.itemKey
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.goor.tv.data.model.Channel
+import dev.goor.tv.data.preferences.SortOrder
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -57,8 +58,10 @@ fun HomeScreen(
     val recentlyWatched by vm.recentlyWatched.collectAsStateWithLifecycle()
     val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
     val searchHistory by vm.searchHistory.collectAsStateWithLifecycle()
+    val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
+    var showSortMenu by remember { mutableStateOf(false) }
     val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
@@ -99,6 +102,28 @@ fun HomeScreen(
                             contentDescription = if (showFavoritesOnly) "Show all" else "Favourites",
                             tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                         )
+                    }
+                    Box {
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.Default.Sort, contentDescription = "Sort channels")
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false },
+                        ) {
+                            SortOrder.entries.forEach { order ->
+                                DropdownMenuItem(
+                                    text = { Text(order.displayName) },
+                                    onClick = {
+                                        vm.setSortOrder(order)
+                                        showSortMenu = false
+                                    },
+                                    leadingIcon = if (sortOrder == order) {
+                                        { Icon(Icons.Default.Check, contentDescription = null) }
+                                    } else null,
+                                )
+                            }
+                        }
                     }
                     IconButton(onClick = {
                         if (searchActive && searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery)

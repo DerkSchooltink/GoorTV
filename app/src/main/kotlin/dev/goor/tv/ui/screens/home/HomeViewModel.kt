@@ -10,6 +10,8 @@ import androidx.paging.map
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.preferences.SortOrder
+import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -21,6 +23,7 @@ class HomeViewModel(
     private val sourceDao: SourceDao,
     private val syncService: SourceSyncService,
     private val searchHistoryRepo: SearchHistoryRepository,
+    private val prefsRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -43,15 +46,22 @@ class HomeViewModel(
     val recentlyWatched = channelDao.getRecentlyWatched()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val pagingData = combine(_searchQuery, _showFavoritesOnly) { query, favOnly ->
-        Pair(query, favOnly)
-    }.flatMapLatest { (query, favOnly) ->
+    val sortOrder = prefsRepository.sortOrder
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SortOrder.BY_GROUP)
+
+    val pagingData = combine(_searchQuery, _showFavoritesOnly, prefsRepository.sortOrder) { query, favOnly, sort ->
+        Triple(query, favOnly, sort)
+    }.flatMapLatest { (query, favOnly, sort) ->
         Pager(PagingConfig(pageSize = 30, prefetchDistance = 90, enablePlaceholders = false)) {
-            channelDao.getChannelsPaged(null, query, favOnly)
+            when (sort) {
+                SortOrder.BY_NAME -> channelDao.getChannelsPagedByName(null, query, favOnly)
+                SortOrder.BY_LAST_WATCHED -> channelDao.getChannelsPagedByLastWatched(null, query, favOnly)
+                SortOrder.BY_GROUP -> channelDao.getChannelsPaged(null, query, favOnly)
+            }
         }.flow.map { paging ->
             paging.map { ChannelListItem.Item(it) as ChannelListItem }
                 .insertSeparators { before, after ->
-                    if (query.isNotBlank() || favOnly) return@insertSeparators null
+                    if (sort != SortOrder.BY_GROUP || query.isNotBlank() || favOnly) return@insertSeparators null
                     val afterGroup = (after as? ChannelListItem.Item)?.channel?.group ?: return@insertSeparators null
                     val beforeGroup = (before as? ChannelListItem.Item)?.channel?.group
                     if (beforeGroup != afterGroup) ChannelListItem.Header(afterGroup) else null
@@ -83,5 +93,9 @@ class HomeViewModel(
 
     fun clearRecentlyWatched() {
         viewModelScope.launch { channelDao.clearRecentlyWatched() }
+    }
+
+    fun setSortOrder(order: SortOrder) {
+        viewModelScope.launch { prefsRepository.setSortOrder(order) }
     }
 }
