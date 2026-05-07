@@ -17,6 +17,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.Runs
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -48,7 +49,7 @@ class HomeViewModelTest {
         every { channelDao.getChannelsPagedByName(any(), any(), any()) } returns mockk(relaxed = true)
         every { channelDao.getChannelsPagedByLastWatched(any(), any(), any()) } returns mockk(relaxed = true)
         coEvery { channelDao.count() } returns 0
-        every { searchHistoryRepo.history } returns flowOf(emptyList())
+        every { searchHistoryRepo.history } returns MutableStateFlow(emptyList())
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
