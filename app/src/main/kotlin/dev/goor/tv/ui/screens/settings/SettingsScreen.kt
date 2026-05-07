@@ -129,11 +129,18 @@ private fun SourceItem(
     ListItem(
         headlineContent = { Text(source.name) },
         supportingContent = {
-            Text(when {
-                source.includedGroups == null -> "${source.type.name} · all groups"
-                source.includedGroups.isBlank() -> "${source.type.name} · no groups selected"
-                else -> "${source.type.name} · $groupCount group${if (groupCount == 1) "" else "s"}"
-            })
+            Column {
+                Text(when {
+                    source.includedGroups == null -> "${source.type.name} · all groups"
+                    source.includedGroups.isBlank() -> "${source.type.name} · no groups selected"
+                    else -> "${source.type.name} · $groupCount group${if (groupCount == 1) "" else "s"}"
+                })
+                Text(
+                    text = source.lastSyncedAt?.let { "Last synced ${formatRelativeTime(it)}" } ?: "Never synced",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         },
         trailingContent = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -301,6 +308,16 @@ private fun AddSourceDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+private fun formatRelativeTime(timestampMs: Long): String {
+    val delta = System.currentTimeMillis() - timestampMs
+    return when {
+        delta < 60_000L -> "just now"
+        delta < 3_600_000L -> "${delta / 60_000}m ago"
+        delta < 86_400_000L -> "${delta / 3_600_000}h ago"
+        else -> "${delta / 86_400_000}d ago"
+    }
 }
 
 @Composable

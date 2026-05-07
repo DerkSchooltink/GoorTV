@@ -29,4 +29,5 @@ fun testSource(
     name: String = "Test Source",
     type: SourceType = SourceType.M3U,
     url: String = "http://example.com/playlist.m3u",
-) = Source(id = id, name = name, type = type, url = url)
+    lastSyncedAt: Long? = null,
+) = Source(id = id, name = name, type = type, url = url, lastSyncedAt = lastSyncedAt)

@@ -9,7 +9,7 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class], version = 4, exportSchema = false)
+@Database(entities = [Source::class, Channel::class], version = 5, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -32,6 +32,12 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // NULL = show all (existing sources keep all channels visible)
                 db.execSQL("ALTER TABLE sources ADD COLUMN includedGroups TEXT")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sources ADD COLUMN lastSyncedAt INTEGER")
             }
         }
     }
