@@ -23,4 +23,7 @@ interface SourceDao {
 
     @Query("UPDATE sources SET includedGroups = :groups WHERE id = :id")
     suspend fun updateIncludedGroups(id: Long, groups: String?)
+
+    @Query("UPDATE sources SET lastSyncedAt = :timestamp WHERE id = :id")
+    suspend fun updateLastSyncedAt(id: Long, timestamp: Long)
 }

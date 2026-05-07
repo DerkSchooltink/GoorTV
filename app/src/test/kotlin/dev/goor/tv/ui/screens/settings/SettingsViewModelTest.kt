@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.settings
 
+import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
@@ -29,6 +30,7 @@ class SettingsViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val sourceDao = mockk<SourceDao>()
+    private val channelDao = mockk<ChannelDao>()
     private val syncService = mockk<SourceSyncService>()
 
     @Before
@@ -36,7 +38,7 @@ class SettingsViewModelTest {
         every { sourceDao.getAll() } returns flowOf(emptyList())
     }
 
-    private fun makeVm() = SettingsViewModel(sourceDao, syncService)
+    private fun makeVm() = SettingsViewModel(sourceDao, channelDao, syncService)
 
     @Test
     fun `syncSource removes source from syncingIds on success`() = runTest {

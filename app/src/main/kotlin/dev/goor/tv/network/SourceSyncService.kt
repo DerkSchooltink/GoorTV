@@ -46,5 +46,6 @@ class SourceSyncService(
             )
         }
         channelDao.replaceForSource(source.id, merged)
+        sourceDao.updateLastSyncedAt(source.id, System.currentTimeMillis())
     }
 }

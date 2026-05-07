@@ -15,4 +15,5 @@ data class Source(
     val password: String? = null,
     // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
     val includedGroups: String? = "",
+    val lastSyncedAt: Long? = null,
 )
