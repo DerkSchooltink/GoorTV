@@ -1,8 +1,13 @@
 package dev.goor.tv.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import dev.goor.tv.data.db.AppDatabase
 import dev.goor.tv.data.SearchHistoryRepository
+import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.dlna.DlnaService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.screens.home.HomeViewModel
@@ -23,8 +28,14 @@ val appModule = module {
     single { SourceSyncService(get(), get()) }
     single { DlnaService(androidContext()) }
     single { SearchHistoryRepository(androidContext()) }
+    single<DataStore<Preferences>> {
+        PreferenceDataStoreFactory.create(
+            produceFile = { androidContext().preferencesDataStoreFile("user_prefs") }
+        )
+    }
+    single { UserPreferencesRepository(get()) }
 
-    viewModel { HomeViewModel(get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
     viewModel { params -> PlayerViewModel(params.get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

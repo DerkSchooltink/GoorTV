@@ -21,6 +21,28 @@ interface ChannelDao {
     """)
     fun getChannelsPaged(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
 
+    @Query("""
+        SELECT c.* FROM channels c
+        JOIN sources s ON c.sourceId = s.id
+        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        AND (:group IS NULL OR c.`group` = :group)
+        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (:favOnly = 0 OR c.isFavorite = 1)
+        ORDER BY c.name COLLATE NOCASE ASC
+    """)
+    fun getChannelsPagedByName(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+
+    @Query("""
+        SELECT c.* FROM channels c
+        JOIN sources s ON c.sourceId = s.id
+        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        AND (:group IS NULL OR c.`group` = :group)
+        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (:favOnly = 0 OR c.isFavorite = 1)
+        ORDER BY c.lastWatchedAt DESC, c.name COLLATE NOCASE ASC
+    """)
+    fun getChannelsPagedByLastWatched(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+
     @Query("SELECT DISTINCT `group` FROM channels WHERE sourceId = :sourceId AND `group` IS NOT NULL ORDER BY `group`")
     fun getGroupsForSource(sourceId: Long): Flow<List<String>>
 
