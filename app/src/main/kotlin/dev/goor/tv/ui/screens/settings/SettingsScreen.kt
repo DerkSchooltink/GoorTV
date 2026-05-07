@@ -80,12 +80,12 @@ fun SettingsScreen(
     if (showAddDialog) {
         AddSourceDialog(
             onDismiss = { showAddDialog = false },
-            onAddM3u = { name, url ->
-                vm.addM3uSource(name, url)
+            onAddM3u = { name, url, headers ->
+                vm.addM3uSource(name, url, headers)
                 showAddDialog = false
             },
-            onAddXtream = { name, url, user, pass ->
-                vm.addXtreamSource(name, url, user, pass)
+            onAddXtream = { name, url, user, pass, headers ->
+                vm.addXtreamSource(name, url, user, pass, headers)
                 showAddDialog = false
             }
         )
@@ -267,14 +267,15 @@ private fun GroupsDialog(
 @Composable
 private fun AddSourceDialog(
     onDismiss: () -> Unit,
-    onAddM3u: (name: String, url: String) -> Unit,
-    onAddXtream: (name: String, url: String, user: String, pass: String) -> Unit,
+    onAddM3u: (name: String, url: String, headers: String?) -> Unit,
+    onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?) -> Unit,
 ) {
     var sourceType by remember { mutableStateOf(SourceType.M3U) }
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var headers by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -296,12 +297,21 @@ private fun AddSourceDialog(
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
+                OutlinedTextField(
+                    value = headers,
+                    onValueChange = { headers = it },
+                    label = { Text("HTTP Headers (optional)") },
+                    placeholder = { Text("User-Agent: MyApp\nX-Token: secret") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
-                if (sourceType == SourceType.M3U) onAddM3u(name, url)
-                else onAddXtream(name, url, username, password)
+                val h = headers.takeIf { it.isNotBlank() }
+                if (sourceType == SourceType.M3U) onAddM3u(name, url, h)
+                else onAddXtream(name, url, username, password, h)
             }) { Text("Add") }
         },
         dismissButton = {

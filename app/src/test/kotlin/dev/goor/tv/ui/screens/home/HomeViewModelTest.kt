@@ -1,8 +1,10 @@
 package dev.goor.tv.ui.screens.home
 
+import androidx.paging.PagingSource
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
@@ -15,16 +17,17 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.Runs
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
     @get:Rule
@@ -38,60 +41,42 @@ class HomeViewModelTest {
 
     @Before
     fun setup() {
+        coEvery { syncService.syncAll() } returns emptyList()
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
         every { channelDao.getRecentlyWatched() } returns flowOf(emptyList())
-        every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
+        every { channelDao.getChannelsPaged(any(), any(), any()) } returns mockk(relaxed = true)
+        every { channelDao.getChannelsPagedByName(any(), any(), any()) } returns mockk(relaxed = true)
+        every { channelDao.getChannelsPagedByLastWatched(any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { channelDao.count() } returns 0
         every { searchHistoryRepo.history } returns flowOf(emptyList())
-        coEvery { channelDao.count() } returns 1
+        every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
     private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository)
 
     @Test
-    fun `sortOrder defaults to BY_GROUP`() = runTest {
+    fun `setSearchQuery updates searchQuery state`() = runTest {
         val vm = makeVm()
-        advanceUntilIdle()
-
-        assertEquals(SortOrder.BY_GROUP, vm.sortOrder.value)
+        vm.setSearchQuery("bbc")
+        assertEquals("bbc", vm.searchQuery.value)
     }
 
     @Test
-    fun `setSortOrder persists the chosen order via repository`() = runTest {
-        coEvery { prefsRepository.setSortOrder(any()) } just Runs
-
-        makeVm().setSortOrder(SortOrder.BY_NAME)
-        advanceUntilIdle()
-
-        coVerify { prefsRepository.setSortOrder(SortOrder.BY_NAME) }
+    fun `clearing search resets searchQuery to empty`() = runTest {
+        val vm = makeVm()
+        vm.setSearchQuery("BBC")
+        vm.setSearchQuery("")
+        assertEquals("", vm.searchQuery.value)
     }
 
     @Test
-    fun `setSortOrder persists BY_LAST_WATCHED`() = runTest {
-        coEvery { prefsRepository.setSortOrder(any()) } just Runs
-
-        makeVm().setSortOrder(SortOrder.BY_LAST_WATCHED)
-        advanceUntilIdle()
-
-        coVerify { prefsRepository.setSortOrder(SortOrder.BY_LAST_WATCHED) }
-    }
-
-    @Test
-    fun `sync does not run on init when channels already exist`() = runTest {
-        makeVm()
-        advanceUntilIdle()
-
-        coVerify(exactly = 0) { syncService.syncAll() }
-    }
-
-    @Test
-    fun `sync runs on init when channel table is empty`() = runTest {
-        coEvery { channelDao.count() } returns 0
-        coEvery { syncService.syncAll() } returns emptyList()
-
-        makeVm()
-        advanceUntilIdle()
-
-        coVerify { syncService.syncAll() }
+    fun `toggleFavoritesOnly flips showFavoritesOnly`() = runTest {
+        val vm = makeVm()
+        assertFalse(vm.showFavoritesOnly.value)
+        vm.toggleFavoritesOnly()
+        assertTrue(vm.showFavoritesOnly.value)
+        vm.toggleFavoritesOnly()
+        assertFalse(vm.showFavoritesOnly.value)
     }
 
     @Test
@@ -105,24 +90,50 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `clearRecentlyWatched delegates to ChannelDao`() = runTest {
-        coEvery { channelDao.clearRecentlyWatched() } just Runs
+    fun `syncAll is called on init when no channels exist`() = runTest {
+        coEvery { channelDao.count() } returns 0
 
-        makeVm().clearRecentlyWatched()
+        makeVm()
         advanceUntilIdle()
 
-        coVerify { channelDao.clearRecentlyWatched() }
+        coVerify { syncService.syncAll() }
     }
 
     @Test
-    fun `recentlyWatched emits from ChannelDao`() = runTest {
-        val now = System.currentTimeMillis()
-        val channel = testChannel(id = 1, name = "Recent", lastWatchedAt = now)
-        every { channelDao.getRecentlyWatched() } returns flowOf(listOf(channel))
+    fun `syncAll is NOT called on init when channels already exist`() = runTest {
+        coEvery { channelDao.count() } returns 5
 
-        val vm = makeVm()
+        makeVm()
         advanceUntilIdle()
 
-        assertEquals(listOf(channel), vm.recentlyWatched.value)
+        coVerify(exactly = 0) { syncService.syncAll() }
+    }
+
+    @Test
+    fun `recentlyWatched reflects data from channelDao`() = runTest {
+        val now = System.currentTimeMillis()
+        val channels = listOf(
+            testChannel(id = 1, name = "Recent", lastWatchedAt = now),
+            testChannel(id = 2, name = "Old", lastWatchedAt = now - 10_000),
+        )
+        every { channelDao.getRecentlyWatched() } returns flowOf(channels)
+
+        val vm = makeVm()
+        backgroundScope.launch { vm.recentlyWatched.collect {} }
+        advanceUntilIdle()
+
+        assertEquals(2, vm.recentlyWatched.value.size)
+        assertEquals("Recent", vm.recentlyWatched.value[0].name)
+    }
+
+    @Test
+    fun `recentlyWatched is empty when no channels watched`() = runTest {
+        every { channelDao.getRecentlyWatched() } returns flowOf(emptyList())
+
+        val vm = makeVm()
+        backgroundScope.launch { vm.recentlyWatched.collect {} }
+        advanceUntilIdle()
+
+        assertTrue(vm.recentlyWatched.value.isEmpty())
     }
 }

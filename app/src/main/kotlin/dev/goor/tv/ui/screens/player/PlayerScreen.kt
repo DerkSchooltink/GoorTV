@@ -29,7 +29,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
@@ -55,6 +58,7 @@ fun PlayerScreen(
     vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }),
 ) {
     val channel by vm.channel.collectAsStateWithLifecycle()
+    val headers by vm.headers.collectAsStateWithLifecycle()
     val dlnaDevices by vm.dlnaDevices.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
@@ -68,11 +72,21 @@ fun PlayerScreen(
     var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
 
     channel?.let { ch ->
-        LaunchedEffect(ch.url) {
+        LaunchedEffect(ch.url, headers) {
             hasError = false
             errorMessage = null
             isBuffering = true
-            player.setMediaItem(MediaItem.fromUri(ch.url))
+            if (headers.isEmpty()) {
+                player.setMediaItem(MediaItem.fromUri(ch.url))
+            } else {
+                val mediaSource = DefaultMediaSourceFactory(
+                    DefaultDataSource.Factory(
+                        context,
+                        DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
+                    )
+                ).createMediaSource(MediaItem.fromUri(ch.url))
+                player.setMediaSource(mediaSource)
+            }
             player.prepare()
             player.play()
         }
@@ -170,7 +184,17 @@ fun PlayerScreen(
                     Button(onClick = {
                         hasError = false
                         channel?.let { ch ->
-                            player.setMediaItem(MediaItem.fromUri(ch.url))
+                            if (headers.isEmpty()) {
+                                player.setMediaItem(MediaItem.fromUri(ch.url))
+                            } else {
+                                val mediaSource = DefaultMediaSourceFactory(
+                                    DefaultDataSource.Factory(
+                                        context,
+                                        DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
+                                    )
+                                ).createMediaSource(MediaItem.fromUri(ch.url))
+                                player.setMediaSource(mediaSource)
+                            }
                             player.prepare()
                             player.play()
                         }
