@@ -2,6 +2,7 @@ package dev.goor.tv.di
 
 import androidx.room.Room
 import dev.goor.tv.data.db.AppDatabase
+import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.dlna.DlnaService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.screens.home.HomeViewModel
@@ -21,8 +22,9 @@ val appModule = module {
     single { get<AppDatabase>().channelDao() }
     single { SourceSyncService(get(), get()) }
     single { DlnaService(androidContext()) }
+    single { SearchHistoryRepository(androidContext()) }
 
-    viewModel { HomeViewModel(get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get()) }
     viewModel { params -> PlayerViewModel(params.get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }
