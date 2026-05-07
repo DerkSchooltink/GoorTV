@@ -340,6 +340,7 @@ private fun EditSourceDialog(
     var url by remember { mutableStateOf(source.url) }
     var username by remember { mutableStateOf(source.username ?: "") }
     var password by remember { mutableStateOf(source.password ?: "") }
+    var headers by remember { mutableStateOf(source.headers ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -352,6 +353,14 @@ private fun EditSourceDialog(
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
+                OutlinedTextField(
+                    value = headers,
+                    onValueChange = { headers = it },
+                    label = { Text("HTTP Headers (optional)") },
+                    placeholder = { Text("User-Agent: MyApp\nX-Token: secret") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
@@ -362,6 +371,7 @@ private fun EditSourceDialog(
                         url = url,
                         username = username.takeIf { it.isNotBlank() },
                         password = password.takeIf { it.isNotBlank() },
+                        headers = headers.takeIf { it.isNotBlank() },
                     )
                 )
             }) { Text("Save") }
