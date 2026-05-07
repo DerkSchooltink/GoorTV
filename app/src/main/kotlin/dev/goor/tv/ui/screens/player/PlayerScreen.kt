@@ -19,7 +19,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -75,6 +79,12 @@ fun PlayerScreen(
     val showControls = remember { mutableStateOf(false) }
     var showCastDialog by remember { mutableStateOf(false) }
     var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
+    val backFocusRequester = remember { FocusRequester() }
+    var backFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        try { backFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
+    }
 
     channel?.let { ch ->
         LaunchedEffect(ch.url, headers) {
@@ -241,13 +251,19 @@ fun PlayerScreen(
             }
         }
 
-        // Back button — always visible
+        // Back button — always visible, focus-ring for D-pad visibility
         IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
-                .padding(8.dp),
+                .padding(8.dp)
+                .onFocusChanged { backFocused = it.isFocused }
+                .focusRequester(backFocusRequester)
+                .then(
+                    if (backFocused) Modifier.border(2.dp, Color.White, CircleShape)
+                    else Modifier
+                ),
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,

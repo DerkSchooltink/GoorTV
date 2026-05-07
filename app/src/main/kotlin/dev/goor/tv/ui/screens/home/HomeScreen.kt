@@ -3,6 +3,7 @@ package dev.goor.tv.ui.screens.home
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -282,9 +284,13 @@ private fun stickyGroupHeader(title: String) {
 @Composable
 private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle: () -> Unit) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val focusBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+    var isFocused by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (isFocused) focusBg else Color.Transparent)
             .drawBehind {
                 drawLine(
                     color = dividerColor,
@@ -292,19 +298,23 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle:
                     end = Offset(size.width, size.height),
                     strokeWidth = 0.5.dp.toPx(),
                 )
+                if (isFocused) {
+                    drawRect(color = primaryColor, size = size.copy(width = 4.dp.toPx()))
+                }
             }
+            .onFocusChanged { isFocused = it.isFocused }
             .clickable(onClick = onClick)
-            .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ChannelLogo(logoUrl = channel.logoUrl, size = 40)
+        ChannelLogo(logoUrl = channel.logoUrl, size = 56)
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 channel.name,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.titleMedium,
             )
             if (channel.group != null) {
                 Text(
@@ -328,15 +338,23 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle:
 
 @Composable
 private fun RecentChannelCard(channel: Channel, onClick: () -> Unit) {
+    var isFocused by remember { mutableStateOf(false) }
+    val focusBorderColor = MaterialTheme.colorScheme.primary
     Column(
         modifier = Modifier
-            .width(80.dp)
-            .clickable(onClick = onClick),
+            .width(96.dp)
+            .onFocusChanged { isFocused = it.isFocused }
+            .clickable(onClick = onClick)
+            .then(
+                if (isFocused) Modifier.border(2.dp, focusBorderColor, RoundedCornerShape(12.dp))
+                else Modifier
+            )
+            .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         ChannelLogo(
             logoUrl = channel.logoUrl,
-            size = 64,
+            size = 80,
             shape = RoundedCornerShape(8.dp),
         )
         Text(
