@@ -64,6 +64,15 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channels")
     suspend fun count(): Int
 
+    @Insert
+    suspend fun insert(channel: Channel): Long
+
+    @Update
+    suspend fun update(channel: Channel)
+
+    @Delete
+    suspend fun delete(channel: Channel)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(channels: List<Channel>)
 

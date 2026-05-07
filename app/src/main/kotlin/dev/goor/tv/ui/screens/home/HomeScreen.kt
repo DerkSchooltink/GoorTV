@@ -61,9 +61,13 @@ fun HomeScreen(
     val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
     val searchHistory by vm.searchHistory.collectAsStateWithLifecycle()
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
+    val manualSourceId by vm.manualSourceId.collectAsStateWithLifecycle()
+    val groups by vm.groups.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showAddChannelDialog by remember { mutableStateOf(false) }
+    var editingChannel by remember { mutableStateOf<Channel?>(null) }
     val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
@@ -79,11 +83,19 @@ fun HomeScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            AnimatedVisibility(visible = showScrollToTop) {
-                SmallFloatingActionButton(
-                    onClick = { coroutineScope.launch { listState.animateScrollToItem(0) } },
-                ) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AnimatedVisibility(visible = showScrollToTop) {
+                    SmallFloatingActionButton(
+                        onClick = { coroutineScope.launch { listState.animateScrollToItem(0) } },
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+                    }
+                }
+                FloatingActionButton(onClick = { showAddChannelDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add channel")
                 }
             }
         },
@@ -256,6 +268,8 @@ fun HomeScreen(
                                     channel = item.channel,
                                     onClick = { onChannelClick(item.channel.id) },
                                     onFavoriteToggle = { vm.toggleFavorite(item.channel.id) },
+                                    isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
+                                    onEdit = { editingChannel = item.channel },
                                 )
                                 null -> {}
                             }
@@ -264,6 +278,33 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (showAddChannelDialog) {
+        AddEditChannelDialog(
+            groups = groups,
+            onDismiss = { showAddChannelDialog = false },
+            onSave = { name, url, logoUrl, group ->
+                vm.addCustomChannel(name, url, logoUrl, group)
+                showAddChannelDialog = false
+            },
+        )
+    }
+
+    editingChannel?.let { channel ->
+        AddEditChannelDialog(
+            channel = channel,
+            groups = groups,
+            onDismiss = { editingChannel = null },
+            onSave = { name, url, logoUrl, group ->
+                vm.updateCustomChannel(channel.copy(name = name, url = url, logoUrl = logoUrl, group = group))
+                editingChannel = null
+            },
+            onDelete = {
+                vm.deleteCustomChannel(channel)
+                editingChannel = null
+            },
+        )
     }
 }
 
@@ -282,7 +323,13 @@ private fun stickyGroupHeader(title: String) {
 }
 
 @Composable
-private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle: () -> Unit) {
+private fun ChannelItem(
+    channel: Channel,
+    onClick: () -> Unit,
+    onFavoriteToggle: () -> Unit,
+    isCustom: Boolean = false,
+    onEdit: () -> Unit = {},
+) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val primaryColor = MaterialTheme.colorScheme.primary
     val focusBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
@@ -323,6 +370,15 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, onFavoriteToggle:
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (isCustom) {
+            IconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Edit channel",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

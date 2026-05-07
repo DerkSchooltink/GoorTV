@@ -286,7 +286,7 @@ private fun AddSourceDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceType.entries.forEach { type ->
+                    SourceType.entries.filter { it != SourceType.MANUAL }.forEach { type ->
                         FilterChip(
                             selected = sourceType == type,
                             onClick = { sourceType = type },

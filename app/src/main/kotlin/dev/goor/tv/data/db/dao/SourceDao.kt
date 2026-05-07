@@ -26,4 +26,7 @@ interface SourceDao {
 
     @Query("UPDATE sources SET lastSyncedAt = :timestamp WHERE id = :id")
     suspend fun updateLastSyncedAt(id: Long, timestamp: Long)
+
+    @Query("SELECT * FROM sources WHERE type = 'MANUAL' LIMIT 1")
+    suspend fun getManualSource(): Source?
 }
