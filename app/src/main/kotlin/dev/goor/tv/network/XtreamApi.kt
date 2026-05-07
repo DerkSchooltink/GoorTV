@@ -2,6 +2,7 @@ package dev.goor.tv.network
 
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
+import dev.goor.tv.data.model.headersMap
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -25,7 +26,9 @@ object XtreamApi {
                    else "${parsed.protocol.name}://${parsed.host}"
         val u = source.username
         val p = source.password
-        val response = httpClient.get("$base/player_api.php?username=$u&password=$p&action=get_live_streams")
+        val response = httpClient.get("$base/player_api.php?username=$u&password=$p&action=get_live_streams") {
+            source.headersMap().forEach { (k, v) -> header(k, v) }
+        }
         if (!response.status.isSuccess()) {
             error("Xtream API returned ${response.status.value} for source ${source.name}")
         }

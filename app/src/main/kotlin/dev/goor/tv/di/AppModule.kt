@@ -20,7 +20,7 @@ import org.koin.dsl.module
 val appModule = module {
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6)
             .build()
     }
     single { get<AppDatabase>().sourceDao() }
@@ -36,6 +36,6 @@ val appModule = module {
     single { UserPreferencesRepository(get()) }
 
     viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
-    viewModel { params -> PlayerViewModel(params.get(), get(), get()) }
+    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

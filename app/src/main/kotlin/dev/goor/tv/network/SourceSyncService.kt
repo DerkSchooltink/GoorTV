@@ -5,6 +5,7 @@ import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.headersMap
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.flow.first
@@ -29,7 +30,9 @@ class SourceSyncService(
     suspend fun sync(source: Source) {
         val fetched = when (source.type) {
             SourceType.M3U -> {
-                val content: String = httpClient.get(source.url).body()
+                val content: String = httpClient.get(source.url) {
+                    source.headersMap().forEach { (k, v) -> header(k, v) }
+                }.body()
                 M3uParser.parse(source.id, content)
             }
             SourceType.XTREAM -> XtreamApi.fetchLiveChannels(source)

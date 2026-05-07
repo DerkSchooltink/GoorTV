@@ -16,4 +16,15 @@ data class Source(
     // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
     val includedGroups: String? = "",
     val lastSyncedAt: Long? = null,
+    // one "Name: Value" entry per line; null means no custom headers
+    val headers: String? = null,
 )
+
+fun Source.headersMap(): Map<String, String> =
+    headers?.lines()
+        ?.filter { ':' in it }
+        ?.associate { line ->
+            val idx = line.indexOf(':')
+            line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+        }
+    ?: emptyMap()
