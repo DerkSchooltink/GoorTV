@@ -5,6 +5,7 @@ import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
+import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
@@ -24,6 +25,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -44,11 +46,17 @@ class HomeViewModelTest {
     fun setup() {
         coEvery { syncService.syncAll() } returns emptyList()
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
+        coEvery { sourceDao.getManualSource() } returns null
+        coEvery { sourceDao.insert(any()) } returns 99L
         every { channelDao.getRecentlyWatched() } returns flowOf(emptyList())
+        every { channelDao.getGroups() } returns flowOf(emptyList())
         every { channelDao.getChannelsPaged(any(), any(), any()) } returns mockk(relaxed = true)
         every { channelDao.getChannelsPagedByName(any(), any(), any()) } returns mockk(relaxed = true)
         every { channelDao.getChannelsPagedByLastWatched(any(), any(), any()) } returns mockk(relaxed = true)
         coEvery { channelDao.count() } returns 0
+        coEvery { channelDao.insert(any()) } returns 1L
+        coEvery { channelDao.update(any()) } just Runs
+        coEvery { channelDao.delete(any()) } just Runs
         every { searchHistoryRepo.history } returns MutableStateFlow(emptyList())
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
@@ -136,5 +144,55 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.recentlyWatched.value.isEmpty())
+    }
+
+    @Test
+    fun `addCustomChannel creates manual source and inserts channel`() = runTest {
+        makeVm().addCustomChannel("My Channel", "http://example.com/stream", null, "Sports")
+        advanceUntilIdle()
+
+        coVerify { sourceDao.insert(match { it.type == SourceType.MANUAL && it.includedGroups == null }) }
+        coVerify { channelDao.insert(match { it.name == "My Channel" && it.url == "http://example.com/stream" && it.group == "Sports" }) }
+    }
+
+    @Test
+    fun `addCustomChannel reuses existing manual source`() = runTest {
+        val existing = testSource(id = 42L, type = SourceType.MANUAL)
+        coEvery { sourceDao.getManualSource() } returns existing
+
+        makeVm().addCustomChannel("Ch", "http://x.com/s", null, null)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { sourceDao.insert(any()) }
+        coVerify { channelDao.insert(match { it.sourceId == 42L }) }
+    }
+
+    @Test
+    fun `updateCustomChannel delegates to ChannelDao`() = runTest {
+        val channel = testChannel(id = 5L, name = "Updated")
+        makeVm().updateCustomChannel(channel)
+        advanceUntilIdle()
+
+        coVerify { channelDao.update(channel) }
+    }
+
+    @Test
+    fun `deleteCustomChannel delegates to ChannelDao`() = runTest {
+        val channel = testChannel(id = 7L)
+        makeVm().deleteCustomChannel(channel)
+        advanceUntilIdle()
+
+        coVerify { channelDao.delete(channel) }
+    }
+
+    @Test
+    fun `manualSourceId initialized from existing manual source on startup`() = runTest {
+        val existing = testSource(id = 55L, type = SourceType.MANUAL)
+        coEvery { sourceDao.getManualSource() } returns existing
+
+        val vm = makeVm()
+        advanceUntilIdle()
+
+        assertEquals(55L, vm.manualSourceId.value)
     }
 }

@@ -3,7 +3,7 @@ package dev.goor.tv.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-enum class SourceType { M3U, XTREAM }
+enum class SourceType { M3U, XTREAM, MANUAL }
 
 @Entity(tableName = "sources")
 data class Source(

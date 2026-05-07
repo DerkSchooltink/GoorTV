@@ -20,11 +20,13 @@ class SourceSyncService(
     private val channelDao: ChannelDao,
 ) {
     suspend fun syncAll(): List<Throwable> {
-        return sourceDao.getAll().first().mapNotNull { source ->
-            runCatching { sync(source) }
-                .exceptionOrNull()
-                ?.also { Log.e("SourceSync", "Failed to sync '${source.name}': ${it.message}") }
-        }
+        return sourceDao.getAll().first()
+            .filter { it.type != SourceType.MANUAL }
+            .mapNotNull { source ->
+                runCatching { sync(source) }
+                    .exceptionOrNull()
+                    ?.also { Log.e("SourceSync", "Failed to sync '${source.name}': ${it.message}") }
+            }
     }
 
     suspend fun sync(source: Source) {
@@ -36,6 +38,7 @@ class SourceSyncService(
                 M3uParser.parse(source.id, content)
             }
             SourceType.XTREAM -> XtreamApi.fetchLiveChannels(source)
+            SourceType.MANUAL -> return
         }
         // Preserve user data (favorites, last watched) when reinserting after sync
         val existing = channelDao.getBySourceOnce(source.id)

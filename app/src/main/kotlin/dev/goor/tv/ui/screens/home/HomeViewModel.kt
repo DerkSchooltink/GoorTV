@@ -10,6 +10,9 @@ import androidx.paging.map
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.model.Channel
+import dev.goor.tv.data.model.Source
+import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
@@ -38,9 +41,15 @@ class HomeViewModel(
     private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
 
+    private val _manualSourceId = MutableStateFlow<Long?>(null)
+    val manualSourceId = _manualSourceId.asStateFlow()
+
     val searchHistory = searchHistoryRepo.history
 
     val sources = sourceDao.getAll()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val groups = channelDao.getGroups()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recentlyWatched = channelDao.getRecentlyWatched()
@@ -73,6 +82,38 @@ class HomeViewModel(
         viewModelScope.launch {
             if (channelDao.count() == 0) sync()
         }
+        viewModelScope.launch {
+            sourceDao.getManualSource()?.let { _manualSourceId.value = it.id }
+        }
+    }
+
+    private suspend fun getOrCreateManualSourceId(): Long {
+        _manualSourceId.value?.let { return it }
+        val existing = sourceDao.getManualSource()
+        if (existing != null) {
+            _manualSourceId.value = existing.id
+            return existing.id
+        }
+        val id = sourceDao.insert(
+            Source(name = "Custom Channels", type = SourceType.MANUAL, url = "", includedGroups = null)
+        )
+        _manualSourceId.value = id
+        return id
+    }
+
+    fun addCustomChannel(name: String, url: String, logoUrl: String?, group: String?) {
+        viewModelScope.launch {
+            val sourceId = getOrCreateManualSourceId()
+            channelDao.insert(Channel(sourceId = sourceId, name = name, url = url, logoUrl = logoUrl, group = group))
+        }
+    }
+
+    fun updateCustomChannel(channel: Channel) {
+        viewModelScope.launch { channelDao.update(channel) }
+    }
+
+    fun deleteCustomChannel(channel: Channel) {
+        viewModelScope.launch { channelDao.delete(channel) }
     }
 
     fun sync() {
