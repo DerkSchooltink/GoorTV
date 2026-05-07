@@ -30,11 +30,23 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import dev.goor.tv.dlna.DlnaDevice
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+
+private enum class AspectRatioMode(val label: String) {
+    FIT("Fit"),
+    FILL("Fill"),
+    ZOOM("Zoom"),
+    RATIO_16_9("16:9"),
+    RATIO_4_3("4:3"),
+}
+
+private val AspectRatioMode.next: AspectRatioMode
+    get() = AspectRatioMode.entries[(ordinal + 1) % AspectRatioMode.entries.size]
 
 @Composable
 fun PlayerScreen(
@@ -53,6 +65,7 @@ fun PlayerScreen(
     var isBuffering by remember { mutableStateOf(true) }
     val showControls = remember { mutableStateOf(false) }
     var showCastDialog by remember { mutableStateOf(false) }
+    var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
 
     channel?.let { ch ->
         LaunchedEffect(ch.url) {
@@ -106,7 +119,20 @@ fun PlayerScreen(
                         })
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
+                update = { pv ->
+                    pv.resizeMode = when (aspectRatioMode) {
+                        AspectRatioMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        AspectRatioMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                        AspectRatioMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        AspectRatioMode.RATIO_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        AspectRatioMode.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    }
+                },
+                modifier = when (aspectRatioMode) {
+                    AspectRatioMode.RATIO_16_9 -> Modifier.aspectRatio(16f / 9f).align(Alignment.Center)
+                    AspectRatioMode.RATIO_4_3 -> Modifier.aspectRatio(4f / 3f).align(Alignment.Center)
+                    else -> Modifier.fillMaxSize()
+                },
             )
         }
 
@@ -153,7 +179,7 @@ fun PlayerScreen(
             }
         }
 
-        // Cast footer — synced with ExoPlayer controller visibility
+        // Controls footer — synced with ExoPlayer controller visibility
         AnimatedVisibility(
             visible = showControls.value && !hasError,
             enter = fadeIn(),
@@ -167,7 +193,15 @@ fun PlayerScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                TextButton(onClick = { aspectRatioMode = aspectRatioMode.next }) {
+                    Text(
+                        aspectRatioMode.label,
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
                 IconButton(onClick = { showCastDialog = true }) {
                     Icon(
                         Icons.Default.Cast,
