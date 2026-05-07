@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardActions
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
@@ -58,6 +61,9 @@ fun HomeScreen(
     var searchActive by remember { mutableStateOf(false) }
     val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
     val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
@@ -67,6 +73,15 @@ fun HomeScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            AnimatedVisibility(visible = showScrollToTop) {
+                SmallFloatingActionButton(
+                    onClick = { coroutineScope.launch { listState.animateScrollToItem(0) } },
+                ) {
+                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text("GoorTV") },
@@ -153,7 +168,7 @@ fun HomeScreen(
                         contentAlignment = Alignment.Center,
                     ) { CircularProgressIndicator() }
                     pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
-                    else -> LazyColumn(modifier = Modifier.fillMaxSize().testTag("channel_list")) {
+                    else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("channel_list")) {
                         if (recentlyWatched.isNotEmpty() && isDefaultView) {
                             item(key = "recent_header") {
                                 Row(
