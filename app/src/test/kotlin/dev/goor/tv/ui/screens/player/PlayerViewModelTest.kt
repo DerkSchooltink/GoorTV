@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.player
 
+import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.dlna.DlnaService
@@ -38,7 +39,7 @@ class PlayerViewModelTest {
     }
 
     private fun makeVm(channelId: Long) =
-        PlayerViewModel(channelId = channelId, channelDao = channelDao, sourceDao = sourceDao, dlnaService = dlnaService)
+        PlayerViewModel(channelId = channelId, channelDao = channelDao, sourceDao = sourceDao, dlnaService = dlnaService, concurrencyTracker = StreamConcurrencyTracker())
 
     @Test
     fun `channel is loaded from DAO by id`() = runTest {

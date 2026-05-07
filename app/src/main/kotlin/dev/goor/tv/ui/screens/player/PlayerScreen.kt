@@ -59,9 +59,14 @@ fun PlayerScreen(
 ) {
     val channel by vm.channel.collectAsStateWithLifecycle()
     val headers by vm.headers.collectAsStateWithLifecycle()
+    val stopped by vm.stopped.collectAsStateWithLifecycle()
     val dlnaDevices by vm.dlnaDevices.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
+
+    LaunchedEffect(stopped) {
+        if (stopped) onBack()
+    }
 
     val player = remember { ExoPlayer.Builder(context).build() }
     var hasError by remember { mutableStateOf(false) }
