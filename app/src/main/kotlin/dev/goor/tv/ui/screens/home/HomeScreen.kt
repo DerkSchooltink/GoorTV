@@ -2,6 +2,9 @@ package dev.goor.tv.ui.screens.home
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -50,6 +53,7 @@ fun HomeScreen(
     val sources by vm.sources.collectAsStateWithLifecycle()
     val recentlyWatched by vm.recentlyWatched.collectAsStateWithLifecycle()
     val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
+    val searchHistory by vm.searchHistory.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
     val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
@@ -82,6 +86,7 @@ fun HomeScreen(
                         )
                     }
                     IconButton(onClick = {
+                        if (searchActive && searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery)
                         searchActive = !searchActive
                         if (!searchActive) vm.setSearchQuery("")
                     }) {
@@ -112,7 +117,29 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     singleLine = true,
+                    keyboardActions = KeyboardActions(
+                        onSearch = { if (searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery) },
+                        onDone = { if (searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery) },
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Search,
+                    ),
                 )
+                if (searchHistory.isNotEmpty()) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        items(searchHistory) { query ->
+                            SuggestionChip(
+                                onClick = { vm.setSearchQuery(query) },
+                                label = { Text(query) },
+                                icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            )
+                        }
+                    }
+                }
             }
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

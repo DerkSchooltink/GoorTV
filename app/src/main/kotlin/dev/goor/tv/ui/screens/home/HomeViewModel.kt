@@ -7,6 +7,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.insertSeparators
 import androidx.paging.map
+import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.network.SourceSyncService
@@ -19,6 +20,7 @@ class HomeViewModel(
     private val channelDao: ChannelDao,
     private val sourceDao: SourceDao,
     private val syncService: SourceSyncService,
+    private val searchHistoryRepo: SearchHistoryRepository,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -32,6 +34,8 @@ class HomeViewModel(
 
     private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
+
+    val searchHistory = searchHistoryRepo.history
 
     val sources = sourceDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -70,6 +74,7 @@ class HomeViewModel(
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
+    fun addToSearchHistory(query: String) { searchHistoryRepo.add(query) }
     fun toggleFavoritesOnly() { _showFavoritesOnly.value = !_showFavoritesOnly.value }
 
     fun toggleFavorite(channelId: Long) {
