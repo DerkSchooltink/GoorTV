@@ -33,16 +33,16 @@ class SettingsViewModel(
 
     fun clearSnackbar() { _snackbarMessage.value = null }
 
-    fun addM3uSource(name: String, url: String, headers: String? = null) {
+    fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
-            val id = sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }))
+            val id = sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
             syncSource(sourceDao.getById(id) ?: return@launch)
         }
     }
 
-    fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null) {
+    fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
-            val id = sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }))
+            val id = sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
             syncSource(sourceDao.getById(id) ?: return@launch)
         }
     }

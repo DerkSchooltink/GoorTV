@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import dev.goor.tv.data.db.AppDatabase
 import dev.goor.tv.data.SearchHistoryRepository
+import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.dlna.DlnaService
 import dev.goor.tv.network.SourceSyncService
@@ -20,13 +21,14 @@ import org.koin.dsl.module
 val appModule = module {
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
             .build()
     }
     single { get<AppDatabase>().sourceDao() }
     single { get<AppDatabase>().channelDao() }
     single { SourceSyncService(get(), get()) }
     single { DlnaService(androidContext()) }
+    single { StreamConcurrencyTracker() }
     single { SearchHistoryRepository(androidContext()) }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create(
@@ -36,6 +38,6 @@ val appModule = module {
     single { UserPreferencesRepository(get()) }
 
     viewModel { HomeViewModel(get(), get(), get(), get(), get()) }
-    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get()) }
+    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

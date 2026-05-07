@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.goor.tv.data.model.Source
@@ -80,12 +82,12 @@ fun SettingsScreen(
     if (showAddDialog) {
         AddSourceDialog(
             onDismiss = { showAddDialog = false },
-            onAddM3u = { name, url, headers ->
-                vm.addM3uSource(name, url, headers)
+            onAddM3u = { name, url, headers, maxStreams ->
+                vm.addM3uSource(name, url, headers, maxStreams)
                 showAddDialog = false
             },
-            onAddXtream = { name, url, user, pass, headers ->
-                vm.addXtreamSource(name, url, user, pass, headers)
+            onAddXtream = { name, url, user, pass, headers, maxStreams ->
+                vm.addXtreamSource(name, url, user, pass, headers, maxStreams)
                 showAddDialog = false
             }
         )
@@ -267,8 +269,8 @@ private fun GroupsDialog(
 @Composable
 private fun AddSourceDialog(
     onDismiss: () -> Unit,
-    onAddM3u: (name: String, url: String, headers: String?) -> Unit,
-    onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?) -> Unit,
+    onAddM3u: (name: String, url: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
+    onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
 ) {
     var sourceType by remember { mutableStateOf(SourceType.M3U) }
     var name by remember { mutableStateOf("") }
@@ -276,6 +278,7 @@ private fun AddSourceDialog(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var headers by remember { mutableStateOf("") }
+    var maxStreams by remember { mutableStateOf("0") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -305,13 +308,22 @@ private fun AddSourceDialog(
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedTextField(
+                    value = maxStreams,
+                    onValueChange = { if (it.all(Char::isDigit)) maxStreams = it },
+                    label = { Text("Max concurrent streams (0 = unlimited)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 val h = headers.takeIf { it.isNotBlank() }
-                if (sourceType == SourceType.M3U) onAddM3u(name, url, h)
-                else onAddXtream(name, url, username, password, h)
+                val max = maxStreams.toIntOrNull() ?: 0
+                if (sourceType == SourceType.M3U) onAddM3u(name, url, h, max)
+                else onAddXtream(name, url, username, password, h, max)
             }) { Text("Add") }
         },
         dismissButton = {
@@ -341,6 +353,7 @@ private fun EditSourceDialog(
     var username by remember { mutableStateOf(source.username ?: "") }
     var password by remember { mutableStateOf(source.password ?: "") }
     var headers by remember { mutableStateOf(source.headers ?: "") }
+    var maxStreams by remember { mutableStateOf(source.maxConcurrentStreams.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -361,6 +374,14 @@ private fun EditSourceDialog(
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                OutlinedTextField(
+                    value = maxStreams,
+                    onValueChange = { if (it.all(Char::isDigit)) maxStreams = it },
+                    label = { Text("Max concurrent streams (0 = unlimited)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
@@ -372,6 +393,7 @@ private fun EditSourceDialog(
                         username = username.takeIf { it.isNotBlank() },
                         password = password.takeIf { it.isNotBlank() },
                         headers = headers.takeIf { it.isNotBlank() },
+                        maxConcurrentStreams = maxStreams.toIntOrNull() ?: 0,
                     )
                 )
             }) { Text("Save") }

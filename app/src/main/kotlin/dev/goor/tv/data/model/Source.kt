@@ -18,6 +18,8 @@ data class Source(
     val lastSyncedAt: Long? = null,
     // one "Name: Value" entry per line; null means no custom headers
     val headers: String? = null,
+    // 0 = unlimited
+    val maxConcurrentStreams: Int = 0,
 )
 
 fun Source.headersMap(): Map<String, String> =
