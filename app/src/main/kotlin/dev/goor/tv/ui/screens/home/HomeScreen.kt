@@ -39,8 +39,10 @@ import kotlinx.coroutines.launch
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.preferences.SortOrder
 import org.koin.androidx.compose.koinViewModel
@@ -436,7 +438,7 @@ private fun ChannelLogo(
         val request = remember(logoUrl, sizePx) {
             ImageRequest.Builder(context)
                 .data(logoUrl)
-                .size(sizePx)
+                .size(Size(sizePx, sizePx))
                 .crossfade(false)
                 .build()
         }

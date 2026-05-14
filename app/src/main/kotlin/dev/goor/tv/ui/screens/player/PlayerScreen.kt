@@ -39,7 +39,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import dev.goor.tv.dlna.DlnaDevice
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf

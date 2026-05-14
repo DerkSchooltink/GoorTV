@@ -11,12 +11,12 @@ kotlin {
 
 android {
     namespace = "dev.goor.tv"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "dev.goor.tv"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
     }
@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.koin.androidx.compose)
 
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.datastore.preferences)
     implementation(libs.compose.material.icons.extended)
 
