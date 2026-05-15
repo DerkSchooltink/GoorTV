@@ -1,6 +1,6 @@
 # GoorTV
 
-A free, open source IPTV player for Android and Android TV.
+A free, open source video streaming player for Android and Android TV. Supports M3U playlists and Xtream Codes compatible sources.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -8,7 +8,7 @@ A free, open source IPTV player for Android and Android TV.
 
 ## Features
 
-- **M3U & Xtream Codes** — add any M3U playlist URL or Xtream Codes provider
+- **M3U & Xtream Codes** — add any M3U playlist URL or Xtream Codes compatible source
 - **Custom channels** — manually add, edit, or delete individual channels
 - **Group filtering** — pick which channel groups to show per source
 - **Favorites & watch history** — mark channels and resume where you left off
@@ -43,6 +43,8 @@ Download the latest `app-release.apk` from the [Releases](https://github.com/Der
    - **M3U** — paste a playlist URL
    - **Xtream Codes** — enter your provider URL, username, and password
 3. The app syncs channels automatically on launch
+
+> GoorTV is a player only — it does not provide, host, or endorse any streaming content. You are responsible for ensuring you have the rights to access any streams you add.
 
 ### Browse and play
 
@@ -97,6 +99,45 @@ Single-module Kotlin + Jetpack Compose app targeting Android TV (minSdk 26).
 - **Player** — ExoPlayer (Media3)
 - **Casting** — Google Cast SDK with the default media receiver
 - **Navigation** — Compose Navigation with three screens: Home, Player, Settings
+
+---
+
+## Releasing
+
+Releases are built automatically by GitHub Actions when a version tag is pushed.
+
+### One-time setup (keystore + GitHub secrets)
+
+```bash
+# Generate a release keystore (keep this file safe, never commit it)
+keytool -genkey -v -keystore release.jks -alias goortv \
+        -keyalg RSA -keysize 2048 -validity 10000
+
+# Base64-encode it for the GitHub secret
+base64 -i release.jks | pbcopy   # macOS — paste into KEYSTORE_BASE64
+```
+
+Add four secrets to your GitHub repo (`Settings → Secrets → Actions`):
+
+| Secret | Value |
+|---|---|
+| `KEYSTORE_BASE64` | base64-encoded `release.jks` |
+| `STORE_PASSWORD` | keystore password |
+| `KEY_ALIAS` | `goortv` (or whatever you chose) |
+| `KEY_PASSWORD` | key password |
+
+### Publish a release
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions builds the signed APK and attaches it to the release automatically. Obtainium users get notified.
+
+---
+
+> **Note on cleartext traffic**: the app allows plain HTTP streams (`usesCleartextTraffic="true"`) because many streaming sources do not use HTTPS. No user credentials are transmitted over HTTP — provider passwords are used only for Xtream Codes API calls to the user's own source.
 
 ---
 

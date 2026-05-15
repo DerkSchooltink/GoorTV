@@ -7,3 +7,10 @@ app/build/
 
 *.hprof
 .claude/
+
+# Signing keystores — never commit these
+*.jks
+*.keystore
+
+# Gradle daemon config is machine-local
+gradle/gradle-daemon-jvm.properties
