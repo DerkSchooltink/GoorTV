@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write  # create releases and upload APK assets
+
 jobs:
   build:
     runs-on: ubuntu-latest
