@@ -21,11 +21,25 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        val storeFile = System.getenv("SIGNING_STORE_FILE")
+        if (storeFile != null) {
+            create("release") {
+                this.storeFile = file(storeFile)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            val releaseSigningConfig = signingConfigs.findByName("release")
+            if (releaseSigningConfig != null) signingConfig = releaseSigningConfig
         }
         create("benchmark") {
             initWith(getByName("release"))
