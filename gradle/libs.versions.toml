@@ -14,7 +14,9 @@ ktor = "3.5.0"
 koin = "4.2.1"
 koin-compose = "4.2.1"
 coil = "3.4.0"
-jupnp = "3.0.4"
+appcompat = "1.7.0"
+cast-framework = "21.5.0"
+mediarouter = "1.8.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 datastore = "1.2.1"
@@ -59,8 +61,9 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 
-jupnp = { group = "org.jupnp", name = "jupnp", version.ref = "jupnp" }
-jupnp-android = { group = "org.jupnp", name = "org.jupnp.android", version.ref = "jupnp" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "cast-framework" }
+mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }

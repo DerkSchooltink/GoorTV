@@ -1,20 +1,23 @@
 package dev.goor.tv.ui.screens.player
 
 import android.app.Activity
-import android.view.View
 import android.view.WindowManager
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Warning
+import androidx.mediarouter.app.MediaRouteButton
+import com.google.android.gms.cast.framework.CastButtonFactory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -40,7 +44,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
-import dev.goor.tv.dlna.DlnaDevice
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -64,7 +67,6 @@ fun PlayerScreen(
     val channel by vm.channel.collectAsStateWithLifecycle()
     val headers by vm.headers.collectAsStateWithLifecycle()
     val stopped by vm.stopped.collectAsStateWithLifecycle()
-    val dlnaDevices by vm.dlnaDevices.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -76,14 +78,20 @@ fun PlayerScreen(
     var hasError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isBuffering by remember { mutableStateOf(true) }
-    val showControls = remember { mutableStateOf(false) }
-    var showCastDialog by remember { mutableStateOf(false) }
+    var showControls by remember { mutableStateOf(false) }
     var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
     val backFocusRequester = remember { FocusRequester() }
     var backFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         try { backFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
+    }
+
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            delay(4000)
+            showControls = false
+        }
     }
 
     channel?.let { ch ->
@@ -124,8 +132,15 @@ fun PlayerScreen(
 
     DisposableEffect(Unit) {
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        val insetsController = activity?.window?.let { window ->
+            WindowCompat.getInsetsController(window, window.decorView).also {
+                it.hide(WindowInsetsCompat.Type.systemBars())
+                it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
         onDispose {
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            insetsController?.show(WindowInsetsCompat.Type.systemBars())
             player.release()
         }
     }
@@ -141,11 +156,7 @@ fun PlayerScreen(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         this.player = player
-                        setShowNextButton(false)
-                        setShowPreviousButton(false)
-                        setControllerVisibilityListener(PlayerView.ControllerVisibilityListener { v ->
-                            showControls.value = v == View.VISIBLE
-                        })
+                        useController = false
                     }
                 },
                 update = { pv ->
@@ -157,11 +168,14 @@ fun PlayerScreen(
                         AspectRatioMode.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     }
                 },
-                modifier = when (aspectRatioMode) {
+                modifier = (when (aspectRatioMode) {
                     AspectRatioMode.RATIO_16_9 -> Modifier.aspectRatio(16f / 9f).align(Alignment.Center)
                     AspectRatioMode.RATIO_4_3 -> Modifier.aspectRatio(4f / 3f).align(Alignment.Center)
                     else -> Modifier.fillMaxSize()
-                },
+                }).clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                ) { showControls = !showControls },
             )
         }
 
@@ -220,7 +234,7 @@ fun PlayerScreen(
 
         // Controls footer — synced with ExoPlayer controller visibility
         AnimatedVisibility(
-            visible = showControls.value && !hasError,
+            visible = showControls && !hasError,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -241,13 +255,12 @@ fun PlayerScreen(
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
-                IconButton(onClick = { showCastDialog = true }) {
-                    Icon(
-                        Icons.Default.Cast,
-                        contentDescription = "Cast to device",
-                        tint = if (dlnaDevices.isNotEmpty()) MaterialTheme.colorScheme.primary else Color.White,
-                    )
-                }
+                AndroidView<MediaRouteButton>(
+                    factory = { ctx ->
+                        MediaRouteButton(ctx).also { CastButtonFactory.setUpMediaRouteButton(ctx, it) }
+                    },
+                    modifier = Modifier.size(48.dp),
+                )
             }
         }
 
@@ -272,13 +285,16 @@ fun PlayerScreen(
             )
         }
 
-        // Channel info overlay at the top — visible when playing without error
+        // Channel info overlay at the top — shown only with controls
         channel?.let { ch ->
-            if (!hasError) {
+            AnimatedVisibility(
+                visible = showControls && !hasError,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter),
+            ) {
                 Row(
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -301,49 +317,4 @@ fun PlayerScreen(
         }
     }
 
-    if (showCastDialog) {
-        CastDialog(
-            devices = dlnaDevices,
-            onDismiss = { showCastDialog = false },
-            onSelect = { device ->
-                vm.castTo(device)
-                showCastDialog = false
-            },
-        )
-    }
-}
-
-@Composable
-private fun CastDialog(
-    devices: List<DlnaDevice>,
-    onDismiss: () -> Unit,
-    onSelect: (DlnaDevice) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Cast to device") },
-        text = {
-            if (devices.isEmpty()) {
-                Text(
-                    "Searching for DLNA renderers on your network…",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                LazyColumn {
-                    items(devices, key = { it.udn }) { device ->
-                        TextButton(
-                            onClick = { onSelect(device) },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(device.name, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
 }
