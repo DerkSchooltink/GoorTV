@@ -3,24 +3,20 @@ package dev.goor.tv.ui.screens.player
 import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
-import dev.goor.tv.dlna.DlnaService
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
 import dev.goor.tv.util.testSource
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.Runs
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -31,15 +27,9 @@ class PlayerViewModelTest {
 
     private val channelDao = mockk<ChannelDao>()
     private val sourceDao = mockk<SourceDao>()
-    private val dlnaService = mockk<DlnaService>(relaxed = true)
-
-    @Before
-    fun setup() {
-        every { dlnaService.devices } returns MutableStateFlow(emptyList())
-    }
 
     private fun makeVm(channelId: Long) =
-        PlayerViewModel(channelId = channelId, channelDao = channelDao, sourceDao = sourceDao, dlnaService = dlnaService, concurrencyTracker = StreamConcurrencyTracker())
+        PlayerViewModel(channelId = channelId, channelDao = channelDao, sourceDao = sourceDao, concurrencyTracker = StreamConcurrencyTracker())
 
     @Test
     fun `channel is loaded from DAO by id`() = runTest {
