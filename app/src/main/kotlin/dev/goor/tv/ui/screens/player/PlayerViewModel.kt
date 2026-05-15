@@ -7,8 +7,6 @@ import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.headersMap
-import dev.goor.tv.dlna.DlnaDevice
-import dev.goor.tv.dlna.DlnaService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +15,6 @@ class PlayerViewModel(
     private val channelId: Long,
     private val channelDao: ChannelDao,
     private val sourceDao: SourceDao,
-    private val dlnaService: DlnaService,
     private val concurrencyTracker: StreamConcurrencyTracker,
 ) : ViewModel() {
     private val _channel = MutableStateFlow<Channel?>(null)
@@ -28,8 +25,6 @@ class PlayerViewModel(
 
     private val _stopped = MutableStateFlow(false)
     val stopped = _stopped.asStateFlow()
-
-    val dlnaDevices = dlnaService.devices
 
     private var unregisterStream: () -> Unit = {}
 
@@ -48,16 +43,9 @@ class PlayerViewModel(
                 )
             }
         }
-        dlnaService.startDiscovery()
-    }
-
-    fun castTo(device: DlnaDevice) {
-        val ch = _channel.value ?: return
-        dlnaService.castTo(device, ch.url, ch.name)
     }
 
     override fun onCleared() {
         unregisterStream()
-        dlnaService.stopDiscovery()
     }
 }
