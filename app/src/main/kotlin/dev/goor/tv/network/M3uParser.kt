@@ -13,7 +13,16 @@ object M3uParser {
                 val name = line.substringAfterLast(",").trim()
                 val group = Regex("""group-title="([^"]*)"""").find(line)?.groupValues?.get(1)
                 val logo = Regex("""tvg-logo="([^"]*)"""").find(line)?.groupValues?.get(1)
-                val url = lines.getOrNull(i + 1)?.trim()
+                var j = i + 1
+                while (j < lines.size) {
+                    val candidate = lines[j].trim()
+                    if (candidate.isEmpty() || candidate.startsWith("#")) {
+                        j++
+                        continue
+                    }
+                    break
+                }
+                val url = lines.getOrNull(j)?.trim()
                 if (!url.isNullOrBlank() && !url.startsWith("#")) {
                     channels.add(
                         Channel(
@@ -24,8 +33,10 @@ object M3uParser {
                             logoUrl = logo?.takeIf { it.isNotBlank() },
                         )
                     )
+                    i = j + 1
+                } else {
+                    i++
                 }
-                i += 2
             } else {
                 i++
             }
