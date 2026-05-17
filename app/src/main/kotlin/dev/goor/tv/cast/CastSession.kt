@@ -1,7 +1,6 @@
 package dev.goor.tv.cast
 
 import android.net.Uri
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
@@ -14,9 +13,11 @@ import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.cast.framework.CastSession
 import com.google.android.gms.cast.framework.SessionManagerListener
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
 import com.google.android.gms.common.images.WebImage
 import dev.goor.tv.data.model.Channel
-import org.json.JSONObject
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Compose-friendly bridge to the Cast SDK's [SessionManagerListener].
@@ -62,40 +63,30 @@ fun rememberCastSession(): State<CastSession?> {
 }
 
 /**
- * Loads [channel] on the receiver attached to [session]. No-op if the session has
- * no [com.google.android.gms.cast.framework.media.RemoteMediaClient] yet (the
- * SDK creates it asynchronously after the session is established).
- *
- * Custom [headers] are embedded in `MediaInfo.customData` under the `headers` key.
- * The default media receiver (`CC1AD845`) doesn't honor them — they're carried so
- * a future custom receiver can pick them up.
+ * Loads [channel] on the receiver attached to [session]. Suspends until the SDK has
+ * created the [RemoteMediaClient] (usually instant, but it appears asynchronously
+ * just after `onSessionStarted`). Throws if the client never appears within
+ * [clientWaitMs], or if the [MediaInfo] build fails (e.g. malformed URL).
  */
-fun loadOnCastSession(
+suspend fun loadOnCastSession(
     session: CastSession,
     channel: Channel,
-    headers: Map<String, String> = emptyMap(),
+    clientWaitMs: Long = 2_000L,
 ) {
-    val client = session.remoteMediaClient ?: run {
-        Log.w(TAG, "RemoteMediaClient not ready; load skipped")
-        return
-    }
+    val client = waitForRemoteMediaClient(session, clientWaitMs)
+        ?: error("RemoteMediaClient not available after ${clientWaitMs}ms")
 
-    val metadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_TV_SHOW).apply {
+    val metadata = MediaMetadata(MediaMetadata.MEDIA_TYPE_GENERIC).apply {
         putString(MediaMetadata.KEY_TITLE, channel.name)
         channel.logoUrl?.takeIf { it.isNotBlank() }?.let {
             addImage(WebImage(Uri.parse(it)))
         }
     }
 
-    val customData = if (headers.isNotEmpty()) {
-        JSONObject().put("headers", JSONObject(headers.toMap()))
-    } else null
-
     val mediaInfo = MediaInfo.Builder(channel.url)
         .setStreamType(MediaInfo.STREAM_TYPE_LIVE)
         .setContentType(inferContentType(channel.url))
         .setMetadata(metadata)
-        .apply { customData?.let { setCustomData(it) } }
         .build()
 
     client.load(
@@ -104,6 +95,19 @@ fun loadOnCastSession(
             .setAutoplay(true)
             .build(),
     )
+}
+
+/** Polls [CastSession.getRemoteMediaClient] until non-null or [timeoutMs] elapses. */
+private suspend fun waitForRemoteMediaClient(
+    session: CastSession,
+    timeoutMs: Long,
+): RemoteMediaClient? = withTimeoutOrNull(timeoutMs) {
+    var client: RemoteMediaClient? = session.remoteMediaClient
+    while (client == null) {
+        delay(POLL_INTERVAL_MS)
+        client = session.remoteMediaClient
+    }
+    client
 }
 
 /**
@@ -123,4 +127,4 @@ internal fun inferContentType(url: String): String {
     }
 }
 
-private const val TAG = "Cast"
+private const val POLL_INTERVAL_MS = 100L

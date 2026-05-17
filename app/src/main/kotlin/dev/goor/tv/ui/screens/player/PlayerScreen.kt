@@ -88,6 +88,7 @@ fun PlayerScreen(
     val player = remember { ExoPlayer.Builder(context).build() }
     var hasError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var castError by remember { mutableStateOf<String?>(null) }
     var isBuffering by remember { mutableStateOf(true) }
     var showControls by remember { mutableStateOf(false) }
     var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
@@ -109,12 +110,14 @@ fun PlayerScreen(
         LaunchedEffect(ch.url, headers, castSession) {
             hasError = false
             errorMessage = null
+            castError = null
             val session = castSession
             if (session != null) {
                 // Cast path — pause local, hand off to receiver.
                 player.pause()
                 isBuffering = false
-                loadOnCastSession(session, ch, headers)
+                runCatching { loadOnCastSession(session, ch) }
+                    .onFailure { castError = "Cast failed: ${it.message ?: it::class.simpleName}" }
             } else {
                 // Local path — (re-)prepare ExoPlayer.
                 isBuffering = true
@@ -217,18 +220,32 @@ fun PlayerScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "Casting",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    castSession?.castDevice?.friendlyName?.let { name ->
+                    if (castError != null) {
+                        Text(
+                            "Cast failed",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "to $name",
+                            castError!!,
                             color = Color.White.copy(alpha = 0.7f),
                             style = MaterialTheme.typography.bodyMedium,
                         )
+                    } else {
+                        Text(
+                            "Casting",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        castSession?.castDevice?.friendlyName?.let { name ->
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "to $name",
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
                     }
                     channel?.let { ch ->
                         Spacer(Modifier.height(12.dp))
@@ -242,8 +259,9 @@ fun PlayerScreen(
             }
         }
 
-        // Error overlay (semi-transparent scrim over the player)
-        if (hasError) {
+        // Error overlay (semi-transparent scrim over the player). Hidden during cast —
+        // the cast overlay carries its own error state.
+        if (hasError && !isCasting) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
