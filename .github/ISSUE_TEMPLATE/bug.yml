@@ -1,0 +1,75 @@
+name: Bug report
+description: Something doesn't work the way it should.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a report.
+        Please fill in as much as you can — the more detail, the faster the fix.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: Channel list is empty after sync…
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add an M3U source with URL …
+        2. Open Settings → Sync
+        3. Observe …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: GoorTV version
+      description: Settings → About, or check the APK filename.
+      placeholder: "1.2.1"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device & Android version
+      placeholder: "Nvidia Shield TV (2019), Android TV 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source-type
+    attributes:
+      label: Source type
+      options:
+        - M3U
+        - Xtream Codes
+        - Custom channel
+        - Multiple / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Optional but very useful.
+        Run `adb logcat -d 'dev.goor.tv:V' '*:S'` and paste relevant lines.
+      render: shell

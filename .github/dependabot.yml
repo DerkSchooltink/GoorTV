@@ -8,6 +8,26 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      compose:
+        patterns:
+          - "androidx.compose.*"
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.kotlinx*"
+      koin:
+        patterns:
+          - "io.insert-koin:*"
+      media3:
+        patterns:
+          - "androidx.media3:*"
+      room:
+        patterns:
+          - "androidx.room:*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -16,3 +36,7 @@ updates:
       day: "monday"
     labels:
       - "dependencies"
+    groups:
+      actions:
+        patterns:
+          - "*"
