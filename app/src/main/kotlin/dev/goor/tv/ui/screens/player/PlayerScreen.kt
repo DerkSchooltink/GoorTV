@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
+import dev.goor.tv.cast.loadOnCastSession
+import dev.goor.tv.cast.rememberCastSession
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,6 +76,8 @@ fun PlayerScreen(
     val stopped by vm.stopped.collectAsStateWithLifecycle()
     val nowAndNext by vm.nowAndNext.collectAsStateWithLifecycle()
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
+    val castSession by rememberCastSession()
+    val isCasting = castSession != null
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -102,23 +106,32 @@ fun PlayerScreen(
     }
 
     channel?.let { ch ->
-        LaunchedEffect(ch.url, headers) {
+        LaunchedEffect(ch.url, headers, castSession) {
             hasError = false
             errorMessage = null
-            isBuffering = true
-            if (headers.isEmpty()) {
-                player.setMediaItem(MediaItem.fromUri(ch.url))
+            val session = castSession
+            if (session != null) {
+                // Cast path — pause local, hand off to receiver.
+                player.pause()
+                isBuffering = false
+                loadOnCastSession(session, ch, headers)
             } else {
-                val mediaSource = DefaultMediaSourceFactory(
-                    DefaultDataSource.Factory(
-                        context,
-                        DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
-                    )
-                ).createMediaSource(MediaItem.fromUri(ch.url))
-                player.setMediaSource(mediaSource)
+                // Local path — (re-)prepare ExoPlayer.
+                isBuffering = true
+                if (headers.isEmpty()) {
+                    player.setMediaItem(MediaItem.fromUri(ch.url))
+                } else {
+                    val mediaSource = DefaultMediaSourceFactory(
+                        DefaultDataSource.Factory(
+                            context,
+                            DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
+                        )
+                    ).createMediaSource(MediaItem.fromUri(ch.url))
+                    player.setMediaSource(mediaSource)
+                }
+                player.prepare()
+                player.play()
             }
-            player.prepare()
-            player.play()
         }
     }
 
@@ -187,11 +200,46 @@ fun PlayerScreen(
         }
 
         // Loading / buffering overlay
-        if (channel == null || (isBuffering && !hasError)) {
+        if (channel == null || (isBuffering && !hasError && !isCasting)) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White,
             )
+        }
+
+        // Casting overlay — covers the frozen local PlayerView so it's obvious
+        // playback is happening on the receiver, not the phone.
+        if (isCasting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "Casting",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    castSession?.castDevice?.friendlyName?.let { name ->
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "to $name",
+                            color = Color.White.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    channel?.let { ch ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            ch.name,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
+                }
+            }
         }
 
         // Error overlay (semi-transparent scrim over the player)
