@@ -72,7 +72,7 @@ fun AddEditChannelDialog(
                         value = group,
                         onValueChange = { group = it; groupExpanded = true },
                         label = { Text("Group (optional)") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
+                        modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                         singleLine = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupExpanded) },
                     )

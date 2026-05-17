@@ -14,7 +14,7 @@ import dev.goor.tv.ui.screens.home.HomeViewModel
 import dev.goor.tv.ui.screens.player.PlayerViewModel
 import dev.goor.tv.ui.screens.settings.SettingsViewModel
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule = module {
