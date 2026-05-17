@@ -40,5 +40,5 @@ val appModule = module {
 
     viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get()) }
-    viewModel { SettingsViewModel(get(), get(), get()) }
+    viewModel { SettingsViewModel(get(), get(), get(), get()) }
 }

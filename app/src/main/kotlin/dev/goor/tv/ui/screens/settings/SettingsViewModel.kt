@@ -6,6 +6,7 @@ import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ class SettingsViewModel(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
     private val syncService: SourceSyncService,
+    private val epgSyncService: EpgSyncService,
 ) : ViewModel() {
     val sources = sourceDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -27,6 +29,9 @@ class SettingsViewModel(
     val syncingIds = _syncingIds.asStateFlow()
     val syncing = _syncingIds.map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    private val _epgSyncingIds = MutableStateFlow<Set<Long>>(emptySet())
+    val epgSyncingIds = _epgSyncingIds.asStateFlow()
 
     private val _snackbarMessage = MutableStateFlow<String?>(null)
     val snackbarMessage = _snackbarMessage.asStateFlow()
@@ -69,6 +74,21 @@ class SettingsViewModel(
             runCatching { syncService.sync(source) }
                 .onFailure { _snackbarMessage.value = "Failed to sync \"${source.name}\": ${it.message}" }
             _syncingIds.update { it - source.id }
+        }
+    }
+
+    fun syncEpg(source: Source) {
+        viewModelScope.launch {
+            _epgSyncingIds.update { it + source.id }
+            runCatching { epgSyncService.sync(source) }
+                .onFailure { _snackbarMessage.value = "Failed to sync EPG for \"${source.name}\": ${it.message}" }
+            _epgSyncingIds.update { it - source.id }
+        }
+    }
+
+    fun updateEpgUrl(sourceId: Long, url: String?) {
+        viewModelScope.launch {
+            sourceDao.updateEpgUrl(sourceId, url?.takeIf { it.isNotBlank() })
         }
     }
 }
