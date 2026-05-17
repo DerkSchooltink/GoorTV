@@ -1,6 +1,7 @@
 package dev.goor.tv.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,10 +36,15 @@ fun AppNavigation() {
             Screen.Player.route,
             arguments = listOf(navArgument("channelId") { type = NavType.LongType })
         ) { entry ->
-            PlayerScreen(
-                channelId = entry.arguments!!.getLong("channelId"),
-                onBack = { navController.popBackStack() }
-            )
+            val channelId = entry.arguments?.getLong("channelId") ?: -1L
+            if (channelId <= 0L) {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            } else {
+                PlayerScreen(
+                    channelId = channelId,
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
         composable(Screen.Settings.route) {
             SettingsScreen(onBack = { navController.popBackStack() })
