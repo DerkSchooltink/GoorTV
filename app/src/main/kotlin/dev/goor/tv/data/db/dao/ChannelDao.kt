@@ -10,6 +10,19 @@ interface ChannelDao {
     @Query("SELECT * FROM channels ORDER BY `group`, name")
     fun getAll(): Flow<List<Channel>>
 
+    /**
+     * Like [getAll] but filters out channels whose `group` is excluded by the
+     * source's `includedGroups` allow-list. Matches the predicate used by the
+     * paged home queries.
+     */
+    @Query("""
+        SELECT c.* FROM channels c
+        JOIN sources s ON c.sourceId = s.id
+        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        ORDER BY c.`group`, c.name
+    """)
+    fun getAllVisible(): Flow<List<Channel>>
+
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
