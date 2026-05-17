@@ -9,14 +9,17 @@ import androidx.paging.insertSeparators
 import androidx.paging.map
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
+import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
+import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.util.minuteTicker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -30,6 +33,7 @@ class HomeViewModel(
     private val searchHistoryRepo: SearchHistoryRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val epgSyncService: EpgSyncService,
+    private val programmeDao: ProgrammeDao,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -60,6 +64,20 @@ class HomeViewModel(
 
     val sortOrder = prefsRepository.sortOrder
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SortOrder.BY_GROUP)
+
+    /** Ticks once a minute while there are subscribers; used to refresh "now playing". */
+    val nowMs: StateFlow<Long> = minuteTicker()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+
+    /**
+     * "Now playing" programme per channel, keyed by `(sourceId, tvgChannelId)`.
+     * Recomputed whenever [nowMs] ticks or the Room programmes table changes.
+     */
+    val nowByChannel: StateFlow<Map<Pair<Long, String>, Programme>> = nowMs
+        .flatMapLatest { now -> programmeDao.observeAllNow(now) }
+        .map { list -> list.associateBy { it.sourceId to it.tvgChannelId } }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val pagingData = combine(_searchQuery, _showFavoritesOnly, prefsRepository.sortOrder) { query, favOnly, sort ->
         Triple(query, favOnly, sort)

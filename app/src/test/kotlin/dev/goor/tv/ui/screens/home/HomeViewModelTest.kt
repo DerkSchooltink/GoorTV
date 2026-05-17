@@ -3,6 +3,7 @@ package dev.goor.tv.ui.screens.home
 import androidx.paging.PagingSource
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
+import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.SourceType
@@ -12,6 +13,7 @@ import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
+import dev.goor.tv.util.testProgramme
 import dev.goor.tv.util.testSource
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -45,11 +48,13 @@ class HomeViewModelTest {
     private val searchHistoryRepo = mockk<SearchHistoryRepository>()
     private val prefsRepository = mockk<UserPreferencesRepository>()
     private val epgSyncService = mockk<EpgSyncService>()
+    private val programmeDao = mockk<ProgrammeDao>()
 
     @Before
     fun setup() {
         coEvery { syncService.syncAll() } returns emptyList()
         coEvery { epgSyncService.syncAll(any()) } returns emptyList()
+        every { programmeDao.observeAllNow(any()) } returns flowOf(emptyList())
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
         coEvery { sourceDao.getManualSource() } returns null
         coEvery { sourceDao.insert(any()) } returns 99L
@@ -66,7 +71,7 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService)
+    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService, programmeDao)
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {
@@ -188,6 +193,22 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         coVerify { channelDao.delete(channel) }
+    }
+
+    @Test
+    fun `nowByChannel exposes programmes keyed by sourceId and tvgChannelId`() = runTest {
+        val p1 = testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "Show A")
+        val p2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", title = "Show B")
+        every { programmeDao.observeAllNow(any()) } returns flowOf(listOf(p1, p2))
+
+        val vm = makeVm()
+        backgroundScope.launch { vm.nowByChannel.collect {} }
+        runCurrent() // emit one tick, don't fast-forward through ticker delays
+
+        val map = vm.nowByChannel.value
+        assertEquals(2, map.size)
+        assertEquals("Show A", map[1L to "a.tv"]?.title)
+        assertEquals("Show B", map[1L to "b.tv"]?.title)
     }
 
     @Test

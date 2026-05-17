@@ -45,6 +45,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
 import dev.goor.tv.data.model.Channel
+import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
 import org.koin.androidx.compose.koinViewModel
 
@@ -66,6 +67,8 @@ fun HomeScreen(
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
     val manualSourceId by vm.manualSourceId.collectAsStateWithLifecycle()
     val groups by vm.groups.collectAsStateWithLifecycle()
+    val nowByChannel by vm.nowByChannel.collectAsStateWithLifecycle()
+    val nowMs by vm.nowMs.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -273,6 +276,10 @@ fun HomeScreen(
                                     onFavoriteToggle = { vm.toggleFavorite(item.channel.id) },
                                     isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
                                     onEdit = { editingChannel = item.channel },
+                                    nowPlaying = item.channel.tvgChannelId?.let {
+                                        nowByChannel[item.channel.sourceId to it]
+                                    },
+                                    nowMs = nowMs,
                                 )
                                 null -> {}
                             }
@@ -332,6 +339,8 @@ private fun ChannelItem(
     onFavoriteToggle: () -> Unit,
     isCustom: Boolean = false,
     onEdit: () -> Unit = {},
+    nowPlaying: Programme? = null,
+    nowMs: Long = System.currentTimeMillis(),
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -366,7 +375,24 @@ private fun ChannelItem(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium,
             )
-            if (channel.group != null) {
+            if (nowPlaying != null) {
+                Text(
+                    nowPlaying.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                val span = (nowPlaying.endMs - nowPlaying.startMs).coerceAtLeast(1L)
+                val progress = ((nowMs - nowPlaying.startMs).toFloat() / span).coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    drawStopIndicator = {},
+                )
+            } else if (channel.group != null) {
                 Text(
                     channel.group,
                     maxLines = 1,

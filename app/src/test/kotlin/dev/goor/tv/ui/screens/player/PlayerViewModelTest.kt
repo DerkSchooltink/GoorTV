@@ -2,18 +2,24 @@ package dev.goor.tv.ui.screens.player
 
 import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.db.dao.ChannelDao
+import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
+import dev.goor.tv.util.testProgramme
 import dev.goor.tv.util.testSource
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.Runs
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -29,9 +35,17 @@ class PlayerViewModelTest {
 
     private val channelDao = mockk<ChannelDao>()
     private val sourceDao = mockk<SourceDao>()
+    private val programmeDao = mockk<ProgrammeDao>(relaxed = true).also {
+        every { it.observeNowAndNext(any(), any(), any()) } returns flowOf(emptyList())
+    }
 
-    private fun makeVm(channelId: Long) =
-        PlayerViewModel(channelId = channelId, channelDao = channelDao, sourceDao = sourceDao, concurrencyTracker = StreamConcurrencyTracker())
+    private fun makeVm(channelId: Long) = PlayerViewModel(
+        channelId = channelId,
+        channelDao = channelDao,
+        sourceDao = sourceDao,
+        concurrencyTracker = StreamConcurrencyTracker(),
+        programmeDao = programmeDao,
+    )
 
     @Test
     fun `channel is loaded from DAO by id`() = runTest {
@@ -98,6 +112,41 @@ class PlayerViewModelTest {
         advanceUntilIdle()
 
         assertEquals(mapOf("User-Agent" to "TestApp", "X-Token" to "abc123"), vm.headers.value)
+    }
+
+    @Test
+    fun `nowAndNext emits programmes when channel has tvgChannelId`() = runTest {
+        val channel = testChannel(id = 11L, sourceId = 3L, tvgChannelId = "abc.tv")
+        val source = testSource(id = 3L)
+        val now = testProgramme(sourceId = 3L, tvgChannelId = "abc.tv", title = "Now")
+        val next = testProgramme(sourceId = 3L, tvgChannelId = "abc.tv", startMs = 4_000_000L, endMs = 8_000_000L, title = "Next")
+        coEvery { channelDao.getById(11L) } returns channel
+        coEvery { channelDao.updateLastWatched(any(), any()) } just Runs
+        coEvery { sourceDao.getById(3L) } returns source
+        every { programmeDao.observeNowAndNext(3L, "abc.tv", any()) } returns flowOf(listOf(now, next))
+
+        val vm = makeVm(11L)
+        backgroundScope.launch { vm.nowAndNext.collect {} }
+        runCurrent()
+
+        assertEquals(listOf("Now", "Next"), vm.nowAndNext.value.map { it.title })
+    }
+
+    @Test
+    fun `nowAndNext is empty when channel has no tvgChannelId`() = runTest {
+        val channel = testChannel(id = 12L, sourceId = 3L, tvgChannelId = null)
+        val source = testSource(id = 3L)
+        coEvery { channelDao.getById(12L) } returns channel
+        coEvery { channelDao.updateLastWatched(any(), any()) } just Runs
+        coEvery { sourceDao.getById(3L) } returns source
+
+        val vm = makeVm(12L)
+        backgroundScope.launch { vm.nowAndNext.collect {} }
+        runCurrent()
+
+        assertTrue(vm.nowAndNext.value.isEmpty())
+        // Importantly: no DAO query when tvgChannelId is null.
+        coVerify(exactly = 0) { programmeDao.observeNowAndNext(any(), any(), any()) }
     }
 
     @Test

@@ -38,7 +38,7 @@ val appModule = module {
     }
     single { UserPreferencesRepository(get()) }
 
-    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get()) }
 }

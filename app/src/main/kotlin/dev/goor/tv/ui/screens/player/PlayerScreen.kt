@@ -30,10 +30,15 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.goor.tv.data.model.Programme
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -67,6 +72,8 @@ fun PlayerScreen(
     val channel by vm.channel.collectAsStateWithLifecycle()
     val headers by vm.headers.collectAsStateWithLifecycle()
     val stopped by vm.stopped.collectAsStateWithLifecycle()
+    val nowAndNext by vm.nowAndNext.collectAsStateWithLifecycle()
+    val nowMs by vm.nowMs.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = context as? Activity
 
@@ -295,26 +302,77 @@ fun PlayerScreen(
             ) {
                 Row(
                     modifier = Modifier
-                        .padding(vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     ch.logoUrl?.let { url ->
                         AsyncImage(
                             model = url,
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp).clip(CircleShape),
+                            modifier = Modifier.size(40.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
                         )
                     }
-                    Text(
-                        ch.name,
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
+                    Column {
+                        Text(
+                            ch.name,
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        ProgrammeOverlay(
+                            now = nowAndNext.getOrNull(0),
+                            next = nowAndNext.getOrNull(1),
+                            nowMs = nowMs,
+                        )
+                    }
                 }
             }
         }
     }
 
+}
+
+private val hmFormatter: SimpleDateFormat by lazy {
+    SimpleDateFormat("HH:mm", Locale.getDefault())
+}
+
+private fun formatHm(epochMs: Long): String = hmFormatter.format(Date(epochMs))
+
+@Composable
+private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
+    if (now == null && next == null) return
+    Column(modifier = Modifier.padding(top = 2.dp)) {
+        now?.let { p ->
+            Text(
+                "${formatHm(p.startMs)}–${formatHm(p.endMs)}  ${p.title}",
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val span = (p.endMs - p.startMs).coerceAtLeast(1L)
+            val progress = ((nowMs - p.startMs).toFloat() / span).coerceIn(0f, 1f)
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .width(220.dp)
+                    .height(2.dp),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.3f),
+                drawStopIndicator = {},
+            )
+        }
+        next?.let { p ->
+            Text(
+                "Next  ${formatHm(p.startMs)}  ${p.title}",
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
 }
