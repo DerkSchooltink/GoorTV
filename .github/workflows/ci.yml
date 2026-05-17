@@ -9,25 +9,19 @@ on:
 permissions:
   contents: read
 
-env:
-  # Opt third-party JS actions into the Node.js 24 runtime ahead of the
-  # 2026-06-02 forced rollout. Drop this once every pinned action ships
-  # a Node 24 build by default.
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
@@ -42,7 +36,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@v5
+      - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
