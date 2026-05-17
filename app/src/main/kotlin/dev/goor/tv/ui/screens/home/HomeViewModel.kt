@@ -15,7 +15,9 @@ import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -27,6 +29,7 @@ class HomeViewModel(
     private val syncService: SourceSyncService,
     private val searchHistoryRepo: SearchHistoryRepository,
     private val prefsRepository: UserPreferencesRepository,
+    private val epgSyncService: EpgSyncService,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -85,6 +88,8 @@ class HomeViewModel(
         viewModelScope.launch {
             sourceDao.getManualSource()?.let { _manualSourceId.value = it.id }
         }
+        // EPG sync runs independently — never blocks channel UI.
+        viewModelScope.launch(Dispatchers.IO) { epgSyncService.syncAll() }
     }
 
     private suspend fun getOrCreateManualSourceId(): Long {

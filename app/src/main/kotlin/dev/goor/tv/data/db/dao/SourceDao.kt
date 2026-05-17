@@ -27,6 +27,15 @@ interface SourceDao {
     @Query("UPDATE sources SET lastSyncedAt = :timestamp WHERE id = :id")
     suspend fun updateLastSyncedAt(id: Long, timestamp: Long)
 
+    @Query("UPDATE sources SET epgUrl = :url WHERE id = :id")
+    suspend fun updateEpgUrl(id: Long, url: String?)
+
+    @Query("UPDATE sources SET lastEpgSyncedAt = :timestamp, epgLastError = NULL WHERE id = :id")
+    suspend fun markEpgSynced(id: Long, timestamp: Long)
+
+    @Query("UPDATE sources SET epgLastError = :error WHERE id = :id")
+    suspend fun setEpgError(id: Long, error: String?)
+
     @Query("SELECT * FROM sources WHERE type = 'MANUAL' LIMIT 1")
     suspend fun getManualSource(): Source?
 }

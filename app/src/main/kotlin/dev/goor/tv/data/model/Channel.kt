@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey
         childColumns = ["sourceId"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index("sourceId"), Index(value = ["group", "name"])]
+    indices = [Index("sourceId"), Index(value = ["group", "name"]), Index("tvgChannelId")]
 )
 data class Channel(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -24,4 +24,5 @@ data class Channel(
     val logoUrl: String? = null,
     val isFavorite: Boolean = false,
     val lastWatchedAt: Long? = null,
+    val tvgChannelId: String? = null,
 )
