@@ -15,8 +15,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.style.TextOverflow
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.isEpgEligible
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +30,7 @@ fun SettingsScreen(
     val sources by vm.sources.collectAsStateWithLifecycle()
     val syncing by vm.syncing.collectAsStateWithLifecycle()
     val syncingIds by vm.syncingIds.collectAsStateWithLifecycle()
+    val epgSyncingIds by vm.epgSyncingIds.collectAsStateWithLifecycle()
     val snackbarMessage by vm.snackbarMessage.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
@@ -69,7 +72,9 @@ fun SettingsScreen(
                 SourceItem(
                     source = source,
                     isSyncing = source.id in syncingIds,
+                    isEpgSyncing = source.id in epgSyncingIds,
                     onSync = { vm.syncSource(source) },
+                    onEpgSync = { vm.syncEpg(source) },
                     onEdit = { editingSource = source },
                     onGroups = { groupsSource = source },
                     onDelete = { vm.deleteSource(source) },
@@ -100,7 +105,7 @@ fun SettingsScreen(
             onUpdate = { updated ->
                 vm.updateSource(updated)
                 editingSource = null
-            }
+            },
         )
     }
 
@@ -122,12 +127,15 @@ fun SettingsScreen(
 private fun SourceItem(
     source: Source,
     isSyncing: Boolean,
+    isEpgSyncing: Boolean,
     onSync: () -> Unit,
+    onEpgSync: () -> Unit,
     onEdit: () -> Unit,
     onGroups: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val groupCount = source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.size
+    val epgEligible = source.isEpgEligible()
     ListItem(
         headlineContent = { Text(source.name) },
         supportingContent = {
@@ -142,6 +150,24 @@ private fun SourceItem(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (epgEligible) {
+                    val epgLine = when {
+                        !source.epgLastError.isNullOrBlank() -> "EPG error: ${source.epgLastError}"
+                        source.lastEpgSyncedAt != null -> "EPG synced ${formatRelativeTime(source.lastEpgSyncedAt)}"
+                        else -> "EPG never synced"
+                    }
+                    val epgColor = if (!source.epgLastError.isNullOrBlank())
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    Text(
+                        text = epgLine,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = epgColor,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         },
         trailingContent = {
@@ -151,7 +177,17 @@ private fun SourceItem(
                     Spacer(Modifier.width(12.dp))
                 } else {
                     IconButton(onClick = onSync) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Sync")
+                        Icon(Icons.Default.Refresh, contentDescription = "Sync channels")
+                    }
+                }
+                if (epgEligible) {
+                    if (isEpgSyncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(Modifier.width(12.dp))
+                    } else {
+                        IconButton(onClick = onEpgSync, enabled = !isSyncing) {
+                            Icon(Icons.Default.CalendarToday, contentDescription = "Sync EPG")
+                        }
                     }
                 }
                 IconButton(onClick = onGroups, enabled = !isSyncing) {
@@ -354,6 +390,7 @@ private fun EditSourceDialog(
     var password by remember { mutableStateOf(source.password ?: "") }
     var headers by remember { mutableStateOf(source.headers ?: "") }
     var maxStreams by remember { mutableStateOf(source.maxConcurrentStreams.toString()) }
+    var epgUrl by remember { mutableStateOf(source.epgUrl ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -365,6 +402,16 @@ private fun EditSourceDialog(
                 if (source.type == SourceType.XTREAM) {
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+                if (source.type == SourceType.M3U) {
+                    OutlinedTextField(
+                        value = epgUrl,
+                        onValueChange = { epgUrl = it },
+                        label = { Text("EPG URL (optional)") },
+                        placeholder = { Text("Auto-detected from playlist if blank") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 OutlinedTextField(
                     value = headers,
@@ -394,6 +441,7 @@ private fun EditSourceDialog(
                         password = password.takeIf { it.isNotBlank() },
                         headers = headers.takeIf { it.isNotBlank() },
                         maxConcurrentStreams = maxStreams.toIntOrNull() ?: 0,
+                        epgUrl = epgUrl.takeIf { it.isNotBlank() && source.type == SourceType.M3U },
                     )
                 )
             }) { Text("Save") }

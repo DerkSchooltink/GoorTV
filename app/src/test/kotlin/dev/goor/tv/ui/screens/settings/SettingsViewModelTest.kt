@@ -2,6 +2,7 @@ package dev.goor.tv.ui.screens.settings
 
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testSource
@@ -31,16 +32,17 @@ class SettingsViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val sourceDao = mockk<SourceDao>()
+    private val sourceDao = mockk<SourceDao>(relaxed = true)
     private val channelDao = mockk<ChannelDao>()
     private val syncService = mockk<SourceSyncService>()
+    private val epgSyncService = mockk<EpgSyncService>()
 
     @Before
     fun setup() {
         every { sourceDao.getAll() } returns flowOf(emptyList())
     }
 
-    private fun makeVm() = SettingsViewModel(sourceDao, channelDao, syncService)
+    private fun makeVm() = SettingsViewModel(sourceDao, channelDao, syncService, epgSyncService)
 
     @Test
     fun `syncSource removes source from syncingIds on success`() = runTest {
@@ -116,6 +118,76 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         coVerify { sourceDao.delete(source) }
+    }
+
+    @Test
+    fun `syncEpg removes source from epgSyncingIds on success`() = runTest {
+        val source = testSource(id = 1L, epgUrl = "http://example.com/epg.xml")
+        coEvery { epgSyncService.sync(source) } just Runs
+
+        val vm = makeVm()
+        vm.syncEpg(source)
+        advanceUntilIdle()
+
+        assertFalse(source.id in vm.epgSyncingIds.value)
+        assertNull(vm.snackbarMessage.value)
+    }
+
+    @Test
+    fun `syncEpg sets snackbarMessage and clears epgSyncingIds on failure`() = runTest {
+        val source = testSource(id = 1L, name = "Bad EPG", epgUrl = "http://example.com/epg.xml")
+        coEvery { epgSyncService.sync(source) } throws RuntimeException("404 Not Found")
+
+        val vm = makeVm()
+        vm.syncEpg(source)
+        advanceUntilIdle()
+
+        val msg = vm.snackbarMessage.value
+        assertNotNull(msg)
+        assertTrue(msg!!.contains("Bad EPG"))
+        assertTrue(msg.contains("404"))
+        assertFalse(source.id in vm.epgSyncingIds.value)
+    }
+
+    @Test
+    fun `epgSyncingIds reflects in-flight EPG sync`() = runTest {
+        val source = testSource(id = 1L, epgUrl = "http://example.com/epg.xml")
+        val gate = CompletableDeferred<Unit>()
+        coEvery { epgSyncService.sync(source) } coAnswers { gate.await() }
+
+        val vm = makeVm()
+        val job = launch { vm.syncEpg(source) }
+        advanceUntilIdle()
+
+        assertTrue(source.id in vm.epgSyncingIds.value)
+
+        gate.complete(Unit)
+        job.join()
+        advanceUntilIdle()
+
+        assertFalse(source.id in vm.epgSyncingIds.value)
+    }
+
+    @Test
+    fun `updateEpgUrl trims and forwards non-blank values to SourceDao`() = runTest {
+        coEvery { sourceDao.updateEpgUrl(any(), any()) } just Runs
+
+        val vm = makeVm()
+        vm.updateEpgUrl(7L, "https://example.com/epg.xml")
+        advanceUntilIdle()
+
+        coVerify { sourceDao.updateEpgUrl(7L, "https://example.com/epg.xml") }
+    }
+
+    @Test
+    fun `updateEpgUrl forwards null when blank`() = runTest {
+        coEvery { sourceDao.updateEpgUrl(any(), any()) } just Runs
+
+        val vm = makeVm()
+        vm.updateEpgUrl(8L, "")
+        advanceUntilIdle()
+
+        coVerify { sourceDao.updateEpgUrl(8L, null) }
     }
 
     @Test
