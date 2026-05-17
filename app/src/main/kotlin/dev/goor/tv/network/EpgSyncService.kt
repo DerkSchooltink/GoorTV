@@ -7,6 +7,7 @@ import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
+import dev.goor.tv.data.model.isEpgEligible
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -30,7 +31,7 @@ class EpgSyncService(
     suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
         val now = System.currentTimeMillis()
         return sourceDao.getAll().first()
-            .filter { eligible(it) }
+            .filter { it.isEpgEligible() }
             .filter { (it.lastEpgSyncedAt ?: 0L) + throttleMs <= now }
             .mapNotNull { source ->
                 runCatching { sync(source) }
@@ -41,7 +42,7 @@ class EpgSyncService(
 
     /** Manual sync — ignores throttle. Persists last-synced timestamp or error. */
     suspend fun sync(source: Source) {
-        if (!eligible(source)) return
+        if (!source.isEpgEligible()) return
         val url = epgUrlFor(source) ?: return
         try {
             val response: HttpResponse = httpClient.get(url) {
@@ -82,12 +83,6 @@ class EpgSyncService(
             sourceDao.setEpgError(source.id, e.message ?: e::class.simpleName)
             throw e
         }
-    }
-
-    private fun eligible(source: Source): Boolean = when (source.type) {
-        SourceType.XTREAM -> !source.username.isNullOrBlank() && !source.password.isNullOrBlank()
-        SourceType.M3U -> !source.epgUrl.isNullOrBlank()
-        SourceType.MANUAL -> false
     }
 
     private fun epgUrlFor(source: Source): String? = when (source.type) {

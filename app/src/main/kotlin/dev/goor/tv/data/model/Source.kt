@@ -27,6 +27,17 @@ data class Source(
     val epgLastError: String? = null,
 )
 
+/**
+ * True when this source can supply EPG data. UI surfaces ("Sync EPG" button, status line)
+ * gate on this so we don't show controls whose action would be a silent no-op in
+ * [dev.goor.tv.network.EpgSyncService.sync].
+ */
+fun Source.isEpgEligible(): Boolean = when (type) {
+    SourceType.XTREAM -> !username.isNullOrBlank() && !password.isNullOrBlank()
+    SourceType.M3U -> !epgUrl.isNullOrBlank()
+    SourceType.MANUAL -> false
+}
+
 fun Source.headersMap(): Map<String, String> =
     headers?.lines()
         ?.filter { ':' in it }

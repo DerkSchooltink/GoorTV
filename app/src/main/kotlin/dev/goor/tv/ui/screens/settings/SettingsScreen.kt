@@ -15,8 +15,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.style.TextOverflow
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.isEpgEligible
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,8 +135,7 @@ private fun SourceItem(
     onDelete: () -> Unit,
 ) {
     val groupCount = source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.size
-    val epgEligible = source.type == SourceType.XTREAM ||
-        (source.type == SourceType.M3U && !source.epgUrl.isNullOrBlank())
+    val epgEligible = source.isEpgEligible()
     ListItem(
         headlineContent = { Text(source.name) },
         supportingContent = {
@@ -163,6 +164,8 @@ private fun SourceItem(
                         text = epgLine,
                         style = MaterialTheme.typography.bodySmall,
                         color = epgColor,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
