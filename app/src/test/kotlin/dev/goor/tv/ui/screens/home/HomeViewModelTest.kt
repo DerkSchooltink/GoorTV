@@ -13,6 +13,7 @@ import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
+import dev.goor.tv.util.testProgramme
 import dev.goor.tv.util.testSource
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -196,8 +197,8 @@ class HomeViewModelTest {
 
     @Test
     fun `nowByChannel exposes programmes keyed by sourceId and tvgChannelId`() = runTest {
-        val p1 = dev.goor.tv.util.testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "Show A")
-        val p2 = dev.goor.tv.util.testProgramme(sourceId = 1L, tvgChannelId = "b.tv", title = "Show B")
+        val p1 = testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "Show A")
+        val p2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", title = "Show B")
         every { programmeDao.observeAllNow(any()) } returns flowOf(listOf(p1, p2))
 
         val vm = makeVm()

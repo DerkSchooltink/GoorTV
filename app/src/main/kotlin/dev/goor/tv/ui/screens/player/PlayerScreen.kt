@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -347,6 +348,8 @@ private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
                 "${formatHm(p.startMs)}–${formatHm(p.endMs)}  ${p.title}",
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             val span = (p.endMs - p.startMs).coerceAtLeast(1L)
             val progress = ((nowMs - p.startMs).toFloat() / span).coerceIn(0f, 1f)
@@ -366,6 +369,8 @@ private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
                 "Next  ${formatHm(p.startMs)}  ${p.title}",
                 color = Color.White.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
