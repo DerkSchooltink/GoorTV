@@ -10,8 +10,6 @@ Report security issues privately via GitHub's
 [security advisory form](https://github.com/DerkSchooltink/GoorTV/security/advisories/new),
 **not** as a public issue. I'll acknowledge within 7 days.
 
-If GitHub's flow doesn't work for you, email `derkschooltink@proton.me`.
-
 Please include:
 
 - Affected version (or commit hash).
