@@ -16,6 +16,9 @@ data class XtreamChannel(
     @SerialName("name") val name: String,
     @SerialName("stream_icon") val icon: String? = null,
     @SerialName("category_name") val category: String? = null,
+    // Xtream's mapping to the XMLTV <channel id="..."> attribute. Required for
+    // EPG joins in the guide; without it programmes have nothing to match against.
+    @SerialName("epg_channel_id") val epgChannelId: String? = null,
 )
 
 object XtreamApi {
@@ -40,6 +43,7 @@ object XtreamApi {
                 url = "$base/live/$u/$p/${it.streamId}.ts",
                 group = it.category,
                 logoUrl = it.icon,
+                tvgChannelId = it.epgChannelId?.takeIf { id -> id.isNotBlank() },
             )
         }
     }
