@@ -54,6 +54,8 @@ import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+private const val CONTROLS_AUTO_HIDE_MS = 4_000L
+
 private enum class AspectRatioMode(val label: String) {
     FIT("Fit"),
     FILL("Fill"),
@@ -101,7 +103,7 @@ fun PlayerScreen(
 
     LaunchedEffect(showControls) {
         if (showControls) {
-            delay(4000)
+            delay(CONTROLS_AUTO_HIDE_MS)
             showControls = false
         }
     }

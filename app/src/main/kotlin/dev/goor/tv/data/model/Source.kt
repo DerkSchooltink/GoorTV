@@ -38,11 +38,19 @@ fun Source.isEpgEligible(): Boolean = when (type) {
     SourceType.MANUAL -> false
 }
 
+// RFC 7230 token: visible ASCII excluding separators. Values: no CR/LF (header injection guard).
+private val HEADER_NAME_REGEX = Regex("""^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$""")
+
 fun Source.headersMap(): Map<String, String> =
     headers?.lines()
         ?.filter { ':' in it }
-        ?.associate { line ->
+        ?.mapNotNull { line ->
             val idx = line.indexOf(':')
-            line.substring(0, idx).trim() to line.substring(idx + 1).trim()
+            val name = line.substring(0, idx).trim()
+            val value = line.substring(idx + 1).trim()
+            if (!HEADER_NAME_REGEX.matches(name)) return@mapNotNull null
+            if (value.any { it == '\r' || it == '\n' }) return@mapNotNull null
+            name to value
         }
+        ?.toMap()
     ?: emptyMap()

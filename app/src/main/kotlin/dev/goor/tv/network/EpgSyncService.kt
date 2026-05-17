@@ -14,6 +14,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.Url
 import io.ktor.http.isSuccess
+import io.ktor.http.encodeURLParameter
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.flow.first
 import java.io.BufferedInputStream
@@ -94,7 +95,7 @@ class EpgSyncService(
             val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
             val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
                        else "${parsed.protocol.name}://${parsed.host}"
-            "$base/xmltv.php?username=$u&password=$p"
+            "$base/xmltv.php?username=${u.encodeURLParameter()}&password=${p.encodeURLParameter()}"
         }
         SourceType.MANUAL -> null
     }

@@ -18,6 +18,10 @@ fun AddEditChannelDialog(
 ) {
     var name by remember { mutableStateOf(channel?.name ?: "") }
     var url by remember { mutableStateOf(channel?.url ?: "") }
+    val urlValid = remember(url) {
+        val t = url.trim()
+        t.startsWith("http://", ignoreCase = true) || t.startsWith("https://", ignoreCase = true)
+    }
     var logoUrl by remember { mutableStateOf(channel?.logoUrl ?: "") }
     var group by remember { mutableStateOf(channel?.group ?: "") }
     var groupExpanded by remember { mutableStateOf(false) }
@@ -56,6 +60,10 @@ fun AddEditChannelDialog(
                     label = { Text("Stream URL") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    isError = url.isNotBlank() && !urlValid,
+                    supportingText = {
+                        if (url.isNotBlank() && !urlValid) Text("Must start with http:// or https://")
+                    },
                 )
                 OutlinedTextField(
                     value = logoUrl,
@@ -104,7 +112,7 @@ fun AddEditChannelDialog(
                         group.trim().takeIf { it.isNotBlank() },
                     )
                 },
-                enabled = name.isNotBlank() && url.isNotBlank(),
+                enabled = name.isNotBlank() && urlValid,
             ) { Text("Save") }
         },
         dismissButton = {

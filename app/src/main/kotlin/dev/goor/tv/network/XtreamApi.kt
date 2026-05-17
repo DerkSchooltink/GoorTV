@@ -27,9 +27,13 @@ object XtreamApi {
         val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
         val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
                    else "${parsed.protocol.name}://${parsed.host}"
-        val u = source.username
-        val p = source.password
-        val response = httpClient.get("$base/player_api.php?username=$u&password=$p&action=get_live_streams") {
+        val u = source.username.orEmpty()
+        val p = source.password.orEmpty()
+        val uQ = u.encodeURLParameter()
+        val pQ = p.encodeURLParameter()
+        val uPath = u.encodeURLPath()
+        val pPath = p.encodeURLPath()
+        val response = httpClient.get("$base/player_api.php?username=$uQ&password=$pQ&action=get_live_streams") {
             source.headersMap().forEach { (k, v) -> header(k, v) }
         }
         if (!response.status.isSuccess()) {
@@ -40,7 +44,7 @@ object XtreamApi {
             Channel(
                 sourceId = source.id,
                 name = it.name,
-                url = "$base/live/$u/$p/${it.streamId}.ts",
+                url = "$base/live/$uPath/$pPath/${it.streamId}.ts",
                 group = it.category,
                 logoUrl = it.icon,
                 tvgChannelId = it.epgChannelId?.takeIf { id -> id.isNotBlank() },
