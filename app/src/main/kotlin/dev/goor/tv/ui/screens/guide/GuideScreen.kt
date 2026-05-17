@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.guide
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -99,18 +100,33 @@ fun GuideScreen(
             )
         },
     ) { padding ->
-        when (val s = state) {
-            is GuideState.Loading -> CenteredSpinner(label = "Waiting for EPG…", modifier = Modifier.padding(padding))
-            is GuideState.Empty -> EmptyState(reason = s.reason, onGoToSettings = onGoToSettings, modifier = Modifier.padding(padding))
-            is GuideState.Ready -> GuideGrid(
-                rows = s.rows,
-                windowStartMs = windowStartMs,
-                windowEndMs = windowEndMs,
-                nowMs = nowMs,
-                scrollState = scrollState,
-                onWatch = onWatch,
-                modifier = Modifier.padding(padding),
-            )
+        // Crossfade between Loading / Empty / Ready so the spinner doesn't snap off
+        // when EPG arrives. `contentKey` collapses Ready re-emissions to a single key
+        // so updating programmes don't re-trigger the fade.
+        Crossfade(
+            targetState = state,
+            label = "GuideState",
+        ) { s ->
+            when (s) {
+                is GuideState.Loading -> CenteredSpinner(
+                    label = "Waiting for EPG…",
+                    modifier = Modifier.padding(padding),
+                )
+                is GuideState.Empty -> EmptyState(
+                    reason = s.reason,
+                    onGoToSettings = onGoToSettings,
+                    modifier = Modifier.padding(padding),
+                )
+                is GuideState.Ready -> GuideGrid(
+                    rows = s.rows,
+                    windowStartMs = windowStartMs,
+                    windowEndMs = windowEndMs,
+                    nowMs = nowMs,
+                    scrollState = scrollState,
+                    onWatch = onWatch,
+                    modifier = Modifier.padding(padding),
+                )
+            }
         }
     }
 }
@@ -349,63 +365,56 @@ private fun EmptyState(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             when (reason) {
-                GuideEmptyReason.NoSources -> {
-                    Text(
-                        "No EPG configured",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Add an EPG URL to one of your sources to populate the guide.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = onGoToSettings) { Text("Open Settings") }
-                }
-                GuideEmptyReason.Fetching -> {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Fetching guide…",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "This can take a few minutes the first time — large XMLTV files run 50 MB or more.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                GuideEmptyReason.NoTvgIds -> {
-                    Text(
-                        "No channels match the guide",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                GuideEmptyReason.NoProgrammes -> {
-                    Text(
-                        "Guide is empty",
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Your channels have tvg-ids but no programmes overlap the current 26-hour window. The EPG feed may not cover these channels.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                GuideEmptyReason.NoSources -> EmptyMessage(
+                    title = "No EPG configured",
+                    body = "Configure a source with EPG support — Xtream credentials or an M3U with an EPG URL — to populate the guide.",
+                    action = "Open Settings" to onGoToSettings,
+                )
+                GuideEmptyReason.Fetching -> EmptyMessage(
+                    title = "Fetching guide…",
+                    body = "The first sync can take a few minutes.",
+                    showSpinner = true,
+                )
+                GuideEmptyReason.NoTvgIds -> EmptyMessage(
+                    title = "No channels match the guide",
+                    body = "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider.",
+                )
+                GuideEmptyReason.NoProgrammes -> EmptyMessage(
+                    title = "Guide is empty",
+                    body = "Your channels are configured but no programmes were found. The EPG feed may not cover them.",
+                )
+                is GuideEmptyReason.EpgError -> EmptyMessage(
+                    title = "EPG sync failed",
+                    body = "“${reason.sourceName}”: ${reason.message}",
+                    action = "Open Settings" to onGoToSettings,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyMessage(
+    title: String,
+    body: String,
+    showSpinner: Boolean = false,
+    action: Pair<String, () -> Unit>? = null,
+) {
+    if (showSpinner) {
+        CircularProgressIndicator()
+        Spacer(Modifier.height(12.dp))
+    }
+    Text(title, style = MaterialTheme.typography.titleMedium)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        body,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (action != null) {
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = action.second) { Text(action.first) }
     }
 }

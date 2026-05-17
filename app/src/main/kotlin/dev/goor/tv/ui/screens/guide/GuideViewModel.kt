@@ -24,16 +24,22 @@ data class GuideRow(
     val programmes: List<Programme>,
 )
 
-/** Reason the grid is empty, used to pick a user-facing message. */
-enum class GuideEmptyReason {
-    /** No source is EPG-eligible — user hasn't configured an EPG URL or Xtream creds. */
-    NoSources,
+/**
+ * Reason the grid is empty, picked by the state reducer. UI maps each to a copy
+ * variant. `EpgError` carries the source name + message verbatim from
+ * `Source.epgLastError` so users can act on the actual failure.
+ */
+sealed interface GuideEmptyReason {
+    /** No source is EPG-eligible — fresh install, or no source has been configured for EPG. */
+    data object NoSources : GuideEmptyReason
     /** Eligible source(s) exist but none have been synced yet — fetch is likely in flight. */
-    Fetching,
+    data object Fetching : GuideEmptyReason
     /** EPG fetched but no channels carry a `tvg-id` to match programmes to. */
-    NoTvgIds,
+    data object NoTvgIds : GuideEmptyReason
     /** Channels with `tvg-id` exist but no programmes overlap the current window. */
-    NoProgrammes,
+    data object NoProgrammes : GuideEmptyReason
+    /** Most recent sync attempt errored. Takes precedence over the silent-empty reasons. */
+    data class EpgError(val sourceName: String, val message: String) : GuideEmptyReason
 }
 
 sealed interface GuideState {
@@ -65,10 +71,10 @@ class GuideViewModel(
 
     /**
      * Rows in the grid. One per channel that has a `tvgChannelId`. Each row carries
-     * the programmes overlapping the current window. Recomputes when either source
-     * changes (programmes flow, channels flow) or the window shifts.
+     * the programmes overlapping the current window. Used only as an input to [state];
+     * UI should consume [state] which wraps this list with empty-state semantics.
      */
-    val rows: StateFlow<List<GuideRow>> = combine(
+    private val rows: StateFlow<List<GuideRow>> = combine(
         windowStartMs,
         windowEndMs,
     ) { from, to -> from to to }
@@ -90,19 +96,28 @@ class GuideViewModel(
     /**
      * Reduced render state. UI displays the grid for [GuideState.Ready], a spinner
      * for [GuideState.Loading], or a reason-specific empty message for
-     * [GuideState.Empty]. Distinguishes "no source configured", "fetch in flight",
-     * "playlist has no tvg-ids", and "EPG fetched but covers no current channels".
+     * [GuideState.Empty]. The reducer prioritises actionable diagnostics
+     * (`EpgError`) over silent-empty fall-throughs.
      */
     val state: StateFlow<GuideState> = combine(
         sourceDao.getAll(),
         rows,
     ) { sources, rows ->
         val eligible = sources.filter { it.isEpgEligible() }
+        val erroredSource = eligible.firstOrNull { !it.epgLastError.isNullOrBlank() }
+        val anySuccess = eligible.any { it.lastEpgSyncedAt != null }
+        val rowsHaveProgrammes = rows.any { it.programmes.isNotEmpty() }
         when {
             eligible.isEmpty() -> GuideState.Empty(GuideEmptyReason.NoSources)
-            eligible.none { it.lastEpgSyncedAt != null } -> GuideState.Empty(GuideEmptyReason.Fetching)
+            // Hard error before any successful sync — surface the message, don't pretend we're still fetching.
+            !anySuccess && erroredSource != null ->
+                GuideState.Empty(GuideEmptyReason.EpgError(erroredSource.name, erroredSource.epgLastError!!))
+            !anySuccess -> GuideState.Empty(GuideEmptyReason.Fetching)
             rows.isEmpty() -> GuideState.Empty(GuideEmptyReason.NoTvgIds)
-            rows.none { it.programmes.isNotEmpty() } -> GuideState.Empty(GuideEmptyReason.NoProgrammes)
+            // No programmes AND a sync failed since the last success — the failure is the more useful message.
+            !rowsHaveProgrammes && erroredSource != null ->
+                GuideState.Empty(GuideEmptyReason.EpgError(erroredSource.name, erroredSource.epgLastError!!))
+            !rowsHaveProgrammes -> GuideState.Empty(GuideEmptyReason.NoProgrammes)
             else -> GuideState.Ready(rows)
         }
     }
