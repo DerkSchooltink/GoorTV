@@ -71,6 +71,22 @@ class EpgSyncServiceTest {
     }
 
     @Test
+    fun `XTREAM source without credentials is skipped`() = runTest {
+        val src = testSource(
+            id = 6L,
+            type = SourceType.XTREAM,
+            url = "http://example.com",
+        ) // username/password default null in fixture
+        coEvery { sourceDao.getAll() } returns flowOf(listOf(src))
+
+        val errors = service().syncAll()
+
+        assert(errors.isEmpty())
+        coVerify(exactly = 0) { sourceDao.markEpgSynced(any(), any()) }
+        coVerify(exactly = 0) { sourceDao.setEpgError(any(), any()) }
+    }
+
+    @Test
     fun `network error is persisted to epgLastError`() = runTest {
         val src = testSource(
             id = 5L,

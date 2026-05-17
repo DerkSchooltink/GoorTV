@@ -51,6 +51,9 @@ class EpgSyncService(
                 error("EPG HTTP ${response.status.value} for '${source.name}'")
             }
             val input = response.bodyAsChannel().toInputStream().maybeGunzip()
+            // Drop existing programmes for this source so re-syncs don't leave stale rows
+            // when a programme's startMs shifts (REPLACE only matches exact PK).
+            programmeDao.deleteBySource(source.id)
             val buffer = ArrayList<Programme>(BATCH_SIZE)
             input.use { stream ->
                 XmltvParser.parse(stream) { p ->
@@ -74,7 +77,6 @@ class EpgSyncService(
             }
             if (buffer.isNotEmpty()) programmeDao.insertAll(buffer)
 
-            programmeDao.deleteOlderThan(source.id, System.currentTimeMillis() - RETENTION_MS)
             sourceDao.markEpgSynced(source.id, System.currentTimeMillis())
         } catch (e: Exception) {
             sourceDao.setEpgError(source.id, e.message ?: e::class.simpleName)
@@ -83,7 +85,7 @@ class EpgSyncService(
     }
 
     private fun eligible(source: Source): Boolean = when (source.type) {
-        SourceType.XTREAM -> true
+        SourceType.XTREAM -> !source.username.isNullOrBlank() && !source.password.isNullOrBlank()
         SourceType.M3U -> !source.epgUrl.isNullOrBlank()
         SourceType.MANUAL -> false
     }
@@ -91,11 +93,13 @@ class EpgSyncService(
     private fun epgUrlFor(source: Source): String? = when (source.type) {
         SourceType.M3U -> source.epgUrl?.takeIf { it.isNotBlank() }
         SourceType.XTREAM -> {
+            val u = source.username?.takeIf { it.isNotBlank() } ?: return null
+            val p = source.password?.takeIf { it.isNotBlank() } ?: return null
             val parsed = Url(source.url)
             val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
             val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
                        else "${parsed.protocol.name}://${parsed.host}"
-            "$base/xmltv.php?username=${source.username}&password=${source.password}"
+            "$base/xmltv.php?username=$u&password=$p"
         }
         SourceType.MANUAL -> null
     }
