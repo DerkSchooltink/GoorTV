@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
+import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
+import dev.goor.tv.data.model.isEpgEligible
 import dev.goor.tv.util.minuteTicker
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,8 +24,27 @@ data class GuideRow(
     val programmes: List<Programme>,
 )
 
+/** Reason the grid is empty, used to pick a user-facing message. */
+enum class GuideEmptyReason {
+    /** No source is EPG-eligible — user hasn't configured an EPG URL or Xtream creds. */
+    NoSources,
+    /** Eligible source(s) exist but none have been synced yet — fetch is likely in flight. */
+    Fetching,
+    /** EPG fetched but no channels carry a `tvg-id` to match programmes to. */
+    NoTvgIds,
+    /** Channels with `tvg-id` exist but no programmes overlap the current window. */
+    NoProgrammes,
+}
+
+sealed interface GuideState {
+    data object Loading : GuideState
+    data class Empty(val reason: GuideEmptyReason) : GuideState
+    data class Ready(val rows: List<GuideRow>) : GuideState
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class GuideViewModel(
+    private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
     private val programmeDao: ProgrammeDao,
 ) : ViewModel() {
@@ -65,6 +86,28 @@ class GuideViewModel(
         }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Reduced render state. UI displays the grid for [GuideState.Ready], a spinner
+     * for [GuideState.Loading], or a reason-specific empty message for
+     * [GuideState.Empty]. Distinguishes "no source configured", "fetch in flight",
+     * "playlist has no tvg-ids", and "EPG fetched but covers no current channels".
+     */
+    val state: StateFlow<GuideState> = combine(
+        sourceDao.getAll(),
+        rows,
+    ) { sources, rows ->
+        val eligible = sources.filter { it.isEpgEligible() }
+        when {
+            eligible.isEmpty() -> GuideState.Empty(GuideEmptyReason.NoSources)
+            eligible.none { it.lastEpgSyncedAt != null } -> GuideState.Empty(GuideEmptyReason.Fetching)
+            rows.isEmpty() -> GuideState.Empty(GuideEmptyReason.NoTvgIds)
+            rows.none { it.programmes.isNotEmpty() } -> GuideState.Empty(GuideEmptyReason.NoProgrammes)
+            else -> GuideState.Ready(rows)
+        }
+    }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), GuideState.Loading)
 
     companion object {
         private const val WINDOW_BACK_MS = 2L * 60L * 60L * 1000L      // 2 hours

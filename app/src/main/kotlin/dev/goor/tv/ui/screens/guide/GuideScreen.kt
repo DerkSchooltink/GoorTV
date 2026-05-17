@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,9 +67,10 @@ private fun minutesBetween(from: Long, to: Long): Long = (to - from) / 60_000L
 fun GuideScreen(
     onBack: () -> Unit,
     onWatch: (channelId: Long) -> Unit,
+    onGoToSettings: () -> Unit = {},
     vm: GuideViewModel = koinViewModel(),
 ) {
-    val rows by vm.rows.collectAsStateWithLifecycle()
+    val state by vm.state.collectAsStateWithLifecycle()
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
     val windowStartMs by vm.windowStartMs.collectAsStateWithLifecycle()
     val windowEndMs by vm.windowEndMs.collectAsStateWithLifecycle()
@@ -97,23 +99,11 @@ fun GuideScreen(
             )
         },
     ) { padding ->
-        when {
-            rows.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Waiting for EPG…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            else -> GuideGrid(
-                rows = rows,
+        when (val s = state) {
+            is GuideState.Loading -> CenteredSpinner(label = "Waiting for EPG…", modifier = Modifier.padding(padding))
+            is GuideState.Empty -> EmptyState(reason = s.reason, onGoToSettings = onGoToSettings, modifier = Modifier.padding(padding))
+            is GuideState.Ready -> GuideGrid(
+                rows = s.rows,
                 windowStartMs = windowStartMs,
                 windowEndMs = windowEndMs,
                 nowMs = nowMs,
@@ -334,5 +324,88 @@ private fun BoxScope.NowIndicator(
             end = Offset(x, size.height),
             strokeWidth = 1.5.dp.toPx(),
         )
+    }
+}
+
+@Composable
+private fun CenteredSpinner(label: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(12.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    reason: GuideEmptyReason,
+    onGoToSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            when (reason) {
+                GuideEmptyReason.NoSources -> {
+                    Text(
+                        "No EPG configured",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Add an EPG URL to one of your sources to populate the guide.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = onGoToSettings) { Text("Open Settings") }
+                }
+                GuideEmptyReason.Fetching -> {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Fetching guide…",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "This can take a few minutes the first time — large XMLTV files run 50 MB or more.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                GuideEmptyReason.NoTvgIds -> {
+                    Text(
+                        "No channels match the guide",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                GuideEmptyReason.NoProgrammes -> {
+                    Text(
+                        "Guide is empty",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Your channels have tvg-ids but no programmes overlap the current 26-hour window. The EPG feed may not cover these channels.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
