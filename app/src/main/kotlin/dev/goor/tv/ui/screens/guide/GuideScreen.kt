@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.guide
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,9 +68,10 @@ private fun minutesBetween(from: Long, to: Long): Long = (to - from) / 60_000L
 fun GuideScreen(
     onBack: () -> Unit,
     onWatch: (channelId: Long) -> Unit,
+    onGoToSettings: () -> Unit = {},
     vm: GuideViewModel = koinViewModel(),
 ) {
-    val rows by vm.rows.collectAsStateWithLifecycle()
+    val state by vm.state.collectAsStateWithLifecycle()
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
     val windowStartMs by vm.windowStartMs.collectAsStateWithLifecycle()
     val windowEndMs by vm.windowEndMs.collectAsStateWithLifecycle()
@@ -97,30 +100,33 @@ fun GuideScreen(
             )
         },
     ) { padding ->
-        when {
-            rows.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        "Waiting for EPG…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        // Crossfade between Loading / Empty / Ready so the spinner doesn't snap off
+        // when EPG arrives. `contentKey` collapses Ready re-emissions to a single key
+        // so updating programmes don't re-trigger the fade.
+        Crossfade(
+            targetState = state,
+            label = "GuideState",
+        ) { s ->
+            when (s) {
+                is GuideState.Loading -> CenteredSpinner(
+                    label = "Waiting for EPG…",
+                    modifier = Modifier.padding(padding),
+                )
+                is GuideState.Empty -> EmptyState(
+                    reason = s.reason,
+                    onGoToSettings = onGoToSettings,
+                    modifier = Modifier.padding(padding),
+                )
+                is GuideState.Ready -> GuideGrid(
+                    rows = s.rows,
+                    windowStartMs = windowStartMs,
+                    windowEndMs = windowEndMs,
+                    nowMs = nowMs,
+                    scrollState = scrollState,
+                    onWatch = onWatch,
+                    modifier = Modifier.padding(padding),
+                )
             }
-            else -> GuideGrid(
-                rows = rows,
-                windowStartMs = windowStartMs,
-                windowEndMs = windowEndMs,
-                nowMs = nowMs,
-                scrollState = scrollState,
-                onWatch = onWatch,
-                modifier = Modifier.padding(padding),
-            )
         }
     }
 }
@@ -334,5 +340,81 @@ private fun BoxScope.NowIndicator(
             end = Offset(x, size.height),
             strokeWidth = 1.5.dp.toPx(),
         )
+    }
+}
+
+@Composable
+private fun CenteredSpinner(label: String, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(12.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(
+    reason: GuideEmptyReason,
+    onGoToSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            when (reason) {
+                GuideEmptyReason.NoSources -> EmptyMessage(
+                    title = "No EPG configured",
+                    body = "Configure a source with EPG support — Xtream credentials or an M3U with an EPG URL — to populate the guide.",
+                    action = "Open Settings" to onGoToSettings,
+                )
+                GuideEmptyReason.Fetching -> EmptyMessage(
+                    title = "Fetching guide…",
+                    body = "The first sync can take a few minutes.",
+                    showSpinner = true,
+                )
+                GuideEmptyReason.NoTvgIds -> EmptyMessage(
+                    title = "No channels match the guide",
+                    body = "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider.",
+                )
+                GuideEmptyReason.NoProgrammes -> EmptyMessage(
+                    title = "Guide is empty",
+                    body = "Your channels are configured but no programmes were found. The EPG feed may not cover them.",
+                )
+                is GuideEmptyReason.EpgError -> EmptyMessage(
+                    title = "EPG sync failed",
+                    body = "“${reason.sourceName}”: ${reason.message}",
+                    action = "Open Settings" to onGoToSettings,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyMessage(
+    title: String,
+    body: String,
+    showSpinner: Boolean = false,
+    action: Pair<String, () -> Unit>? = null,
+) {
+    if (showSpinner) {
+        CircularProgressIndicator()
+        Spacer(Modifier.height(12.dp))
+    }
+    Text(title, style = MaterialTheme.typography.titleMedium)
+    Spacer(Modifier.height(8.dp))
+    Text(
+        body,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (action != null) {
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = action.second) { Text(action.first) }
     }
 }

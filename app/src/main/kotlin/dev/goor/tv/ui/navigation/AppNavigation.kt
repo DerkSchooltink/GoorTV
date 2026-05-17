@@ -49,6 +49,7 @@ fun AppNavigation() {
                 onWatch = { channelId ->
                     navController.navigate(Screen.Player.createRoute(channelId))
                 },
+                onGoToSettings = { navController.navigate(Screen.Settings.route) },
             )
         }
     }
