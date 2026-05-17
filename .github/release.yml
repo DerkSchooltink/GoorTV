@@ -1,0 +1,37 @@
+# Categorises GitHub's auto-generated release notes by PR label.
+# Triggered when release.yml workflow runs softprops/action-gh-release
+# with `generate_release_notes: true` on tag push.
+#
+# Apply one of the labels below to each PR for it to land in the right bucket.
+# Unlabelled PRs fall through to "Other changes".
+
+changelog:
+  exclude:
+    labels:
+      - dependencies
+      - skip-changelog
+    authors:
+      - dependabot
+
+  categories:
+    - title: ✨ Features
+      labels:
+        - feature
+        - feat
+        - enhancement
+    - title: 🐛 Fixes
+      labels:
+        - bug
+        - fix
+    - title: 🔧 CI / Build
+      labels:
+        - ci
+        - build
+    - title: 🧹 Chores / Refactors
+      labels:
+        - chore
+        - refactor
+        - docs
+    - title: Other changes
+      labels:
+        - "*"
