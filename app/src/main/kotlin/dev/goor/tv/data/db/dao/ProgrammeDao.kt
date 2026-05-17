@@ -53,4 +53,16 @@ interface ProgrammeDao {
         ORDER BY startMs
     """)
     fun observeRange(sourceId: Long, tvgId: String, fromMs: Long, toMs: Long): Flow<List<Programme>>
+
+    /** Programmes overlapping [fromMs, toMs] across every channel. Used by the guide grid. */
+    @Query("""
+        SELECT p.* FROM programmes p
+        WHERE p.endMs > :fromMs AND p.startMs < :toMs
+          AND EXISTS (
+            SELECT 1 FROM channels c
+            WHERE c.tvgChannelId = p.tvgChannelId AND c.sourceId = p.sourceId
+          )
+        ORDER BY p.sourceId, p.tvgChannelId, p.startMs
+    """)
+    fun observeWindowAll(fromMs: Long, toMs: Long): Flow<List<Programme>>
 }

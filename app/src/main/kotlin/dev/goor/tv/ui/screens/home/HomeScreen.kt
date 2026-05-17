@@ -54,6 +54,7 @@ import org.koin.androidx.compose.koinViewModel
 fun HomeScreen(
     onChannelClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
+    onGuideClick: () -> Unit = {},
     vm: HomeViewModel = koinViewModel(),
 ) {
     val pagingItems = vm.pagingData.collectAsLazyPagingItems()
@@ -154,6 +155,9 @@ fun HomeScreen(
                             if (searchActive) Icons.Default.Close else Icons.Default.Search,
                             contentDescription = if (searchActive) "Close search" else "Search",
                         )
+                    }
+                    IconButton(onClick = onGuideClick) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Guide")
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")

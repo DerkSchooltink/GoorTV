@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.goor.tv.ui.screens.guide.GuideScreen
 import dev.goor.tv.ui.screens.home.HomeScreen
 import dev.goor.tv.ui.screens.player.PlayerScreen
 import dev.goor.tv.ui.screens.settings.SettingsScreen
@@ -16,6 +17,7 @@ sealed class Screen(val route: String) {
         fun createRoute(channelId: Long) = "player/$channelId"
     }
     object Settings : Screen("settings")
+    object Guide : Screen("guide")
 }
 
 @Composable
@@ -25,7 +27,8 @@ fun AppNavigation() {
         composable(Screen.Home.route) {
             HomeScreen(
                 onChannelClick = { navController.navigate(Screen.Player.createRoute(it)) },
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                onSettingsClick = { navController.navigate(Screen.Settings.route) },
+                onGuideClick = { navController.navigate(Screen.Guide.route) },
             )
         }
         composable(
@@ -39,6 +42,14 @@ fun AppNavigation() {
         }
         composable(Screen.Settings.route) {
             SettingsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(Screen.Guide.route) {
+            GuideScreen(
+                onBack = { navController.popBackStack() },
+                onWatch = { channelId ->
+                    navController.navigate(Screen.Player.createRoute(channelId))
+                },
+            )
         }
     }
 }
