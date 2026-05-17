@@ -17,8 +17,8 @@ android {
         applicationId = "dev.goor.tv"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.2"
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -100,6 +100,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    // XmlPullParser implementation for JVM unit tests (Android provides one at runtime).
+    testImplementation("net.sf.kxml:kxml2:2.3.0")
 
     // Instrumented tests (device/emulator)
     androidTestImplementation(libs.androidx.test.ext.junit)

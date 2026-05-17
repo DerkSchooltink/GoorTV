@@ -8,6 +8,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
@@ -41,10 +42,12 @@ class HomeViewModelTest {
     private val syncService = mockk<SourceSyncService>()
     private val searchHistoryRepo = mockk<SearchHistoryRepository>()
     private val prefsRepository = mockk<UserPreferencesRepository>()
+    private val epgSyncService = mockk<EpgSyncService>()
 
     @Before
     fun setup() {
         coEvery { syncService.syncAll() } returns emptyList()
+        coEvery { epgSyncService.syncAll(any()) } returns emptyList()
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
         coEvery { sourceDao.getManualSource() } returns null
         coEvery { sourceDao.insert(any()) } returns 99L
@@ -61,7 +64,7 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository)
+    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService)
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {

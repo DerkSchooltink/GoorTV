@@ -20,6 +20,11 @@ data class Source(
     val headers: String? = null,
     // 0 = unlimited
     val maxConcurrentStreams: Int = 0,
+    // XMLTV URL. For M3U: user-provided, or auto-extracted from `#EXTM3U url-tvg="..."`.
+    // For XTREAM: ignored (xmltv.php is derived from base URL + credentials).
+    val epgUrl: String? = null,
+    val lastEpgSyncedAt: Long? = null,
+    val epgLastError: String? = null,
 )
 
 fun Source.headersMap(): Map<String, String> =

@@ -1,0 +1,126 @@
+package dev.goor.tv.network
+
+import android.util.Log
+import dev.goor.tv.data.db.dao.ProgrammeDao
+import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.model.Programme
+import dev.goor.tv.data.model.Source
+import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.headersMap
+import io.ktor.client.request.get
+import io.ktor.client.request.header
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.Url
+import io.ktor.http.isSuccess
+import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.flow.first
+import java.io.BufferedInputStream
+import java.io.InputStream
+import java.util.zip.GZIPInputStream
+
+class EpgSyncService(
+    private val sourceDao: SourceDao,
+    private val programmeDao: ProgrammeDao,
+) {
+    /**
+     * Syncs EPG for all eligible sources, skipping any whose [Source.lastEpgSyncedAt] is
+     * younger than [throttleMs]. Returns collected throwables (one per failed source).
+     */
+    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
+        val now = System.currentTimeMillis()
+        return sourceDao.getAll().first()
+            .filter { eligible(it) }
+            .filter { (it.lastEpgSyncedAt ?: 0L) + throttleMs <= now }
+            .mapNotNull { source ->
+                runCatching { sync(source) }
+                    .exceptionOrNull()
+                    ?.also { Log.e(TAG, "EPG sync failed for '${source.name}': ${it.message}") }
+            }
+    }
+
+    /** Manual sync — ignores throttle. Persists last-synced timestamp or error. */
+    suspend fun sync(source: Source) {
+        if (!eligible(source)) return
+        val url = epgUrlFor(source) ?: return
+        try {
+            val response: HttpResponse = httpClient.get(url) {
+                source.headersMap().forEach { (k, v) -> header(k, v) }
+            }
+            if (!response.status.isSuccess()) {
+                error("EPG HTTP ${response.status.value} for '${source.name}'")
+            }
+            val input = response.bodyAsChannel().toInputStream().maybeGunzip()
+            // Drop existing programmes for this source so re-syncs don't leave stale rows
+            // when a programme's startMs shifts (REPLACE only matches exact PK).
+            programmeDao.deleteBySource(source.id)
+            val buffer = ArrayList<Programme>(BATCH_SIZE)
+            input.use { stream ->
+                XmltvParser.parse(stream) { p ->
+                    buffer.add(
+                        Programme(
+                            sourceId = source.id,
+                            tvgChannelId = p.tvgChannelId,
+                            startMs = p.startMs,
+                            endMs = p.endMs,
+                            title = p.title,
+                            description = p.description,
+                            category = p.category,
+                            iconUrl = p.iconUrl,
+                        )
+                    )
+                    if (buffer.size >= BATCH_SIZE) {
+                        programmeDao.insertAll(buffer)
+                        buffer.clear()
+                    }
+                }
+            }
+            if (buffer.isNotEmpty()) programmeDao.insertAll(buffer)
+
+            sourceDao.markEpgSynced(source.id, System.currentTimeMillis())
+        } catch (e: Exception) {
+            sourceDao.setEpgError(source.id, e.message ?: e::class.simpleName)
+            throw e
+        }
+    }
+
+    private fun eligible(source: Source): Boolean = when (source.type) {
+        SourceType.XTREAM -> !source.username.isNullOrBlank() && !source.password.isNullOrBlank()
+        SourceType.M3U -> !source.epgUrl.isNullOrBlank()
+        SourceType.MANUAL -> false
+    }
+
+    private fun epgUrlFor(source: Source): String? = when (source.type) {
+        SourceType.M3U -> source.epgUrl?.takeIf { it.isNotBlank() }
+        SourceType.XTREAM -> {
+            val u = source.username?.takeIf { it.isNotBlank() } ?: return null
+            val p = source.password?.takeIf { it.isNotBlank() } ?: return null
+            val parsed = Url(source.url)
+            val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
+            val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
+                       else "${parsed.protocol.name}://${parsed.host}"
+            "$base/xmltv.php?username=$u&password=$p"
+        }
+        SourceType.MANUAL -> null
+    }
+
+    /**
+     * Sniffs the first two bytes — `1f 8b` indicates gzip. Wraps stream with [GZIPInputStream]
+     * if so; otherwise returns the (still-buffered) original stream.
+     */
+    private fun InputStream.maybeGunzip(): InputStream {
+        val buffered = if (this is BufferedInputStream) this else BufferedInputStream(this)
+        buffered.mark(2)
+        val b1 = buffered.read()
+        val b2 = buffered.read()
+        buffered.reset()
+        return if (b1 == 0x1f && b2 == 0x8b) GZIPInputStream(buffered) else buffered
+    }
+
+    companion object {
+        private const val TAG = "EpgSyncService"
+        private const val BATCH_SIZE = 500
+        private const val DEFAULT_THROTTLE_MS = 6L * 3600L * 1000L
+        private const val RETENTION_MS = 6L * 3600L * 1000L
+    }
+}

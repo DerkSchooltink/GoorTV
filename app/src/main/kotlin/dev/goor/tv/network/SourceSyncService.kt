@@ -30,14 +30,18 @@ class SourceSyncService(
     }
 
     suspend fun sync(source: Source) {
-        val fetched = when (source.type) {
+        val fetched: List<dev.goor.tv.data.model.Channel>
+        var discoveredEpgUrl: String? = null
+        when (source.type) {
             SourceType.M3U -> {
                 val content: String = httpClient.get(source.url) {
                     source.headersMap().forEach { (k, v) -> header(k, v) }
                 }.body()
-                M3uParser.parse(source.id, content)
+                val parsed = M3uParser.parse(source.id, content)
+                fetched = parsed.channels
+                discoveredEpgUrl = parsed.urlTvg
             }
-            SourceType.XTREAM -> XtreamApi.fetchLiveChannels(source)
+            SourceType.XTREAM -> fetched = XtreamApi.fetchLiveChannels(source)
             SourceType.MANUAL -> return
         }
         // Preserve user data (favorites, last watched) when reinserting after sync
@@ -53,5 +57,9 @@ class SourceSyncService(
         }
         channelDao.replaceForSource(source.id, merged)
         sourceDao.updateLastSyncedAt(source.id, System.currentTimeMillis())
+        // Auto-discover EPG URL from playlist header on first sync if user hasn't set one.
+        if (source.type == SourceType.M3U && source.epgUrl.isNullOrBlank() && !discoveredEpgUrl.isNullOrBlank()) {
+            sourceDao.updateEpgUrl(source.id, discoveredEpgUrl)
+        }
     }
 }
