@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write  # create releases and upload APK assets
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+env:
+  # Opt third-party JS actions into the Node.js 24 runtime ahead of the
+  # 2026-06-02 forced rollout. Drop this once every pinned action ships
+  # a Node 24 build by default.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build:
     runs-on: ubuntu-latest
