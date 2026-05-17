@@ -53,19 +53,14 @@ class GuideViewModel(
     ) { from, to -> from to to }
         .flatMapLatest { (from, to) ->
             combine(
-                channelDao.getAll(),
+                channelDao.getAllVisible(),
                 programmeDao.observeWindowAll(from, to),
             ) { channels, programmes ->
                 val byKey = programmes.groupBy { it.sourceId to it.tvgChannelId }
-                channels.asSequence()
-                    .filter { !it.tvgChannelId.isNullOrBlank() }
-                    .map { ch ->
-                        GuideRow(
-                            channel = ch,
-                            programmes = byKey[ch.sourceId to ch.tvgChannelId!!].orEmpty(),
-                        )
-                    }
-                    .toList()
+                channels.mapNotNull { ch ->
+                    val tvgId = ch.tvgChannelId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    GuideRow(channel = ch, programmes = byKey[ch.sourceId to tvgId].orEmpty())
+                }
             }
         }
         .distinctUntilChanged()

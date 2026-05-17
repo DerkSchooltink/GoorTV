@@ -32,7 +32,7 @@ class GuideViewModelTest {
     fun `rows include only channels with a tvgChannelId`() = runTest {
         val withId = testChannel(id = 1L, sourceId = 1L, tvgChannelId = "bbc.uk")
         val withoutId = testChannel(id = 2L, sourceId = 1L, tvgChannelId = null)
-        every { channelDao.getAll() } returns flowOf(listOf(withId, withoutId))
+        every { channelDao.getAllVisible() } returns flowOf(listOf(withId, withoutId))
         every { programmeDao.observeWindowAll(any(), any()) } returns flowOf(emptyList())
 
         val vm = makeVm()
@@ -50,7 +50,7 @@ class GuideViewModelTest {
         val pa = testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "Showa")
         val pb1 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", title = "Showb1")
         val pb2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", startMs = 7_200_000L, endMs = 10_800_000L, title = "Showb2")
-        every { channelDao.getAll() } returns flowOf(listOf(a, b))
+        every { channelDao.getAllVisible() } returns flowOf(listOf(a, b))
         every { programmeDao.observeWindowAll(any(), any()) } returns flowOf(listOf(pa, pb1, pb2))
 
         val vm = makeVm()
@@ -65,7 +65,7 @@ class GuideViewModelTest {
     @Test
     fun `rows reflect empty programme list when EPG missing`() = runTest {
         val ch = testChannel(id = 1L, sourceId = 1L, tvgChannelId = "a.tv")
-        every { channelDao.getAll() } returns flowOf(listOf(ch))
+        every { channelDao.getAllVisible() } returns flowOf(listOf(ch))
         every { programmeDao.observeWindowAll(any(), any()) } returns flowOf(emptyList())
 
         val vm = makeVm()

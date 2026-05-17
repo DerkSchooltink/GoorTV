@@ -137,7 +137,10 @@ private fun GuideGrid(
 ) {
     val windowMinutes = minutesBetween(windowStartMs, windowEndMs)
     val railWidth = DP_PER_MINUTE * windowMinutes.toInt()
-    val firstSlotMs = (windowStartMs / (SLOT_MINUTES * 60_000L) + 1) * SLOT_MINUTES * 60_000L
+    val slotMs = SLOT_MINUTES * 60_000L
+    // Ceiling-align to the next 30-minute slot. Using "/ + 1" would skip a label
+    // when windowStartMs lands exactly on a slot boundary.
+    val firstSlotMs = ((windowStartMs + slotMs - 1) / slotMs) * slotMs
 
     Column(modifier = modifier.fillMaxSize()) {
         // Time-axis header
