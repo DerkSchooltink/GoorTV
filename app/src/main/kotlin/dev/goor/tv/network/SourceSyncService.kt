@@ -9,6 +9,9 @@ import dev.goor.tv.data.model.headersMap
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
 private val PREFIX_REGEX = Regex("""^[\[(]?([A-Z]{2,5})[)\]|:\s]""")
 
@@ -19,6 +22,13 @@ class SourceSyncService(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
 ) {
+    // Serializes concurrent syncs of the same source. Different sources can still
+    // sync in parallel. Without this, two overlapping sync(source) calls race on the
+    // read-merge-write of channel rows and can drop user data (favorites,
+    // lastWatchedAt) from whichever fetched list lost the race.
+    private val syncMutexes = ConcurrentHashMap<Long, Mutex>()
+    private fun mutexFor(sourceId: Long): Mutex = syncMutexes.computeIfAbsent(sourceId) { Mutex() }
+
     suspend fun syncAll(): List<Throwable> {
         return sourceDao.getAll().first()
             .filter { it.type != SourceType.MANUAL }
@@ -29,7 +39,7 @@ class SourceSyncService(
             }
     }
 
-    suspend fun sync(source: Source) {
+    suspend fun sync(source: Source) = mutexFor(source.id).withLock {
         val fetched: List<dev.goor.tv.data.model.Channel>
         var discoveredEpgUrl: String? = null
         when (source.type) {
@@ -42,20 +52,15 @@ class SourceSyncService(
                 discoveredEpgUrl = parsed.urlTvg
             }
             SourceType.XTREAM -> fetched = XtreamApi.fetchLiveChannels(source)
-            SourceType.MANUAL -> return
+            SourceType.MANUAL -> return@withLock
         }
-        // Preserve user data (favorites, last watched) when reinserting after sync
-        val existing = channelDao.getBySourceOnce(source.id)
-        val userDataByUrl = existing.associate { it.url to Pair(it.isFavorite, it.lastWatchedAt) }
-        val merged = fetched.map { ch ->
-            val (fav, lastWatched) = userDataByUrl[ch.url] ?: Pair(false, null)
-            ch.copy(
-                isFavorite = fav,
-                lastWatchedAt = lastWatched,
-                group = ch.group ?: extractPrefix(ch.name),
-            )
-        }
-        channelDao.replaceForSource(source.id, merged)
+        // Derive `group` from name prefix when upstream didn't supply one. Done
+        // outside the DAO call so the DAO method stays purely about persistence.
+        val prepared = fetched.map { ch -> ch.copy(group = ch.group ?: extractPrefix(ch.name)) }
+        // Atomic: read existing user data, merge, delete+insert — all in one
+        // transaction. Concurrent reads can't observe the table mid-delete, and
+        // a partial-insert failure rolls back the delete.
+        channelDao.replaceForSourcePreservingUserData(source.id, prepared)
         sourceDao.updateLastSyncedAt(source.id, System.currentTimeMillis())
         // Auto-discover EPG URL from playlist header on first sync if user hasn't set one.
         if (source.type == SourceType.M3U && source.epgUrl.isNullOrBlank() && !discoveredEpgUrl.isNullOrBlank()) {
