@@ -18,7 +18,7 @@ import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
-import dev.goor.tv.util.minuteTicker
+import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -31,6 +31,7 @@ class HomeViewModel(
     private val searchHistoryRepo: SearchHistoryRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val programmeDao: ProgrammeDao,
+    timeProvider: TimeProvider,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -62,9 +63,8 @@ class HomeViewModel(
     val sortOrder = prefsRepository.sortOrder
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SortOrder.BY_GROUP)
 
-    /** Ticks once a minute while there are subscribers; used to refresh "now playing". */
-    val nowMs: StateFlow<Long> = minuteTicker()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+    /** Shared minute-cadence clock; used to refresh "now playing". */
+    val nowMs: StateFlow<Long> = timeProvider.nowMs
 
     /**
      * "Now playing" programme per channel, keyed by `(sourceId, tvgChannelId)`.

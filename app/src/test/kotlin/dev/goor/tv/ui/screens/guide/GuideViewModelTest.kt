@@ -5,6 +5,7 @@ import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.util.FakeTimeProvider
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
 import dev.goor.tv.util.testProgramme
@@ -32,7 +33,7 @@ class GuideViewModelTest {
     private val channelDao = mockk<ChannelDao>()
     private val programmeDao = mockk<ProgrammeDao>()
 
-    private fun makeVm() = GuideViewModel(sourceDao, channelDao, programmeDao)
+    private fun makeVm() = GuideViewModel(sourceDao, channelDao, programmeDao, FakeTimeProvider())
 
     /** Eligible M3U source toggling on three knobs the reducer cares about. */
     private fun eligibleSource(

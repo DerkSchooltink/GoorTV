@@ -14,6 +14,7 @@ import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.theme.GoorTVTheme
+import dev.goor.tv.util.TimeProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -42,7 +43,7 @@ class HomeScreenTest {
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
 
     private fun homeVm() = HomeViewModel(
-        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao,
+        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, TimeProvider(),
     )
 
     // ── Empty states ──────────────────────────────────────────────────────────

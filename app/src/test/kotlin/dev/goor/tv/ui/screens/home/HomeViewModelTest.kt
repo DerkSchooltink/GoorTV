@@ -11,6 +11,7 @@ import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.util.FakeTimeProvider
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
 import dev.goor.tv.util.testProgramme
@@ -71,7 +72,7 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao)
+    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, FakeTimeProvider())
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {
