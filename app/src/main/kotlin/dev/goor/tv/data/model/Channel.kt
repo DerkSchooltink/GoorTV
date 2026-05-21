@@ -16,12 +16,12 @@ import androidx.room.PrimaryKey
     indices = [
         Index("sourceId"),
         Index(value = ["group", "name"]),
-        Index("tvgChannelId"),
         // Covers the (sourceId, tvgChannelId) lookups that `ProgrammeDao.observeAllNow`
         // does via its EXISTS subquery and that `observeWindowForChannels` does via
         // `WHERE sourceId = ? AND tvgChannelId IN (…)`. Without it SQLite falls back to
         // scanning all of `channels` per programme, which can hang the guide for minutes
-        // on large playlists.
+        // on large playlists. Also covers any tvgChannelId-only lookups via the
+        // composite's leading column — no standalone Index("tvgChannelId") needed.
         Index(value = ["sourceId", "tvgChannelId"]),
     ]
 )

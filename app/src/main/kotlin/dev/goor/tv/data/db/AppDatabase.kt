@@ -11,7 +11,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 9, exportSchema = true)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 10, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -93,5 +93,18 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_sourceId_tvgChannelId ON channels(sourceId, tvgChannelId)")
             }
         }
+
+        /**
+         * Drops the standalone (tvgChannelId) index. The composite
+         * (sourceId, tvgChannelId) added in v9 covers every existing query path
+         * (including any tvgChannelId-only lookups via its leading column), so
+         * the standalone was pure write-amplification on large playlist inserts.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS index_channels_tvgChannelId")
+            }
+        }
+
     }
 }

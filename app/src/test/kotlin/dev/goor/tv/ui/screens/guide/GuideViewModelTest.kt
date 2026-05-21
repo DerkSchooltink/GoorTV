@@ -57,7 +57,7 @@ class GuideViewModelTest {
         channels: List<dev.goor.tv.data.model.Channel> = emptyList(),
         programmes: List<dev.goor.tv.data.model.Programme> = emptyList(),
     ) {
-        every { channelDao.getAllVisible() } returns flowOf(channels)
+        every { channelDao.getVisibleWithTvgId() } returns flowOf(channels)
         every { programmeDao.observeWindowForChannels(any(), any(), any(), any()) } returns flowOf(programmes)
     }
 

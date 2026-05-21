@@ -78,10 +78,9 @@ class GuideViewModel(
     private val rows: StateFlow<List<GuideRow>?> = combine(
         windowStartMs,
         windowEndMs,
-        channelDao.getAllVisible(),
+        channelDao.getVisibleWithTvgId(),
     ) { from, to, channels -> Triple(from, to, channels) }
-        .flatMapLatest { (from, to, channels) ->
-            val visible = channels.filter { !it.tvgChannelId.isNullOrBlank() }
+        .flatMapLatest { (from, to, visible) ->
             if (visible.isEmpty()) return@flatMapLatest flowOf(emptyList<GuideRow>())
             // Query programmes per source, restricted to the visible channels' tvg-ids.
             // Avoids scanning the full EPG (thousands of unrelated tvg-ids and tens of
