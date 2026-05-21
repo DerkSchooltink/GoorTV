@@ -1,6 +1,7 @@
 package dev.goor.tv.network
 
 import dev.goor.tv.data.db.dao.ChannelDao
+import dev.goor.tv.data.db.dao.ChannelIdName
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.SourceType
@@ -9,10 +10,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.Runs
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.ByteArrayInputStream
 
 class EpgSyncServiceTest {
 
@@ -86,6 +90,49 @@ class EpgSyncServiceTest {
         assert(errors.isEmpty())
         coVerify(exactly = 0) { sourceDao.markEpgSynced(any(), any()) }
         coVerify(exactly = 0) { sourceDao.setEpgError(any(), any()) }
+    }
+
+    @Test
+    fun `processXmltv backfills tvg-id via display-name`() = runTest {
+        // Channels carry blank tvgChannelId; EPG knows them by display-name.
+        coEvery { channelDao.getMissingTvgIdsBySource(1L) } returns listOf(
+            ChannelIdName(id = 10L, name = "NL - ESPN 1"),
+            ChannelIdName(id = 11L, name = "NL - ESPN 02[LIVE EVENTS]"),
+            ChannelIdName(id = 12L, name = "BBC One HD"),
+            ChannelIdName(id = 13L, name = "Channel With No Match"),
+        )
+        val captured = slot<List<Pair<Long, String>>>()
+        coEvery { channelDao.applyTvgChannelIdAssignments(capture(captured)) } just Runs
+
+        val xml = """
+            <tv>
+              <channel id="espn.nl"><display-name>ESPN</display-name></channel>
+              <channel id="espn2.nl"><display-name>ESPN 2</display-name></channel>
+              <channel id="bbcone.uk"><display-name>BBC One</display-name></channel>
+            </tv>
+        """.trimIndent()
+
+        service().processXmltv(1L, ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+
+        coVerify { channelDao.applyTvgChannelIdAssignments(any()) }
+        val byId = captured.captured.toMap()
+        assertEquals("espn.nl", byId[10L])     // ESPN 1 → trailing-digit fallback to "espn"
+        assertEquals("espn2.nl", byId[11L])    // ESPN 02 → leading-zero strip → "espn2"
+        assertEquals("bbcone.uk", byId[12L])   // BBC One HD → quality tag stripped
+        assertEquals(null, byId[13L])          // No EPG entry for this one
+        assertEquals(3, captured.captured.size)
+    }
+
+    @Test
+    fun `processXmltv applies zero assignments when no matches`() = runTest {
+        coEvery { channelDao.getMissingTvgIdsBySource(1L) } returns listOf(
+            ChannelIdName(id = 20L, name = "Some Obscure Channel"),
+        )
+        val xml = "<tv><channel id=\"x.tv\"><display-name>Unrelated</display-name></channel></tv>"
+
+        service().processXmltv(1L, ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+
+        coVerify(exactly = 0) { channelDao.applyTvgChannelIdAssignments(any()) }
     }
 
     @Test

@@ -26,6 +26,10 @@ object XmltvParser {
      * Stream-parses XMLTV from [input], invoking [onChannel] for each `<channel>` block and
      * [onProgramme] for each valid `<programme>` block. Malformed elements are logged and
      * skipped. Caller owns [input] and is responsible for closing it.
+     *
+     * [onChannel] has a no-op default so existing call sites that only care about programmes
+     * can keep the trailing-lambda form: `parse(stream) { p -> … }`. Callers that need both
+     * must pass [onChannel] as a named argument.
      */
     suspend fun parse(
         input: InputStream,

@@ -22,6 +22,20 @@ class ChannelNameNormalizerTest {
     }
 
     @Test
+    fun `does not strip bare single-letter tokens`() {
+        // Channel names like "BBC N" or "RTL S" must not collapse to "bbc"/"rtl".
+        assertEquals("bbcn", ChannelNameNormalizer.canonical("BBC N"))
+        assertEquals("rtls", ChannelNameNormalizer.canonical("RTL S"))
+    }
+
+    @Test
+    fun `multi-digit suffix is preserved`() {
+        // "ESPN 10" must NOT collapse to "espn1" (would collide with ESPN 1's id).
+        val keys = ChannelNameNormalizer.keys("ESPN 10")
+        assertEquals(listOf("espn10"), keys)
+    }
+
+    @Test
     fun `keys widen by dropping trailing digits`() {
         val keys = ChannelNameNormalizer.keys("ESPN 01")
         // Leading zero in '01' is stripped so 'espn1' is the most specific key.
