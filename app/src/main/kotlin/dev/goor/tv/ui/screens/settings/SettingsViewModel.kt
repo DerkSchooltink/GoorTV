@@ -2,6 +2,7 @@ package dev.goor.tv.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.database.sqlite.SQLiteConstraintException
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
@@ -40,7 +41,18 @@ class SettingsViewModel(
 
     fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
-            val id = sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
+            if (sourceDao.findByTypeAndUrl(SourceType.M3U.name, url) != null) {
+                _snackbarMessage.value = "An M3U source with that URL already exists"
+                return@launch
+            }
+            // Pre-check is racy against the unique (type, url) index — catch the race here
+            // so concurrent adds surface the same friendly message instead of a crash.
+            val id = try {
+                sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
+            } catch (_: SQLiteConstraintException) {
+                _snackbarMessage.value = "An M3U source with that URL already exists"
+                return@launch
+            }
             val src = sourceDao.getById(id) ?: return@launch
             syncSource(src)
             syncEpg(src)
@@ -49,7 +61,16 @@ class SettingsViewModel(
 
     fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
-            val id = sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
+            if (sourceDao.findByTypeAndUrl(SourceType.XTREAM.name, url) != null) {
+                _snackbarMessage.value = "An Xtream source with that URL already exists"
+                return@launch
+            }
+            val id = try {
+                sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
+            } catch (_: SQLiteConstraintException) {
+                _snackbarMessage.value = "An Xtream source with that URL already exists"
+                return@launch
+            }
             val src = sourceDao.getById(id) ?: return@launch
             syncSource(src)
             syncEpg(src)

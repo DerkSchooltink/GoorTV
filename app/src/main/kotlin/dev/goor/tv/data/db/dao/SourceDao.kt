@@ -38,4 +38,7 @@ interface SourceDao {
 
     @Query("SELECT * FROM sources WHERE type = 'MANUAL' LIMIT 1")
     suspend fun getManualSource(): Source?
+
+    @Query("SELECT * FROM sources WHERE type = :type AND url = :url LIMIT 1")
+    suspend fun findByTypeAndUrl(type: String, url: String): Source?
 }

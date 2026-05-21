@@ -11,17 +11,18 @@ interface ChannelDao {
     fun getAll(): Flow<List<Channel>>
 
     /**
-     * Like [getAll] but filters out channels whose `group` is excluded by the
-     * source's `includedGroups` allow-list. Matches the predicate used by the
-     * paged home queries.
+     * Visible channels that carry a `tvgChannelId` — the only ones the EPG guide
+     * can render rows for. Filters in SQL so the guide query doesn't pull tens of
+     * thousands of channels into memory just to discard the ones without a tvg-id.
      */
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
-        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        WHERE c.tvgChannelId IS NOT NULL AND c.tvgChannelId != ''
+          AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         ORDER BY c.`group`, c.name
     """)
-    fun getAllVisible(): Flow<List<Channel>>
+    fun getVisibleWithTvgId(): Flow<List<Channel>>
 
     @Query("""
         SELECT c.* FROM channels c
@@ -92,10 +93,52 @@ interface ChannelDao {
     @Query("DELETE FROM channels WHERE sourceId = :sourceId")
     suspend fun deleteBySource(sourceId: Long)
 
+    /**
+     * Replaces all channels for [sourceId] with [fetched], preserving user data
+     * (favorites, last-watched) from the existing rows.
+     *
+     * Matching cascades through three keys, in order, so user data survives
+     * upstream renames/re-encodings that change just one of them:
+     *   1. URL (cheapest, exact)
+     *   2. tvgChannelId (stable across URL/name churn when present)
+     *   3. (name, group) (last resort for sources without tvg-ids)
+     *
+     * Each existing row is "consumed" on first match so the same favorite can't
+     * be applied to two different fetched channels.
+     *
+     * Read-merge-write happens inside a single transaction so concurrent reads
+     * never observe the table mid-delete, and a partial-insert failure leaves
+     * the old rows intact (the implicit ROLLBACK undoes the prior DELETE).
+     */
     @Transaction
-    suspend fun replaceForSource(sourceId: Long, channels: List<Channel>) {
+    suspend fun replaceForSourcePreservingUserData(sourceId: Long, fetched: List<Channel>) {
+        val existing = getBySourceOnce(sourceId)
+            .filter { it.isFavorite || it.lastWatchedAt != null }
+            .toMutableList()
+        val byUrl = existing.associateBy { it.url }.toMutableMap()
+        val byTvgId = existing.filter { !it.tvgChannelId.isNullOrBlank() }
+            .associateBy { it.tvgChannelId!! }.toMutableMap()
+        val byNameGroup = existing.associateBy { it.name to it.group }.toMutableMap()
+
+        fun consume(match: Channel) {
+            byUrl.remove(match.url)
+            match.tvgChannelId?.let { byTvgId.remove(it) }
+            byNameGroup.remove(match.name to match.group)
+        }
+
+        val merged = fetched.map { ch ->
+            val match = byUrl[ch.url]
+                ?: ch.tvgChannelId?.takeIf { it.isNotBlank() }?.let { byTvgId[it] }
+                ?: byNameGroup[ch.name to ch.group]
+            if (match != null) {
+                consume(match)
+                ch.copy(isFavorite = match.isFavorite, lastWatchedAt = match.lastWatchedAt)
+            } else {
+                ch
+            }
+        }
         deleteBySource(sourceId)
-        insertAll(channels)
+        insertAll(merged)
     }
 
     @Query("UPDATE channels SET isFavorite = CASE WHEN isFavorite = 1 THEN 0 ELSE 1 END WHERE id = :id")

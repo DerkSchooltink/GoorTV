@@ -3,18 +3,20 @@ package dev.goor.tv.ui.screens.home
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
+import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.preferences.UserPreferencesRepository
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.theme.GoorTVTheme
 import io.mockk.coEvery
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -27,13 +29,21 @@ class HomeScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val channelDao = mockk<ChannelDao>()
-    private val sourceDao = mockk<SourceDao>()
+    private val channelDao = mockk<ChannelDao>(relaxed = true)
+    private val sourceDao = mockk<SourceDao>(relaxed = true)
     private val syncService = mockk<SourceSyncService> {
-        coEvery { syncAll() } just Runs
+        coEvery { syncAll() } returns emptyList()
     }
+    private val searchHistoryRepo = mockk<SearchHistoryRepository>(relaxed = true)
+    private val prefsRepository = mockk<UserPreferencesRepository>(relaxed = true)
+    private val epgSyncService = mockk<EpgSyncService> {
+        coEvery { syncAll(any()) } returns emptyList()
+    }
+    private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
 
-    private fun homeVm() = HomeViewModel(channelDao, sourceDao, syncService)
+    private fun homeVm() = HomeViewModel(
+        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService, programmeDao,
+    )
 
     // ── Empty states ──────────────────────────────────────────────────────────
 

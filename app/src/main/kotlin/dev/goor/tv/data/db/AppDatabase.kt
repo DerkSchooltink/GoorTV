@@ -11,7 +11,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 9, exportSchema = false)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 11, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -91,6 +91,36 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_sourceId_tvgChannelId ON channels(sourceId, tvgChannelId)")
+            }
+        }
+
+        /**
+         * Drops the standalone (tvgChannelId) index. The composite
+         * (sourceId, tvgChannelId) added in v9 covers every existing query path
+         * (including any tvgChannelId-only lookups via its leading column), so
+         * the standalone was pure write-amplification on large playlist inserts.
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS index_channels_tvgChannelId")
+            }
+        }
+
+        /**
+         * Adds a unique index on `sources(type, url)`. Dedupes existing duplicates
+         * first by keeping the oldest row of each pair — the FK cascade then drops
+         * the orphaned channels. Affects any user who somehow accumulated two
+         * sources pointing at the same URL (rare; the UI didn't pre-check
+         * historically).
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    DELETE FROM sources WHERE id NOT IN (
+                        SELECT MIN(id) FROM sources GROUP BY type, url
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sources_type_url ON sources(type, url)")
             }
         }
     }

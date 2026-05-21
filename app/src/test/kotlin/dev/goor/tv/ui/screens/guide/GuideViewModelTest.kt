@@ -57,7 +57,7 @@ class GuideViewModelTest {
         channels: List<dev.goor.tv.data.model.Channel> = emptyList(),
         programmes: List<dev.goor.tv.data.model.Programme> = emptyList(),
     ) {
-        every { channelDao.getAllVisible() } returns flowOf(channels)
+        every { channelDao.getVisibleWithTvgId() } returns flowOf(channels)
         every { programmeDao.observeWindowForChannels(any(), any(), any(), any()) } returns flowOf(programmes)
     }
 
@@ -103,7 +103,8 @@ class GuideViewModelTest {
     @Test
     fun `state is Empty NoTvgIds when sources synced but no channel has tvgChannelId`() = runTest {
         stubSources(listOf(eligibleSource()))
-        stubChannelsAndProgrammes(channels = listOf(testChannel(id = 1L, tvgChannelId = null)))
+        // getVisibleWithTvgId() filters in SQL, so "no channels with tvg-id" presents as an empty list.
+        stubChannelsAndProgrammes(channels = emptyList())
 
         val vm = makeVm()
         backgroundScope.launch { vm.state.collect {} }
@@ -154,25 +155,6 @@ class GuideViewModelTest {
         val state = vm.state.value
         assertTrue(state is GuideState.Ready)
         assertEquals(1, (state as GuideState.Ready).rows.size)
-    }
-
-    @Test
-    fun `Ready filters channels without tvgChannelId`() = runTest {
-        stubSources(listOf(eligibleSource()))
-        val withId = testChannel(id = 1L, sourceId = 1L, tvgChannelId = "bbc.uk")
-        val withoutId = testChannel(id = 2L, sourceId = 1L, tvgChannelId = null)
-        stubChannelsAndProgrammes(
-            channels = listOf(withId, withoutId),
-            programmes = listOf(testProgramme(sourceId = 1L, tvgChannelId = "bbc.uk")),
-        )
-
-        val vm = makeVm()
-        backgroundScope.launch { vm.state.collect {} }
-        runCurrent()
-
-        val rows = (vm.state.value as GuideState.Ready).rows
-        assertEquals(1, rows.size)
-        assertEquals("bbc.uk", rows[0].channel.tvgChannelId)
     }
 
     @Test
