@@ -1,5 +1,6 @@
 package dev.goor.tv.network
 
+import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.SourceType
@@ -17,8 +18,9 @@ class EpgSyncServiceTest {
 
     private val sourceDao = mockk<SourceDao>(relaxed = true)
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
+    private val channelDao = mockk<ChannelDao>(relaxed = true)
 
-    private fun service() = EpgSyncService(sourceDao, programmeDao)
+    private fun service() = EpgSyncService(sourceDao, programmeDao, channelDao)
 
     @Test
     fun `MANUAL sources are skipped in syncAll`() = runTest {

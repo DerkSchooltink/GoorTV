@@ -1,6 +1,7 @@
 package dev.goor.tv.network
 
 import android.util.Log
+import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Programme
@@ -8,6 +9,7 @@ import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
 import dev.goor.tv.data.model.isEpgEligible
+import dev.goor.tv.util.ChannelNameNormalizer
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -24,6 +26,7 @@ import java.util.zip.GZIPInputStream
 class EpgSyncService(
     private val sourceDao: SourceDao,
     private val programmeDao: ProgrammeDao,
+    private val channelDao: ChannelDao,
 ) {
     /**
      * Syncs EPG for all eligible sources, skipping any whose [Source.lastEpgSyncedAt] is
@@ -57,8 +60,23 @@ class EpgSyncService(
             // when a programme's startMs shifts (REPLACE only matches exact PK).
             programmeDao.deleteBySource(source.id)
             val buffer = ArrayList<Programme>(BATCH_SIZE)
+            // Display-name key -> tvg-id, used to backfill channels whose provider didn't
+            // ship an epg_channel_id. Canonical key wins; looser variants only fill gaps.
+            val nameToTvgId = HashMap<String, String>()
             input.use { stream ->
-                XmltvParser.parse(stream) { p ->
+                XmltvParser.parse(
+                    input = stream,
+                    onChannel = { ch ->
+                        ch.displayNames.forEach { dn ->
+                            val keys = ChannelNameNormalizer.keys(dn)
+                            keys.firstOrNull()?.let { nameToTvgId[it] = ch.tvgChannelId }
+                            keys.drop(1).forEach { nameToTvgId.putIfAbsent(it, ch.tvgChannelId) }
+                        }
+                        // Also index the id itself — many providers reuse it as a display name.
+                        ChannelNameNormalizer.canonical(ch.tvgChannelId)
+                            ?.let { nameToTvgId.putIfAbsent(it, ch.tvgChannelId) }
+                    },
+                ) { p ->
                     buffer.add(
                         Programme(
                             sourceId = source.id,
@@ -79,11 +97,32 @@ class EpgSyncService(
             }
             if (buffer.isNotEmpty()) programmeDao.insertAll(buffer)
 
+            backfillTvgIds(source.id, nameToTvgId)
             sourceDao.markEpgSynced(source.id, System.currentTimeMillis())
         } catch (e: Exception) {
             sourceDao.setEpgError(source.id, e.message ?: e::class.simpleName)
             throw e
         }
+    }
+
+    /**
+     * For channels in [sourceId] with a blank `tvgChannelId`, look up a matching id by
+     * normalising the channel name against [nameToTvgId] (built from XMLTV display-names).
+     * Tries the most-specific key first, then progressively looser variants.
+     */
+    private suspend fun backfillTvgIds(sourceId: Long, nameToTvgId: Map<String, String>) {
+        if (nameToTvgId.isEmpty()) return
+        val candidates = channelDao.getMissingTvgIdsBySource(sourceId)
+        if (candidates.isEmpty()) return
+        var matched = 0
+        candidates.forEach { ch ->
+            val hit = ChannelNameNormalizer.keys(ch.name).firstNotNullOfOrNull { nameToTvgId[it] }
+            if (hit != null) {
+                channelDao.setTvgChannelId(ch.id, hit)
+                matched++
+            }
+        }
+        if (matched > 0) Log.i(TAG, "Backfilled tvg-id for $matched/${candidates.size} channels in source $sourceId")
     }
 
     private fun epgUrlFor(source: Source): String? = when (source.type) {

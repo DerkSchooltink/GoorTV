@@ -41,14 +41,18 @@ class SettingsViewModel(
     fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
             val id = sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
-            syncSource(sourceDao.getById(id) ?: return@launch)
+            val src = sourceDao.getById(id) ?: return@launch
+            syncSource(src)
+            syncEpg(src)
         }
     }
 
     fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
             val id = sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
-            syncSource(sourceDao.getById(id) ?: return@launch)
+            val src = sourceDao.getById(id) ?: return@launch
+            syncSource(src)
+            syncEpg(src)
         }
     }
 
@@ -88,7 +92,11 @@ class SettingsViewModel(
 
     fun updateEpgUrl(sourceId: Long, url: String?) {
         viewModelScope.launch {
-            sourceDao.updateEpgUrl(sourceId, url?.takeIf { it.isNotBlank() })
+            val trimmed = url?.takeIf { it.isNotBlank() }
+            sourceDao.updateEpgUrl(sourceId, trimmed)
+            if (trimmed != null) {
+                sourceDao.getById(sourceId)?.let { syncEpg(it) }
+            }
         }
     }
 }

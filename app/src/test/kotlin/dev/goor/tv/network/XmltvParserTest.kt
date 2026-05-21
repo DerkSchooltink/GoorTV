@@ -20,6 +20,16 @@ class XmltvParserTest {
         return out
     }
 
+    private suspend fun parseChannels(xml: String): List<XmltvParser.ParsedChannel> {
+        val out = mutableListOf<XmltvParser.ParsedChannel>()
+        XmltvParser.parse(
+            input = ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)),
+            onChannel = { out.add(it) },
+            onProgramme = {},
+        )
+        return out
+    }
+
     @Test
     fun `parseXmltvTime handles UTC offset`() {
         assertEquals(noon, XmltvParser.parseXmltvTime("20260117120000 +0000"))
@@ -180,6 +190,65 @@ class XmltvParserTest {
         """.trimIndent()
 
         assertTrue(parse(xml).isEmpty())
+    }
+
+    @Test
+    fun `parses channel display names`() = runTest {
+        val xml = """
+            <tv>
+              <channel id="espn.nl">
+                <display-name>ESPN</display-name>
+                <display-name>ESPN NL</display-name>
+              </channel>
+              <channel id="bbc.one.uk">
+                <display-name>BBC One</display-name>
+              </channel>
+            </tv>
+        """.trimIndent()
+
+        val channels = parseChannels(xml)
+        assertEquals(2, channels.size)
+        assertEquals("espn.nl", channels[0].tvgChannelId)
+        assertEquals(listOf("ESPN", "ESPN NL"), channels[0].displayNames)
+        assertEquals("bbc.one.uk", channels[1].tvgChannelId)
+        assertEquals(listOf("BBC One"), channels[1].displayNames)
+    }
+
+    @Test
+    fun `parses channels and programmes in same pass`() = runTest {
+        val xml = """
+            <tv>
+              <channel id="a"><display-name>A One</display-name></channel>
+              <programme channel="a" start="20260117120000 +0000" stop="20260117130000 +0000">
+                <title>Show</title>
+              </programme>
+            </tv>
+        """.trimIndent()
+
+        val channels = mutableListOf<XmltvParser.ParsedChannel>()
+        val programmes = mutableListOf<XmltvParser.ParsedProgramme>()
+        XmltvParser.parse(
+            input = ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)),
+            onChannel = { channels.add(it) },
+            onProgramme = { programmes.add(it) },
+        )
+        assertEquals(1, channels.size)
+        assertEquals("a", channels.single().tvgChannelId)
+        assertEquals(1, programmes.size)
+        assertEquals("Show", programmes.single().title)
+    }
+
+    @Test
+    fun `skips channel without id`() = runTest {
+        val xml = """
+            <tv>
+              <channel><display-name>Orphan</display-name></channel>
+              <channel id="ok"><display-name>OK</display-name></channel>
+            </tv>
+        """.trimIndent()
+        val channels = parseChannels(xml)
+        assertEquals(1, channels.size)
+        assertEquals("ok", channels.single().tvgChannelId)
     }
 
     @Test

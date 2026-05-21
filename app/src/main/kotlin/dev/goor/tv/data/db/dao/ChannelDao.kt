@@ -106,4 +106,13 @@ interface ChannelDao {
 
     @Query("UPDATE channels SET lastWatchedAt = NULL")
     suspend fun clearRecentlyWatched()
+
+    @Query("""
+        SELECT * FROM channels
+        WHERE sourceId = :sourceId AND (tvgChannelId IS NULL OR tvgChannelId = '')
+    """)
+    suspend fun getMissingTvgIdsBySource(sourceId: Long): List<Channel>
+
+    @Query("UPDATE channels SET tvgChannelId = :tvgId WHERE id = :id")
+    suspend fun setTvgChannelId(id: Long, tvgId: String)
 }

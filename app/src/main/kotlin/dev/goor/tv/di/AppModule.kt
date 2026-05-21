@@ -29,7 +29,7 @@ val appModule = module {
     single { get<AppDatabase>().channelDao() }
     single { get<AppDatabase>().programmeDao() }
     single { SourceSyncService(get(), get()) }
-    single { EpgSyncService(get(), get()) }
+    single { EpgSyncService(get(), get(), get()) }
     single { StreamConcurrencyTracker() }
     single { SearchHistoryRepository(androidContext()) }
     single<DataStore<Preferences>> {
