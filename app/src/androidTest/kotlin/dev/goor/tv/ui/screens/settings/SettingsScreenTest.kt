@@ -3,16 +3,15 @@ package dev.goor.tv.ui.screens.settings
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.theme.GoorTVTheme
-import io.mockk.coEvery
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.Runs
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -26,9 +25,11 @@ class SettingsScreenTest {
     val composeTestRule = createComposeRule()
 
     private val sourceDao = mockk<SourceDao>()
-    private val syncService = mockk<SourceSyncService>()
+    private val channelDao = mockk<ChannelDao>(relaxed = true)
+    private val syncService = mockk<SourceSyncService>(relaxed = true)
+    private val epgSyncService = mockk<EpgSyncService>(relaxed = true)
 
-    private fun settingsVm() = SettingsViewModel(sourceDao, syncService)
+    private fun settingsVm() = SettingsViewModel(sourceDao, channelDao, syncService, epgSyncService)
 
     // ── Source list ───────────────────────────────────────────────────────────
 
@@ -126,8 +127,8 @@ class SettingsScreenTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Edit").performClick()
-        composeTestRule.onNodeWithDisplayValue("Existing Name").assertIsDisplayed()
-        composeTestRule.onNodeWithDisplayValue("http://existing.com").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Existing Name").assertIsDisplayed()
+        composeTestRule.onNodeWithText("http://existing.com").assertIsDisplayed()
     }
 
     // ── Navigation ────────────────────────────────────────────────────────────
