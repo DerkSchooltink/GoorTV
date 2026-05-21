@@ -11,7 +11,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 8, exportSchema = false)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 9, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -79,6 +79,18 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_programmes_sourceId ON programmes(sourceId)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_programmes_sourceId_tvgChannelId_endMs ON programmes(sourceId, tvgChannelId, endMs)")
+            }
+        }
+
+        /**
+         * Adds a covering (sourceId, tvgChannelId) index on channels. Used by the
+         * channel-matching subqueries in ProgrammeDao — without it SQLite scans all
+         * channels per programme row, turning the guide query into a 60s+ hang on a
+         * 38k-channel / 175k-programme DB.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_sourceId_tvgChannelId ON channels(sourceId, tvgChannelId)")
             }
         }
     }

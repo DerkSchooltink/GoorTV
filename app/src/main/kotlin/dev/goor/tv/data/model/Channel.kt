@@ -13,7 +13,17 @@ import androidx.room.PrimaryKey
         childColumns = ["sourceId"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index("sourceId"), Index(value = ["group", "name"]), Index("tvgChannelId")]
+    indices = [
+        Index("sourceId"),
+        Index(value = ["group", "name"]),
+        Index("tvgChannelId"),
+        // Covers the (sourceId, tvgChannelId) lookups that `ProgrammeDao.observeAllNow`
+        // does via its EXISTS subquery and that `observeWindowForChannels` does via
+        // `WHERE sourceId = ? AND tvgChannelId IN (…)`. Without it SQLite falls back to
+        // scanning all of `channels` per programme, which can hang the guide for minutes
+        // on large playlists.
+        Index(value = ["sourceId", "tvgChannelId"]),
+    ]
 )
 data class Channel(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
