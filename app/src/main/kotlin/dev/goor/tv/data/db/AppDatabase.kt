@@ -11,7 +11,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 10, exportSchema = true)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 11, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -106,5 +106,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds a unique index on `sources(type, url)`. Dedupes existing duplicates
+         * first by keeping the oldest row of each pair — the FK cascade then drops
+         * the orphaned channels. Affects any user who somehow accumulated two
+         * sources pointing at the same URL (rare; the UI didn't pre-check
+         * historically).
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    DELETE FROM sources WHERE id NOT IN (
+                        SELECT MIN(id) FROM sources GROUP BY type, url
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sources_type_url ON sources(type, url)")
+            }
+        }
     }
 }

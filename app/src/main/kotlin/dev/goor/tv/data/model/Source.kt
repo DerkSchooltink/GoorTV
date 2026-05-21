@@ -1,11 +1,18 @@
 package dev.goor.tv.data.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 enum class SourceType { M3U, XTREAM, MANUAL }
 
-@Entity(tableName = "sources")
+@Entity(
+    tableName = "sources",
+    // Rejects duplicate (type, url) at the DB layer — the UI also pre-checks and
+    // surfaces a friendly snackbar, but the index is the backstop for any DAO
+    // caller (e.g. the manual-source bootstrap race in HomeViewModel).
+    indices = [Index(value = ["type", "url"], unique = true)],
+)
 data class Source(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
