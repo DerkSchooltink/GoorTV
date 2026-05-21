@@ -18,7 +18,10 @@ import io.ktor.http.Url
 import io.ktor.http.isSuccess
 import io.ktor.http.encodeURLParameter
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.util.zip.GZIPInputStream
@@ -30,7 +33,8 @@ class EpgSyncService(
 ) {
     /**
      * Syncs EPG for all eligible sources, skipping any whose [Source.lastEpgSyncedAt] is
-     * younger than [throttleMs]. Returns collected throwables (one per failed source).
+     * younger than [throttleMs]. Each failed source is retried with exponential backoff
+     * up to [MAX_ATTEMPTS]. Returns one [Throwable] per source that ultimately failed.
      */
     suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
         val now = System.currentTimeMillis()
@@ -38,10 +42,25 @@ class EpgSyncService(
             .filter { it.isEpgEligible() }
             .filter { (it.lastEpgSyncedAt ?: 0L) + throttleMs <= now }
             .mapNotNull { source ->
-                runCatching { sync(source) }
-                    .exceptionOrNull()
-                    ?.also { Log.e(TAG, "EPG sync failed for '${source.name}': ${it.message}") }
+                syncWithRetry(source)?.also {
+                    Log.e(TAG, "EPG sync gave up on '${source.name}' after $MAX_ATTEMPTS attempts: ${it.message}")
+                }
             }
+    }
+
+    private suspend fun syncWithRetry(source: Source): Throwable? {
+        var lastErr: Throwable? = null
+        for (attempt in 0 until MAX_ATTEMPTS) {
+            try {
+                sync(source)
+                return null
+            } catch (e: Exception) {
+                lastErr = e
+                Log.w(TAG, "EPG sync attempt ${attempt + 1}/$MAX_ATTEMPTS failed for '${source.name}': ${e.message}")
+                if (attempt < MAX_ATTEMPTS - 1) delay(backoffMs(attempt))
+            }
+        }
+        return lastErr
     }
 
     /** Manual sync — ignores throttle. Persists last-synced timestamp or error. */
@@ -69,7 +88,7 @@ class EpgSyncService(
      * tvg-id backfill. Extracted from [sync] as a test seam — callers without a live
      * HTTP response can drive it directly with a `ByteArrayInputStream`.
      */
-    internal suspend fun processXmltv(sourceId: Long, stream: InputStream) {
+    internal suspend fun processXmltv(sourceId: Long, stream: InputStream) = withContext(Dispatchers.IO) {
         // Drop existing programmes for this source so re-syncs don't leave stale rows
         // when a programme's startMs shifts (REPLACE only matches exact PK).
         programmeDao.deleteBySource(sourceId)
@@ -164,5 +183,12 @@ class EpgSyncService(
         private const val BATCH_SIZE = 500
         private const val DEFAULT_THROTTLE_MS = 6L * 3600L * 1000L
         private const val RETENTION_MS = 6L * 3600L * 1000L
+        private const val MAX_ATTEMPTS = 3
+        private const val INITIAL_BACKOFF_MS = 30_000L
+        private const val MAX_BACKOFF_MS = 5L * 60L * 1000L  // 5 min
+
+        /** Exponential backoff capped at [MAX_BACKOFF_MS]. Pure for testability. */
+        internal fun backoffMs(attempt: Int): Long =
+            minOf(INITIAL_BACKOFF_MS shl attempt, MAX_BACKOFF_MS)
     }
 }

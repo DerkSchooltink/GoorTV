@@ -42,7 +42,7 @@ class HomeScreenTest {
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
 
     private fun homeVm() = HomeViewModel(
-        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService, programmeDao,
+        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao,
     )
 
     // ── Empty states ──────────────────────────────────────────────────────────
