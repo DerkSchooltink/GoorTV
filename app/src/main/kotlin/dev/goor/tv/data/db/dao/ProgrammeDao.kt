@@ -54,15 +54,23 @@ interface ProgrammeDao {
     """)
     fun observeRange(sourceId: Long, tvgId: String, fromMs: Long, toMs: Long): Flow<List<Programme>>
 
-    /** Programmes overlapping [fromMs, toMs] across every channel. Used by the guide grid. */
+    /**
+     * Programmes overlapping [fromMs, toMs] for the explicit (sourceId, tvgChannelId) set
+     * the guide grid actually needs. Way cheaper than scanning the whole EPG — a typical
+     * source has tens of thousands of programmes across thousands of EPG channels but the
+     * grid only renders the ~dozens that are visible.
+     */
     @Query("""
-        SELECT p.* FROM programmes p
-        WHERE p.endMs > :fromMs AND p.startMs < :toMs
-          AND EXISTS (
-            SELECT 1 FROM channels c
-            WHERE c.tvgChannelId = p.tvgChannelId AND c.sourceId = p.sourceId
-          )
-        ORDER BY p.sourceId, p.tvgChannelId, p.startMs
+        SELECT * FROM programmes
+        WHERE sourceId = :sourceId
+          AND tvgChannelId IN (:tvgIds)
+          AND endMs > :fromMs AND startMs < :toMs
+        ORDER BY tvgChannelId, startMs
     """)
-    fun observeWindowAll(fromMs: Long, toMs: Long): Flow<List<Programme>>
+    fun observeWindowForChannels(
+        sourceId: Long,
+        tvgIds: List<String>,
+        fromMs: Long,
+        toMs: Long,
+    ): Flow<List<Programme>>
 }

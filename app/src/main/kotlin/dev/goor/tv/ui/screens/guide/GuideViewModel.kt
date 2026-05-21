@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
@@ -74,24 +75,39 @@ class GuideViewModel(
      * the programmes overlapping the current window. Used only as an input to [state];
      * UI should consume [state] which wraps this list with empty-state semantics.
      */
-    private val rows: StateFlow<List<GuideRow>> = combine(
+    private val rows: StateFlow<List<GuideRow>?> = combine(
         windowStartMs,
         windowEndMs,
-    ) { from, to -> from to to }
-        .flatMapLatest { (from, to) ->
-            combine(
-                channelDao.getAllVisible(),
-                programmeDao.observeWindowAll(from, to),
-            ) { channels, programmes ->
-                val byKey = programmes.groupBy { it.sourceId to it.tvgChannelId }
-                channels.mapNotNull { ch ->
-                    val tvgId = ch.tvgChannelId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        channelDao.getAllVisible(),
+    ) { from, to, channels -> Triple(from, to, channels) }
+        .flatMapLatest { (from, to, channels) ->
+            val visible = channels.filter { !it.tvgChannelId.isNullOrBlank() }
+            if (visible.isEmpty()) return@flatMapLatest flowOf(emptyList<GuideRow>())
+            // Query programmes per source, restricted to the visible channels' tvg-ids.
+            // Avoids scanning the full EPG (thousands of unrelated tvg-ids and tens of
+            // thousands of programmes) just to discard 99% of it in Kotlin. SQLite's
+            // default SQLITE_MAX_VARIABLE_NUMBER is high enough for typical playlists
+            // — only worry if a single source contributes >999 unique tvg-ids.
+            val perSourceFlows = visible.groupBy { it.sourceId }.map { (sourceId, list) ->
+                val tvgIds = list.mapNotNull { it.tvgChannelId }.distinct()
+                programmeDao.observeWindowForChannels(sourceId, tvgIds, from, to)
+                    .map { programmes -> sourceId to programmes.groupBy { it.tvgChannelId } }
+            }
+            combine(perSourceFlows) { perSource ->
+                val byKey = HashMap<Pair<Long, String>, List<Programme>>(visible.size)
+                perSource.forEach { (sourceId, byTvgId) ->
+                    byTvgId.forEach { (tvgId, list) -> byKey[sourceId to tvgId] = list }
+                }
+                visible.map { ch ->
+                    val tvgId = ch.tvgChannelId!! // non-blank by the `visible` filter above
                     GuideRow(channel = ch, programmes = byKey[ch.sourceId to tvgId].orEmpty())
                 }
             }
         }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        // null = upstream hasn't emitted yet → state stays Loading instead of flashing
+        // an empty message while Room is still building the first result.
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /**
      * Reduced render state. UI displays the grid for [GuideState.Ready], a spinner
@@ -103,6 +119,8 @@ class GuideViewModel(
         sourceDao.getAll(),
         rows,
     ) { sources, rows ->
+        // rows == null → still loading from Room; keep the spinner up.
+        if (rows == null) return@combine GuideState.Loading
         val eligible = sources.filter { it.isEpgEligible() }
         val erroredSource = eligible.firstOrNull { !it.epgLastError.isNullOrBlank() }
         val anySuccess = eligible.any { it.lastEpgSyncedAt != null }

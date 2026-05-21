@@ -22,14 +22,14 @@ import org.koin.dsl.module
 val appModule = module {
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db")
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9)
             .build()
     }
     single { get<AppDatabase>().sourceDao() }
     single { get<AppDatabase>().channelDao() }
     single { get<AppDatabase>().programmeDao() }
     single { SourceSyncService(get(), get()) }
-    single { EpgSyncService(get(), get()) }
+    single { EpgSyncService(get(), get(), get()) }
     single { StreamConcurrencyTracker() }
     single { SearchHistoryRepository(androidContext()) }
     single<DataStore<Preferences>> {

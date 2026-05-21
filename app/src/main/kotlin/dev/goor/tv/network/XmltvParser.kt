@@ -17,26 +17,83 @@ object XmltvParser {
         val iconUrl: String?,
     )
 
+    data class ParsedChannel(
+        val tvgChannelId: String,
+        val displayNames: List<String>,
+    )
+
     /**
-     * Stream-parses XMLTV from [input], invoking [onProgramme] for each valid `<programme>` block.
-     * Malformed programme elements are logged and skipped — parsing continues.
-     * Caller owns [input] and is responsible for closing it.
+     * Stream-parses XMLTV from [input], invoking [onChannel] for each `<channel>` block and
+     * [onProgramme] for each valid `<programme>` block. Malformed elements are logged and
+     * skipped. Caller owns [input] and is responsible for closing it.
+     *
+     * [onChannel] has a no-op default so existing call sites that only care about programmes
+     * can keep the trailing-lambda form: `parse(stream) { p -> … }`. Callers that need both
+     * must pass [onChannel] as a named argument.
      */
-    suspend fun parse(input: InputStream, onProgramme: suspend (ParsedProgramme) -> Unit) {
+    suspend fun parse(
+        input: InputStream,
+        onChannel: suspend (ParsedChannel) -> Unit = {},
+        onProgramme: suspend (ParsedProgramme) -> Unit,
+    ) {
         val factory = XmlPullParserFactory.newInstance().apply { isNamespaceAware = false }
         val parser = factory.newPullParser()
         parser.setInput(input, null)
 
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG && parser.name == "programme") {
-                readProgramme(parser)?.let { onProgramme(it) }
+            if (event == XmlPullParser.START_TAG) {
+                when (parser.name) {
+                    "channel" -> readChannel(parser)?.let { onChannel(it) }
+                    "programme" -> readProgramme(parser)?.let { onProgramme(it) }
+                }
             }
             event = try {
                 parser.next()
             } catch (e: Exception) {
                 Log.w("XmltvParser", "Parser error, aborting: ${e.message}")
                 return
+            }
+        }
+    }
+
+    private fun readChannel(parser: XmlPullParser): ParsedChannel? {
+        val id = parser.getAttributeValue(null, "id")?.takeIf { it.isNotBlank() } ?: run {
+            drainElement(parser)
+            return null
+        }
+        val names = mutableListOf<String>()
+        var depth = 1
+        while (depth > 0) {
+            val event = try {
+                parser.next()
+            } catch (e: Exception) {
+                Log.w("XmltvParser", "Malformed channel element skipped: ${e.message}")
+                return null
+            }
+            when (event) {
+                XmlPullParser.START_TAG -> {
+                    depth++
+                    if (parser.name == "display-name") {
+                        readText(parser).takeIf { it.isNotBlank() }?.let(names::add)
+                        depth--
+                    }
+                }
+                XmlPullParser.END_TAG -> depth--
+                XmlPullParser.END_DOCUMENT -> return null
+            }
+        }
+        return ParsedChannel(tvgChannelId = id, displayNames = names)
+    }
+
+    private fun drainElement(parser: XmlPullParser) {
+        var depth = 1
+        while (depth > 0) {
+            val event = try { parser.next() } catch (_: Exception) { return }
+            when (event) {
+                XmlPullParser.START_TAG -> depth++
+                XmlPullParser.END_TAG -> depth--
+                XmlPullParser.END_DOCUMENT -> return
             }
         }
     }

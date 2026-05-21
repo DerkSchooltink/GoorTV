@@ -106,4 +106,25 @@ interface ChannelDao {
 
     @Query("UPDATE channels SET lastWatchedAt = NULL")
     suspend fun clearRecentlyWatched()
+
+    @Query("""
+        SELECT id, name FROM channels
+        WHERE sourceId = :sourceId AND (tvgChannelId IS NULL OR tvgChannelId = '')
+    """)
+    suspend fun getMissingTvgIdsBySource(sourceId: Long): List<ChannelIdName>
+
+    @Query("UPDATE channels SET tvgChannelId = :tvgId WHERE id = :id")
+    suspend fun setTvgChannelId(id: Long, tvgId: String)
+
+    /**
+     * Bulk-apply tvg-id assignments in a single transaction. Avoids the WAL thrash of
+     * issuing one auto-committed UPDATE per channel during EPG backfill.
+     */
+    @Transaction
+    suspend fun applyTvgChannelIdAssignments(assignments: List<Pair<Long, String>>) {
+        assignments.forEach { (id, tvgId) -> setTvgChannelId(id, tvgId) }
+    }
 }
+
+/** Lightweight projection used by [ChannelDao.getMissingTvgIdsBySource]. */
+data class ChannelIdName(val id: Long, val name: String)
