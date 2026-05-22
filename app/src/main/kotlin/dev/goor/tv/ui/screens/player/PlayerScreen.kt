@@ -2,11 +2,6 @@
 
 package dev.goor.tv.ui.screens.player
 
-import android.app.Activity
-import android.view.WindowManager
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -22,6 +17,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
+import com.google.android.gms.cast.framework.CastSession
+import androidx.compose.runtime.State
 import dev.goor.tv.cast.loadOnCastSession
 import dev.goor.tv.cast.rememberCastSession
 import androidx.compose.material3.*
@@ -46,7 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.goor.tv.data.model.Programme
+import dev.goor.tv.ui.util.SystemBarsController
 import dev.goor.tv.ui.util.focusBorder
+import dev.goor.tv.ui.util.rememberSystemBarsController
 import dev.goor.tv.ui.util.rememberTvFocus
 import dev.goor.tv.ui.util.trackTvFocus
 import kotlinx.coroutines.delay
@@ -54,15 +53,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -91,26 +81,33 @@ fun PlayerScreen(
     channelId: Long,
     onBack: () -> Unit,
     vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }),
+    systemBars: SystemBarsController = rememberSystemBarsController(),
+    // Injectable so tests don't have to spin up `CastContext.getSharedInstance`
+    // (Google Play Services) — that's the other side-effect that tears down the
+    // Compose test host. Default uses the real Cast session listener.
+    castSessionState: State<CastSession?> = rememberCastSession(),
+    // Injectable so tests pass [NoOpPlayerEngine] instead of constructing a real
+    // ExoPlayer (which SIGKILLs the test process on the emulator).
+    playerEngine: PlayerEngine = rememberPlayerEngine(),
 ) {
     val channel by vm.channel.collectAsStateWithLifecycle()
     val headers by vm.headers.collectAsStateWithLifecycle()
     val stopped by vm.stopped.collectAsStateWithLifecycle()
     val nowAndNext by vm.nowAndNext.collectAsStateWithLifecycle()
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
-    val castSession by rememberCastSession()
+    val castSession by castSessionState
     val isCasting = castSession != null
     val context = LocalContext.current
-    val activity = context as? Activity
 
     LaunchedEffect(stopped) {
         if (stopped) onBack()
     }
 
-    val player = remember { ExoPlayer.Builder(context).build() }
-    var hasError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val isBuffering by playerEngine.isBuffering
+    val engineError by playerEngine.errorMessage
+    val hasError = engineError != null
+    val errorMessage = engineError
     var castError by remember { mutableStateOf<String?>(null) }
-    var isBuffering by remember { mutableStateOf(true) }
     var showControls by remember { mutableStateOf(false) }
     // User-selected aspect ratio persists across config changes (rotation,
     // dark-mode toggle, etc.). Stored as ordinal because Saver can't reflect
@@ -140,63 +137,24 @@ fun PlayerScreen(
 
     channel?.let { ch ->
         LaunchedEffect(ch.url, headers, castSession) {
-            hasError = false
-            errorMessage = null
             castError = null
             val session = castSession
             if (session != null) {
                 // Cast path — pause local, hand off to receiver.
-                player.pause()
-                isBuffering = false
+                playerEngine.pause()
                 runCatching { loadOnCastSession(session, ch) }
                     .onFailure { castError = "Cast failed: ${it.message ?: it::class.simpleName}" }
             } else {
-                // Local path — (re-)prepare ExoPlayer.
-                isBuffering = true
-                if (headers.isEmpty()) {
-                    player.setMediaItem(MediaItem.fromUri(ch.url))
-                } else {
-                    val mediaSource = DefaultMediaSourceFactory(
-                        DefaultDataSource.Factory(
-                            context,
-                            DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
-                        )
-                    ).createMediaSource(MediaItem.fromUri(ch.url))
-                    player.setMediaSource(mediaSource)
-                }
-                player.prepare()
-                player.play()
+                playerEngine.prepare(ch.url, headers)
             }
         }
-    }
-
-    DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                isBuffering = state == Player.STATE_BUFFERING
-            }
-            override fun onPlayerError(error: PlaybackException) {
-                hasError = true
-                isBuffering = false
-                errorMessage = error.message ?: "Playback failed"
-            }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
     }
 
     DisposableEffect(Unit) {
-        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val insetsController = activity?.window?.let { window ->
-            WindowCompat.getInsetsController(window, window.decorView).also {
-                it.hide(WindowInsetsCompat.Type.systemBars())
-                it.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
+        systemBars.hideAndKeepScreenOn()
         onDispose {
-            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            insetsController?.show(WindowInsetsCompat.Type.systemBars())
-            player.release()
+            systemBars.restore()
+            playerEngine.release()
         }
     }
 
@@ -205,33 +163,37 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        // Player — always mounted while channel is loaded so it isn't recreated on error
+        // Player — always mounted while channel is loaded so it isn't recreated on error.
+        // The engine returns null for fakes (NoOpPlayerEngine in tests), so we
+        // skip the AndroidView entirely in that case.
         if (channel != null) {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        this.player = player
-                        useController = false
-                    }
-                },
-                update = { pv ->
-                    pv.resizeMode = when (aspectRatioMode) {
-                        AspectRatioMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        AspectRatioMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-                        AspectRatioMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                        AspectRatioMode.RATIO_16_9 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        AspectRatioMode.RATIO_4_3 -> AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    }
-                },
-                modifier = (when (aspectRatioMode) {
-                    AspectRatioMode.RATIO_16_9 -> Modifier.aspectRatio(16f / 9f).align(Alignment.Center)
-                    AspectRatioMode.RATIO_4_3 -> Modifier.aspectRatio(4f / 3f).align(Alignment.Center)
-                    else -> Modifier.fillMaxSize()
-                }).clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                ) { showControls = !showControls },
-            )
+            val resizeMode = when (aspectRatioMode) {
+                AspectRatioMode.FIT -> PlayerEngine.ResizeMode.FIT
+                AspectRatioMode.FILL -> PlayerEngine.ResizeMode.FILL
+                AspectRatioMode.ZOOM -> PlayerEngine.ResizeMode.ZOOM
+                AspectRatioMode.RATIO_16_9 -> PlayerEngine.ResizeMode.FIT
+                AspectRatioMode.RATIO_4_3 -> PlayerEngine.ResizeMode.FIT
+            }
+            val viewModifier = (when (aspectRatioMode) {
+                AspectRatioMode.RATIO_16_9 -> Modifier.aspectRatio(16f / 9f).align(Alignment.Center)
+                AspectRatioMode.RATIO_4_3 -> Modifier.aspectRatio(4f / 3f).align(Alignment.Center)
+                else -> Modifier.fillMaxSize()
+            }).clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+            ) { showControls = !showControls }
+            val playerView = remember(playerEngine) { playerEngine.createPlayerView(context) }
+            if (playerView != null) {
+                AndroidView(
+                    factory = { playerView },
+                    update = { playerEngine.applyResizeMode(it, resizeMode) },
+                    modifier = viewModifier,
+                )
+            } else {
+                // No player view (test/preview) — still honour click-to-toggle-controls
+                // so UI tests can exercise that path.
+                Box(modifier = viewModifier)
+            }
         }
 
         // Loading / buffering overlay
@@ -316,22 +278,7 @@ fun PlayerScreen(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Button(onClick = {
-                        hasError = false
-                        channel?.let { ch ->
-                            if (headers.isEmpty()) {
-                                player.setMediaItem(MediaItem.fromUri(ch.url))
-                            } else {
-                                val mediaSource = DefaultMediaSourceFactory(
-                                    DefaultDataSource.Factory(
-                                        context,
-                                        DefaultHttpDataSource.Factory().setDefaultRequestProperties(headers),
-                                    )
-                                ).createMediaSource(MediaItem.fromUri(ch.url))
-                                player.setMediaSource(mediaSource)
-                            }
-                            player.prepare()
-                            player.play()
-                        }
+                        channel?.let { ch -> playerEngine.prepare(ch.url, headers) }
                     }) { Text("Retry") }
                 }
             }
