@@ -3,6 +3,7 @@ package dev.goor.tv.network
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.headersMap
+import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -21,7 +22,7 @@ data class XtreamChannel(
     @SerialName("epg_channel_id") val epgChannelId: String? = null,
 )
 
-object XtreamApi {
+class XtreamApi(private val httpClient: HttpClient) {
     suspend fun fetchLiveChannels(source: Source): List<Channel> {
         val parsed = Url(source.url)
         val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort

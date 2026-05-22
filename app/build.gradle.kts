@@ -55,6 +55,11 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.all {
+            // Default 512 MB OOMs once mockk has cached enough proxies across
+            // the network/parser suites. 2 GB has plenty of headroom.
+            it.maxHeapSize = "2g"
+        }
     }
 
     sourceSets {
@@ -112,6 +117,7 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.ktor.client.mock)
     // XmlPullParser implementation for JVM unit tests (Android provides one at runtime).
     testImplementation("net.sf.kxml:kxml2:2.3.0")
 

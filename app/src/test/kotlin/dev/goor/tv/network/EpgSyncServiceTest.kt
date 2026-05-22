@@ -6,6 +6,9 @@ import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.util.testSource
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respondError
+import io.ktor.http.HttpStatusCode
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.just
@@ -24,7 +27,16 @@ class EpgSyncServiceTest {
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
     private val channelDao = mockk<ChannelDao>(relaxed = true)
 
-    private fun service() = EpgSyncService(sourceDao, programmeDao, channelDao)
+    // EPG tests exercise processXmltv directly via the test seam OR call sync()
+    // which expects the HTTP layer; use a real client with MockEngine so we
+    // avoid mockk-proxying io.ktor.HttpClient (which can blow up mockk's
+    // bytecode cache on large test suites).
+    private fun service() = EpgSyncService(
+        sourceDao = sourceDao,
+        programmeDao = programmeDao,
+        channelDao = channelDao,
+        httpClient = defaultHttpClient(MockEngine { respondError(HttpStatusCode.InternalServerError) }),
+    )
 
     @Test
     fun `MANUAL sources are skipped in syncAll`() = runTest {

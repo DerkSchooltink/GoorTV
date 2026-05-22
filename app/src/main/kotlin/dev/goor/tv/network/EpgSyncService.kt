@@ -10,6 +10,7 @@ import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
 import dev.goor.tv.data.model.isEpgEligible
 import dev.goor.tv.util.ChannelNameNormalizer
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.HttpResponse
@@ -30,6 +31,7 @@ class EpgSyncService(
     private val sourceDao: SourceDao,
     private val programmeDao: ProgrammeDao,
     private val channelDao: ChannelDao,
+    private val httpClient: HttpClient,
 ) {
     /**
      * Syncs EPG for all eligible sources, skipping any whose [Source.lastEpgSyncedAt] is

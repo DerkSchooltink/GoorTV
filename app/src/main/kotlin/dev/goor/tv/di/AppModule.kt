@@ -13,6 +13,8 @@ import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.AppSyncCoordinator
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.network.XtreamApi
+import dev.goor.tv.network.defaultHttpClient
 import dev.goor.tv.util.TimeProvider
 import dev.goor.tv.ui.screens.guide.GuideViewModel
 import dev.goor.tv.ui.screens.home.HomeViewModel
@@ -31,8 +33,10 @@ val appModule = module {
     single { get<AppDatabase>().sourceDao() }
     single { get<AppDatabase>().channelDao() }
     single { get<AppDatabase>().programmeDao() }
-    single { SourceSyncService(get(), get()) }
-    single { EpgSyncService(get(), get(), get()) }
+    single { defaultHttpClient() }
+    single { XtreamApi(get()) }
+    single { SourceSyncService(get(), get(), get(), get()) }
+    single { EpgSyncService(get(), get(), get(), get()) }
     single { AppSyncCoordinator(get(), get()) }
     single { TimeProvider() }
     single { StreamConcurrencyTracker() }

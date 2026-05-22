@@ -6,6 +6,7 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
+import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import kotlinx.coroutines.delay
@@ -22,6 +23,8 @@ fun extractPrefix(name: String): String? =
 class SourceSyncService(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
+    private val httpClient: HttpClient,
+    private val xtreamApi: XtreamApi,
 ) {
     // Serializes concurrent syncs of the same source. Different sources can still
     // sync in parallel. Without this, two overlapping sync(source) calls race on the
@@ -78,7 +81,7 @@ class SourceSyncService(
                 fetched = parsed.channels
                 discoveredEpgUrl = parsed.urlTvg
             }
-            SourceType.XTREAM -> fetched = XtreamApi.fetchLiveChannels(source)
+            SourceType.XTREAM -> fetched = xtreamApi.fetchLiveChannels(source)
             SourceType.MANUAL -> return@withLock
         }
         // Derive `group` from name prefix when upstream didn't supply one. Done
