@@ -78,9 +78,11 @@ fun SettingsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        // focusRestorer() restores focus to the last focused per-row button
-        // (Edit / Groups / Sync / Delete) after a dialog dismisses, complementing
-        // the explicit FocusRequester on the global Add Source IconButton.
+        // focusRestorer() remembers which per-row button (Edit / Groups / Sync /
+        // Delete) was last focused and restores it whenever focus re-enters the
+        // column — typically after a dialog dismisses, but also on back-stack
+        // return. Complements the explicit FocusRequester on the global Add
+        // Source IconButton (which has its own restore in #42).
         LazyColumn(
             contentPadding = padding,
             modifier = Modifier.focusRestorer(),

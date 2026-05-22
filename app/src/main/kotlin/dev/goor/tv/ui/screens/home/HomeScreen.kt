@@ -370,9 +370,11 @@ private fun HomeContent(
             contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator() }
         pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
-        // focusRestorer() lets per-row Edit / Favorite buttons re-acquire focus
-        // after a dialog dismisses — without it, D-pad lands wherever Android's
-        // default focus picker chooses (usually the top of the activity).
+        // focusRestorer() remembers the last-focused descendant of the column
+        // and restores focus to it whenever focus re-enters — after a dialog
+        // dismisses, after back-stack pops, after a screen transition. Without
+        // it, D-pad re-entry lands wherever Android's default focus picker
+        // chooses (usually the top of the activity).
         else -> LazyColumn(
             state = listState,
             modifier = Modifier
