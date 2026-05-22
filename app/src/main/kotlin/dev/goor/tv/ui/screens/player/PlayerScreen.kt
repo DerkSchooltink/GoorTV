@@ -50,8 +50,9 @@ import dev.goor.tv.ui.util.focusBorder
 import dev.goor.tv.ui.util.rememberTvFocus
 import dev.goor.tv.ui.util.trackTvFocus
 import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -436,7 +437,7 @@ fun PlayerScreen(
                     ch.logoUrl?.let { url ->
                         AsyncImage(
                             model = url,
-                            contentDescription = null,
+                            contentDescription = ch.name,
                             modifier = Modifier.size(40.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
                         )
@@ -460,11 +461,11 @@ fun PlayerScreen(
 
 }
 
-private val hmFormatter: SimpleDateFormat by lazy {
-    SimpleDateFormat("HH:mm", Locale.getDefault())
-}
+// java.time formatters are immutable + thread-safe (unlike SimpleDateFormat).
+private val hmFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).withZone(ZoneId.systemDefault())
 
-private fun formatHm(epochMs: Long): String = hmFormatter.format(Date(epochMs))
+private fun formatHm(epochMs: Long): String = hmFormatter.format(Instant.ofEpochMilli(epochMs))
 
 @Composable
 private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
