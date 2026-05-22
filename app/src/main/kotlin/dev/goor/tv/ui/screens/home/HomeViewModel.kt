@@ -7,14 +7,13 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.insertSeparators
 import androidx.paging.map
+import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
-import dev.goor.tv.data.model.Source
-import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
@@ -31,6 +30,7 @@ class HomeViewModel(
     private val searchHistoryRepo: SearchHistoryRepository,
     private val prefsRepository: UserPreferencesRepository,
     private val programmeDao: ProgrammeDao,
+    private val manualSource: ManualSourceManager,
     timeProvider: TimeProvider,
 ) : ViewModel() {
 
@@ -46,8 +46,8 @@ class HomeViewModel(
     private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
 
-    private val _manualSourceId = MutableStateFlow<Long?>(null)
-    val manualSourceId = _manualSourceId.asStateFlow()
+    /** ID of the singleton "Custom Channels" source, or null if it hasn't been created yet. */
+    val manualSourceId: StateFlow<Long?> = manualSource.manualSourceId
 
     val searchHistory = searchHistoryRepo.history
 
@@ -96,42 +96,16 @@ class HomeViewModel(
         }
     }.cachedIn(viewModelScope)
 
-    init {
-        // Background sync is owned by AppSyncCoordinator (kicked off in App.onCreate)
-        // so opening directly to Guide/Settings still syncs. Only screen-local state
-        // lookup remains here.
-        viewModelScope.launch {
-            sourceDao.getManualSource()?.let { _manualSourceId.value = it.id }
-        }
-    }
-
-    private suspend fun getOrCreateManualSourceId(): Long {
-        _manualSourceId.value?.let { return it }
-        val existing = sourceDao.getManualSource()
-        if (existing != null) {
-            _manualSourceId.value = existing.id
-            return existing.id
-        }
-        val id = sourceDao.insert(
-            Source(name = "Custom Channels", type = SourceType.MANUAL, url = "", includedGroups = null)
-        )
-        _manualSourceId.value = id
-        return id
-    }
-
     fun addCustomChannel(name: String, url: String, logoUrl: String?, group: String?) {
-        viewModelScope.launch {
-            val sourceId = getOrCreateManualSourceId()
-            channelDao.insert(Channel(sourceId = sourceId, name = name, url = url, logoUrl = logoUrl, group = group))
-        }
+        viewModelScope.launch { manualSource.addChannel(name, url, logoUrl, group) }
     }
 
     fun updateCustomChannel(channel: Channel) {
-        viewModelScope.launch { channelDao.update(channel) }
+        viewModelScope.launch { manualSource.updateChannel(channel) }
     }
 
     fun deleteCustomChannel(channel: Channel) {
-        viewModelScope.launch { channelDao.delete(channel) }
+        viewModelScope.launch { manualSource.deleteChannel(channel) }
     }
 
     /** User-initiated refresh — bypasses the throttle that the background coordinator respects. */

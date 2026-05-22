@@ -3,6 +3,7 @@ package dev.goor.tv.ui.screens.home
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
@@ -41,9 +42,17 @@ class HomeScreenTest {
         coEvery { syncAll(any()) } returns emptyList()
     }
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
+    private val manualSource = mockk<ManualSourceManager>(relaxed = true)
 
     private fun homeVm() = HomeViewModel(
-        channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, TimeProvider(),
+        channelDao = channelDao,
+        sourceDao = sourceDao,
+        syncService = syncService,
+        searchHistoryRepo = searchHistoryRepo,
+        prefsRepository = prefsRepository,
+        programmeDao = programmeDao,
+        manualSource = manualSource,
+        timeProvider = TimeProvider(),
     )
 
     // ── Empty states ──────────────────────────────────────────────────────────
