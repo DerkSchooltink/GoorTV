@@ -4,13 +4,14 @@
   <CurrentIssues>
     <ID>ComplexCondition:PlayerScreen.kt$channel == null || (isBuffering &amp;&amp; !hasError &amp;&amp; !isCasting)</ID>
     <ID>ComplexCondition:XmltvParser.kt$XmltvParser$channel.isNullOrBlank() || startMs == null || endMs == null || title.isNullOrBlank()</ID>
-    <ID>CyclomaticComplexMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable fun HomeScreen( onChannelClick: (Long) -&gt; Unit, onSettingsClick: () -&gt; Unit, onGuideClick: () -&gt; Unit = {}, vm: HomeViewModel = koinViewModel(), )</ID>
     <ID>CyclomaticComplexMethod:PlayerScreen.kt$@Composable fun PlayerScreen( channelId: Long, onBack: () -&gt; Unit, vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }), systemBars: SystemBarsController = rememberSystemBarsController(), // Injectable so tests don't have to spin up `CastContext.getSharedInstance` // (Google Play Services) — that's the other side-effect that tears down the // Compose test host. Default uses the real Cast session listener. castSessionState: State&lt;CastSession?&gt; = rememberCastSession(), // Injectable so tests pass [NoOpPlayerEngine] instead of constructing a real // ExoPlayer (which SIGKILLs the test process on the emulator). playerEngine: PlayerEngine = rememberPlayerEngine(), )</ID>
     <ID>CyclomaticComplexMethod:XmltvParser.kt$XmltvParser$private fun readProgramme(parser: XmlPullParser): ParsedProgramme?</ID>
     <ID>EmptyFunctionBlock:CastSession.kt$&lt;no name provided&gt;${}</ID>
     <ID>LongMethod:AddEditChannelDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddEditChannelDialog( channel: Channel? = null, groups: List&lt;String&gt;, onDismiss: () -&gt; Unit, onSave: (name: String, url: String, logoUrl: String?, group: String?) -&gt; Unit, onDelete: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable fun HomeScreen( onChannelClick: (Long) -&gt; Unit, onSettingsClick: () -&gt; Unit, onGuideClick: () -&gt; Unit = {}, vm: HomeViewModel = koinViewModel(), )</ID>
     <ID>LongMethod:PlayerScreen.kt$@Composable fun PlayerScreen( channelId: Long, onBack: () -&gt; Unit, vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }), systemBars: SystemBarsController = rememberSystemBarsController(), // Injectable so tests don't have to spin up `CastContext.getSharedInstance` // (Google Play Services) — that's the other side-effect that tears down the // Compose test host. Default uses the real Cast session listener. castSessionState: State&lt;CastSession?&gt; = rememberCastSession(), // Injectable so tests pass [NoOpPlayerEngine] instead of constructing a real // ExoPlayer (which SIGKILLs the test process on the emulator). playerEngine: PlayerEngine = rememberPlayerEngine(), )</ID>
+    <ID>LongParameterList:HomeScreen.kt$( isSyncing: Boolean, showFavoritesOnly: Boolean, searchActive: Boolean, sortOrder: SortOrder, onToggleFavoritesOnly: () -&gt; Unit, onSortSelected: (SortOrder) -&gt; Unit, onToggleSearch: () -&gt; Unit, onGuideClick: () -&gt; Unit, onSettingsClick: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:HomeScreen.kt$( sources: List&lt;dev.goor.tv.data.model.Source&gt;, isSyncing: Boolean, pagingItems: androidx.paging.compose.LazyPagingItems&lt;ChannelListItem&gt;, recentlyWatched: List&lt;Channel&gt;, isDefaultView: Boolean, manualSourceId: Long?, nowByChannel: Map&lt;Pair&lt;Long, String&gt;, Programme&gt;, nowMs: Long, listState: androidx.compose.foundation.lazy.LazyListState, onChannelClick: (Long) -&gt; Unit, onFavoriteToggle: (Long) -&gt; Unit, onEditChannel: (Channel) -&gt; Unit, onClearRecent: () -&gt; Unit, onSettingsClick: () -&gt; Unit, )</ID>
     <ID>LongParameterList:SettingsScreen.kt$( source: Source, isSyncing: Boolean, isEpgSyncing: Boolean, onSync: () -&gt; Unit, onEpgSync: () -&gt; Unit, onEdit: () -&gt; Unit, onGroups: () -&gt; Unit, onDelete: () -&gt; Unit, )</ID>
     <ID>LongParameterList:TestFixtures.kt$( id: Long = 1L, name: String = "Test Source", type: SourceType = SourceType.M3U, url: String = "http://example.com/playlist.m3u", lastSyncedAt: Long? = null, epgUrl: String? = null, lastEpgSyncedAt: Long? = null, epgLastError: String? = null, )</ID>
     <ID>LongParameterList:TestFixtures.kt$( id: Long = 1L, sourceId: Long = 1L, name: String = "Test Channel", url: String = "http://example.com/stream.m3u8", group: String? = null, logoUrl: String? = null, isFavorite: Boolean = false, lastWatchedAt: Long? = null, tvgChannelId: String? = null, )</ID>
@@ -25,9 +26,7 @@
     <ID>MaxLineLength:GuideScreen.kt$body = "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider."</ID>
     <ID>MaxLineLength:GuideScreen.kt$body = "Your channels are configured but no programmes were found. The EPG feed may not cover them."</ID>
     <ID>MaxLineLength:GuideViewModelTest.kt$GuideViewModelTest$val pb2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", startMs = 7_200_000L, endMs = 10_800_000L, title = "Showb2")</ID>
-    <ID>MaxLineLength:HomeScreen.kt$icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) }</ID>
     <ID>MaxLineLength:HomeScreen.kt$tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant</ID>
-    <ID>MaxLineLength:HomeScreen.kt$tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current</ID>
     <ID>MaxLineLength:HomeViewModelTest.kt$HomeViewModelTest$private fun makeVm()</ID>
     <ID>MaxLineLength:MigrationTest.kt$MigrationTest$"VALUES (1, 'Seed Channel', 'http://example.com/ch.ts', 'Seed Group', 'http://example.com/logo.png')"</ID>
     <ID>MaxLineLength:PlayerViewModelTest.kt$PlayerViewModelTest$val next = testProgramme(sourceId = 3L, tvgChannelId = "abc.tv", startMs = 4_000_000L, endMs = 8_000_000L, title = "Next")</ID>
@@ -47,6 +46,7 @@
     <ID>TooGenericExceptionCaught:SourceSyncService.kt$SourceSyncService$e: Exception</ID>
     <ID>TooGenericExceptionCaught:XmltvParser.kt$XmltvParser$e: Exception</ID>
     <ID>TooManyFunctions:GuideScreen.kt$dev.goor.tv.ui.screens.guide.GuideScreen.kt</ID>
+    <ID>TooManyFunctions:HomeScreen.kt$dev.goor.tv.ui.screens.home.HomeScreen.kt</ID>
     <ID>UnusedPrivateProperty:EpgSyncService.kt$EpgSyncService.Companion$private const val RETENTION_MS = 6L * 3600L * 1000L</ID>
   </CurrentIssues>
 </SmellBaseline>
