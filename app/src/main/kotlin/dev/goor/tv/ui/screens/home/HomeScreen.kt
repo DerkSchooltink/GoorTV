@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -369,7 +370,16 @@ private fun HomeContent(
             contentAlignment = Alignment.Center,
         ) { CircularProgressIndicator() }
         pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
-        else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("channel_list")) {
+        // focusRestorer() lets per-row Edit / Favorite buttons re-acquire focus
+        // after a dialog dismisses — without it, D-pad lands wherever Android's
+        // default focus picker chooses (usually the top of the activity).
+        else -> LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRestorer()
+                .testTag("channel_list"),
+        ) {
             if (recentlyWatched.isNotEmpty() && isDefaultView) {
                 item(key = "recent_header") {
                     Row(
