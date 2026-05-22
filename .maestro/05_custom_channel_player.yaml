@@ -1,0 +1,35 @@
+appId: dev.goor.tv
+---
+# End-to-end: add a custom channel, open it on the player, navigate back.
+# Uses the manual-source path (Add Channel FAB), so no real network is
+# required — the player will fail to load the placeholder URL but that's
+# orthogonal to what we're testing (navigation + back behaviour).
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+# Open the Add Channel dialog via the FAB.
+- tapOn: "Add channel"
+- assertVisible: "Add Channel"
+
+# Fill in the bare minimum: name + URL (URL must start with http:// or https://
+# to satisfy the Add button's validation gate added in #31).
+- tapOn: "Name"
+- inputText: "Maestro Channel"
+- tapOn: "Stream URL"
+- inputText: "http://example.invalid/stream.ts"
+- tapOn: "Save"
+
+# Channel row should appear on Home.
+- assertVisible: "Maestro Channel"
+
+# Tap into the player.
+- tapOn: "Maestro Channel"
+
+# PlayerScreen is identifiable by the Back IconButton (contentDescription "Back").
+- assertVisible: "Back"
+
+# Press back and confirm we're home again.
+- tapOn: "Back"
+- assertVisible: "Maestro Channel"
+- assertVisible: "GoorTV"
