@@ -84,6 +84,13 @@ fun HomeScreen(
     val coroutineScope = rememberCoroutineScope()
     val showScrollToTop by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
+    // Stable callbacks for ChannelItem. Without `remember`, the LazyColumn
+    // would hand every row a fresh lambda on each recomposition (e.g. on every
+    // `nowMs` minute tick) and force the rows to recompose even when their
+    // underlying data hasn't changed.
+    val onFavoriteToggle = remember<(Long) -> Unit> { vm::toggleFavorite }
+    val onEditChannel = remember<(Channel) -> Unit> { { ch -> editingChannel = ch } }
+
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
             snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
@@ -277,17 +284,26 @@ fun HomeScreen(
                         ) { index ->
                             when (val item = pagingItems[index]) {
                                 is ChannelListItem.Header -> stickyGroupHeader(item.title)
-                                is ChannelListItem.Item -> ChannelItem(
-                                    channel = item.channel,
-                                    onClick = { onChannelClick(item.channel.id) },
-                                    onFavoriteToggle = { vm.toggleFavorite(item.channel.id) },
-                                    isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
-                                    onEdit = { editingChannel = item.channel },
-                                    nowPlaying = item.channel.tvgChannelId?.let {
-                                        nowByChannel[item.channel.sourceId to it]
-                                    },
-                                    nowMs = nowMs,
-                                )
+                                is ChannelListItem.Item -> {
+                                    // Cache the (sourceId, tvgChannelId) lookup key + result so
+                                    // ChannelItem sees a stable `nowPlaying?` and skips on most
+                                    // recompositions. Without this, the Pair was rebuilt per item
+                                    // per recomp and the row's body re-ran every minute tick.
+                                    val sourceId = item.channel.sourceId
+                                    val tvgId = item.channel.tvgChannelId
+                                    val nowPlaying = remember(sourceId, tvgId, nowByChannel) {
+                                        tvgId?.let { nowByChannel[sourceId to it] }
+                                    }
+                                    ChannelItem(
+                                        channel = item.channel,
+                                        isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
+                                        nowPlaying = nowPlaying,
+                                        nowMs = nowMs,
+                                        onClick = onChannelClick,
+                                        onFavoriteToggle = onFavoriteToggle,
+                                        onEdit = onEditChannel,
+                                    )
+                                }
                                 null -> {}
                             }
                         }
@@ -339,15 +355,26 @@ private fun stickyGroupHeader(title: String) {
     }
 }
 
+/**
+ * One channel row. Callbacks take primitive IDs (not 0-arg lambdas) so the
+ * call site can pass stable references (`onChannelClick`, `vm::toggleFavorite`,
+ * remembered `onEdit`) and ChannelItem actually participates in Compose
+ * skipping — otherwise a fresh `() -> Unit` per item per recomp re-runs the
+ * row body on every `nowMs` minute tick.
+ *
+ * `nowMs` has no default — call sites must pass the current value. The old
+ * `System.currentTimeMillis()` default looked like a convenience but
+ * non-stable defaults defeat skipping for the entire function.
+ */
 @Composable
 private fun ChannelItem(
     channel: Channel,
-    onClick: () -> Unit,
-    onFavoriteToggle: () -> Unit,
-    isCustom: Boolean = false,
-    onEdit: () -> Unit = {},
-    nowPlaying: Programme? = null,
-    nowMs: Long = System.currentTimeMillis(),
+    isCustom: Boolean,
+    nowPlaying: Programme?,
+    nowMs: Long,
+    onClick: (Long) -> Unit,
+    onFavoriteToggle: (Long) -> Unit,
+    onEdit: (Channel) -> Unit,
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -369,7 +396,7 @@ private fun ChannelItem(
                 }
             }
             .onFocusChanged { isFocused = it.isFocused }
-            .clickable(onClick = onClick)
+            .clickable { onClick(channel.id) }
             .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -410,7 +437,7 @@ private fun ChannelItem(
             }
         }
         if (isCustom) {
-            IconButton(onClick = onEdit) {
+            IconButton(onClick = { onEdit(channel) }) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = "Edit channel",
@@ -418,7 +445,7 @@ private fun ChannelItem(
                 )
             }
         }
-        IconButton(onClick = onFavoriteToggle) {
+        IconButton(onClick = { onFavoriteToggle(channel.id) }) {
             Icon(
                 if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = null,
