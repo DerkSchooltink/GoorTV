@@ -12,7 +12,9 @@ import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -49,7 +51,7 @@ sealed interface GuideState {
     data class Ready(val rows: List<GuideRow>) : GuideState
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class GuideViewModel(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
@@ -125,6 +127,12 @@ class GuideViewModel(
                     GuideRow(channel = ch, programmes = byKey[ch.sourceId to tvgId].orEmpty())
                 }
             }
+                // During EPG backfill an N-way `combine` over N sources re-emits the full row
+                // list whenever any single source's programmes change. With many sources that
+                // can fire several times per slot. Debounce coalesces those bursts; the
+                // window is well below human perception so first-paint isn't affected in
+                // practice and steady-state minute-tick updates aren't visibly delayed.
+                .debounce(COMBINE_DEBOUNCE_MS)
         }
         .distinctUntilChanged()
         // null = upstream hasn't emitted yet → state stays Loading instead of flashing
@@ -175,5 +183,8 @@ class GuideViewModel(
         const val SLOT_MINUTES = 30L
         /** Length of one slot in ms — shared with the UI viewport buffer. */
         const val SLOT_MS = SLOT_MINUTES * 60L * 1000L
+
+        /** Coalesce-window for the inner per-source `combine` (see [rows]). */
+        private const val COMBINE_DEBOUNCE_MS = 75L
     }
 }

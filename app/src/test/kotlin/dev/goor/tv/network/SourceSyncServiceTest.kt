@@ -23,8 +23,12 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -229,6 +233,39 @@ http://stream.example.com/foo.ts
         service(okEngine(m3uWithTvg)).sync(source)
 
         coVerify(exactly = 0) { sourceDao.updateEpgUrl(any(), any()) }
+    }
+
+    @Test
+    fun `sync serializes concurrent calls for the same source id`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        val started = AtomicInteger(0)
+        val engine = MockEngine { _ ->
+            started.incrementAndGet()
+            gate.await()
+            respond(
+                content = ByteReadChannel(SAMPLE_M3U),
+                status = HttpStatusCode.OK,
+                headers = headersOf("Content-Type", "audio/x-mpegurl"),
+            )
+        }
+        val svc = service(engine)
+        val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p")
+
+        val a = async(start = CoroutineStart.UNDISPATCHED) { svc.sync(source) }
+        val b = async(start = CoroutineStart.UNDISPATCHED) { svc.sync(source) }
+        runCurrent()
+
+        // First HTTP request in-flight (gated). Second sync must be parked on the
+        // mutex; if it weren't, the engine would have been entered twice.
+        assertEquals(1, started.get())
+
+        // Release the gate; both calls drain in sequence.
+        gate.complete(Unit)
+        a.await()
+        b.await()
+
+        assertEquals(2, started.get())
+        coVerify(exactly = 2) { channelDao.replaceForSourcePreservingUserData(1L, any()) }
     }
 
     private fun okEngine(body: String): MockEngine = MockEngine {
