@@ -2,6 +2,9 @@
 agp = "9.2.1"
 kotlin = "2.3.21"
 ksp = "2.3.8"
+compileSdk = "37"
+minSdk = "26"
+targetSdk = "37"
 compose-bom = "2026.05.00"
 activity-compose = "1.13.0"
 navigation-compose = "2.9.8"
@@ -20,6 +23,7 @@ mediarouter = "1.8.1"
 kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 datastore = "1.2.1"
+detekt = "1.23.8"
 junit = "4.13.2"
 mockk = "1.14.9"
 turbine = "1.2.1"
@@ -88,3 +92,4 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

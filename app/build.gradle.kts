@@ -11,12 +11,12 @@ kotlin {
 
 android {
     namespace = "dev.goor.tv"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "dev.goor.tv"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 9
         versionName = "1.4.1"
     }

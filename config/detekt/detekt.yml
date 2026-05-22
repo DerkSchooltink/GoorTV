@@ -1,0 +1,40 @@
+# Project-local detekt config. Inherits defaults via `buildUponDefaultConfig = true`,
+# so this file only carries overrides — most rules use upstream defaults.
+build:
+  maxIssues: 0  # fail the build on any issue NOT covered by the baseline
+  excludeCorrectable: false
+
+complexity:
+  LongMethod:
+    threshold: 80          # generous: Compose screens trend long
+  LongParameterList:
+    functionThreshold: 8
+    constructorThreshold: 8  # ViewModels take a handful of DAOs/services
+  TooManyFunctions:
+    thresholdInClasses: 25
+    thresholdInInterfaces: 25
+  CyclomaticComplexMethod:
+    threshold: 20
+
+style:
+  MagicNumber:
+    active: false          # too noisy in TV-pixel layout code
+  ReturnCount:
+    max: 5
+  WildcardImport:
+    active: false          # tolerated; existing code uses them in places
+  UnusedPrivateMember:
+    allowedNames: '(_|ignored|expected|serialVersionUID)'
+
+naming:
+  FunctionNaming:
+    # Compose composables are PascalCase — built-in default allows this for
+    # functions annotated with @Composable, but call it out for clarity.
+    functionPattern: '[a-z][a-zA-Z0-9]*'
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Z0-9]*'
+
+empty-blocks:
+  EmptyFunctionBlock:
+    ignoreOverriddenFunctions: true

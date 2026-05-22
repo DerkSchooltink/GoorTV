@@ -29,6 +29,12 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest
 
+      - name: Android Lint
+        run: ./gradlew :app:lintDebug
+
+      - name: Detekt
+        run: ./gradlew detekt
+
   dependency-review:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
