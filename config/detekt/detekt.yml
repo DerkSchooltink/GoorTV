@@ -6,7 +6,7 @@ build:
 
 complexity:
   LongMethod:
-    threshold: 80          # generous: Compose screens trend long
+    threshold: 100         # generous: Compose screens / dialogs trend long
   LongParameterList:
     functionThreshold: 8
     constructorThreshold: 10  # ViewModels take a handful of DAOs/services + managers

@@ -33,6 +33,9 @@ fun AddEditChannelDialog(
     var groupExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    // Confirm dialog is rendered as a second overlay on top of the edit dialog
+    // (not as a replacement) so the user's in-flight name/url/group/logo edits
+    // survive a Cancel from the confirm step.
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -45,7 +48,6 @@ fun AddEditChannelDialog(
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
             },
         )
-        return
     }
 
     AlertDialog(
