@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -219,6 +220,50 @@ class GuideViewModelTest {
         runCurrent()
 
         assertEquals(startBefore + slotMs, vm.windowStartMs.value)
+    }
+
+    @Test
+    fun `rapid per-source programme bursts collapse to a single Ready emission`() = runTest {
+        // Two sources, two channels — set up so the inner combine fans-in across both.
+        stubSources(listOf(eligibleSource(id = 1L), eligibleSource(id = 2L)))
+        val chA = testChannel(id = 1L, sourceId = 1L, tvgChannelId = "a.tv", name = "A")
+        val chB = testChannel(id = 2L, sourceId = 2L, tvgChannelId = "b.tv", name = "B")
+        every { channelDao.getVisibleWithTvgId() } returns flowOf(listOf(chA, chB))
+
+        val progsA = MutableStateFlow(listOf(testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "A1")))
+        val progsB = MutableStateFlow(listOf(testProgramme(sourceId = 2L, tvgChannelId = "b.tv", title = "B1")))
+        every { programmeDao.observeWindowForChannels(1L, any(), any(), any()) } returns progsA
+        every { programmeDao.observeWindowForChannels(2L, any(), any(), any()) } returns progsB
+
+        val vm = makeVm()
+        val readyTitles = mutableListOf<List<String>>()
+        backgroundScope.launch {
+            vm.state.collect { s ->
+                if (s is GuideState.Ready) {
+                    readyTitles += s.rows.flatMap { it.programmes.map { p -> p.title } }
+                }
+            }
+        }
+        runCurrent()
+        advanceTimeBy(200) // let the initial debounce window settle
+        runCurrent()
+        val baseline = readyTitles.size
+
+        // Burst: 4 rapid mutations across both sources within one debounce window.
+        progsA.value = listOf(testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "A2"))
+        progsB.value = listOf(testProgramme(sourceId = 2L, tvgChannelId = "b.tv", title = "B2"))
+        progsA.value = listOf(testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "A3"))
+        progsB.value = listOf(testProgramme(sourceId = 2L, tvgChannelId = "b.tv", title = "B3"))
+        // Burst happens inside the debounce window — no Ready emission yet.
+        advanceTimeBy(50)
+        runCurrent()
+        assertEquals(baseline, readyTitles.size)
+
+        // Let the debounce expire — exactly one new Ready emission with the latest data.
+        advanceTimeBy(100)
+        runCurrent()
+        assertEquals(baseline + 1, readyTitles.size)
+        assertEquals(listOf("A3", "B3"), readyTitles.last())
     }
 
     @Test
