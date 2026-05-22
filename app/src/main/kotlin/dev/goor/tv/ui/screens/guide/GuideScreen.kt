@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -296,7 +297,7 @@ private fun ProgrammeBlock(
             .fillMaxHeight()
             .background(bg)
             // Square focus border, no corner radius — matches the block fill.
-            .focusBorder(focus.value, shape = androidx.compose.ui.graphics.RectangleShape)
+            .focusBorder(focus.value, shape = RectangleShape)
             .trackTvFocus(focus)
             .clickable(onClick = onWatch)
             .padding(horizontal = 6.dp, vertical = 4.dp),

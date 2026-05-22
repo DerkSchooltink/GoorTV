@@ -34,6 +34,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,7 +79,7 @@ private enum class AspectRatioMode(val label: String) {
 private val AspectRatioMode.next: AspectRatioMode
     get() = AspectRatioMode.entries[(ordinal + 1) % AspectRatioMode.entries.size]
 
-/** Saves enum ordinal across config changes; restores via [AspectRatioMode.entries]. */
+/** Saves the enum ordinal — `autoSaver()` doesn't know how to serialize enums. */
 private val AspectRatioModeSaver: Saver<AspectRatioMode, Int> = Saver(
     save = { it.ordinal },
     restore = { AspectRatioMode.entries[it] },
@@ -362,17 +367,31 @@ fun PlayerScreen(
                 // Wrap MediaRouteButton in a focusable Box so it participates in
                 // D-pad traversal — the raw AndroidView isn't reachable via the
                 // remote otherwise. The Box owns the focus ring; the inner
-                // AndroidView still handles the tap to open the route picker.
+                // AndroidView still handles touch. D-pad Enter / Center is
+                // dispatched manually via performClick() since AndroidView
+                // doesn't bubble key events to a Compose .clickable.
+                var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .trackTvFocus(castFocus)
                         .focusBorder(castFocus.value, CircleShape, Color.White)
+                        .onPreviewKeyEvent { event ->
+                            val isClick = event.key == Key.DirectionCenter ||
+                                event.key == Key.Enter ||
+                                event.key == Key.NumPadEnter
+                            if (isClick && event.type == KeyEventType.KeyUp) {
+                                routeButton?.performClick() == true
+                            } else false
+                        }
                         .focusable(),
                 ) {
                     AndroidView<MediaRouteButton>(
                         factory = { ctx ->
-                            MediaRouteButton(ctx).also { CastButtonFactory.setUpMediaRouteButton(ctx, it) }
+                            MediaRouteButton(ctx).also {
+                                CastButtonFactory.setUpMediaRouteButton(ctx, it)
+                                routeButton = it
+                            }
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
