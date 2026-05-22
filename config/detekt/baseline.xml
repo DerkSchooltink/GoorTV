@@ -1,0 +1,58 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ComplexCondition:PlayerScreen.kt$channel == null || (isBuffering &amp;&amp; !hasError &amp;&amp; !isCasting)</ID>
+    <ID>ComplexCondition:XmltvParser.kt$XmltvParser$channel.isNullOrBlank() || startMs == null || endMs == null || title.isNullOrBlank()</ID>
+    <ID>CyclomaticComplexMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable fun HomeScreen( onChannelClick: (Long) -&gt; Unit, onSettingsClick: () -&gt; Unit, onGuideClick: () -&gt; Unit = {}, vm: HomeViewModel = koinViewModel(), )</ID>
+    <ID>CyclomaticComplexMethod:PlayerScreen.kt$@Composable fun PlayerScreen( channelId: Long, onBack: () -&gt; Unit, vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }), )</ID>
+    <ID>CyclomaticComplexMethod:XmltvParser.kt$XmltvParser$private fun readProgramme(parser: XmlPullParser): ParsedProgramme?</ID>
+    <ID>EmptyFunctionBlock:CastSession.kt$&lt;no name provided&gt;${}</ID>
+    <ID>LongMethod:AddEditChannelDialog.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun AddEditChannelDialog( channel: Channel? = null, groups: List&lt;String&gt;, onDismiss: () -&gt; Unit, onSave: (name: String, url: String, logoUrl: String?, group: String?) -&gt; Unit, onDelete: (() -&gt; Unit)? = null, )</ID>
+    <ID>LongMethod:HomeScreen.kt$@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class) @Composable fun HomeScreen( onChannelClick: (Long) -&gt; Unit, onSettingsClick: () -&gt; Unit, onGuideClick: () -&gt; Unit = {}, vm: HomeViewModel = koinViewModel(), )</ID>
+    <ID>LongMethod:PlayerScreen.kt$@Composable fun PlayerScreen( channelId: Long, onBack: () -&gt; Unit, vm: PlayerViewModel = koinViewModel(parameters = { parametersOf(channelId) }), )</ID>
+    <ID>LongMethod:SettingsScreen.kt$@Composable private fun GroupsDialog( source: Source, availableGroups: List&lt;String&gt;, onDismiss: () -&gt; Unit, onConfirm: (Set&lt;String&gt;) -&gt; Unit, )</ID>
+    <ID>LongMethod:SettingsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreen( onBack: () -&gt; Unit, vm: SettingsViewModel = koinViewModel(), )</ID>
+    <ID>LongParameterList:SettingsScreen.kt$( source: Source, isSyncing: Boolean, isEpgSyncing: Boolean, onSync: () -&gt; Unit, onEpgSync: () -&gt; Unit, onEdit: () -&gt; Unit, onGroups: () -&gt; Unit, onDelete: () -&gt; Unit, )</ID>
+    <ID>LongParameterList:TestFixtures.kt$( id: Long = 1L, name: String = "Test Source", type: SourceType = SourceType.M3U, url: String = "http://example.com/playlist.m3u", lastSyncedAt: Long? = null, epgUrl: String? = null, lastEpgSyncedAt: Long? = null, epgLastError: String? = null, )</ID>
+    <ID>LongParameterList:TestFixtures.kt$( id: Long = 1L, sourceId: Long = 1L, name: String = "Test Channel", url: String = "http://example.com/stream.m3u8", group: String? = null, logoUrl: String? = null, isFavorite: Boolean = false, lastWatchedAt: Long? = null, tvgChannelId: String? = null, )</ID>
+    <ID>LongParameterList:TestFixtures.kt$( sourceId: Long = 1L, tvgChannelId: String = "test.tv", startMs: Long = 0L, endMs: Long = 3_600_000L, title: String = "Test Show", description: String? = null, category: String? = null, iconUrl: String? = null, )</ID>
+    <ID>LoopWithTooManyJumpStatements:M3uParser.kt$M3uParser$while</ID>
+    <ID>MatchingDeclarationName:AppNavigation.kt$Screen</ID>
+    <ID>MatchingDeclarationName:TestFixtures.kt$FakeTimeProvider : TimeProvider</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE INDEX IF NOT EXISTS index_channels_sourceId_tvgChannelId ON channels(sourceId, tvgChannelId)")</ID>
+    <ID>MaxLineLength:AppDatabase.kt$AppDatabase.Companion.&lt;no name provided&gt;$db.execSQL("CREATE INDEX IF NOT EXISTS index_programmes_sourceId_tvgChannelId_endMs ON programmes(sourceId, tvgChannelId, endMs)")</ID>
+    <ID>MaxLineLength:AppModule.kt$.</ID>
+    <ID>MaxLineLength:ChannelDaoTest.kt$ChannelDaoTest$Channel(sourceId = sourceId, name = "BBC", url = "http://different/bbc.ts", group = "UK", tvgChannelId = "bbc.new")</ID>
+    <ID>MaxLineLength:GuideScreen.kt$body = "Configure a source with EPG support — Xtream credentials or an M3U with an EPG URL — to populate the guide."</ID>
+    <ID>MaxLineLength:GuideScreen.kt$body = "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider."</ID>
+    <ID>MaxLineLength:GuideScreen.kt$body = "Your channels are configured but no programmes were found. The EPG feed may not cover them."</ID>
+    <ID>MaxLineLength:GuideViewModelTest.kt$GuideViewModelTest$val pb2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", startMs = 7_200_000L, endMs = 10_800_000L, title = "Showb2")</ID>
+    <ID>MaxLineLength:HomeScreen.kt$icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) }</ID>
+    <ID>MaxLineLength:HomeScreen.kt$tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant</ID>
+    <ID>MaxLineLength:HomeScreen.kt$tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current</ID>
+    <ID>MaxLineLength:HomeViewModelTest.kt$HomeViewModelTest$coVerify { channelDao.insert(match { it.name == "My Channel" &amp;&amp; it.url == "http://example.com/stream" &amp;&amp; it.group == "Sports" }) }</ID>
+    <ID>MaxLineLength:HomeViewModelTest.kt$HomeViewModelTest$private fun makeVm()</ID>
+    <ID>MaxLineLength:MigrationTest.kt$MigrationTest$"VALUES (1, 'Seed Channel', 'http://example.com/ch.ts', 'Seed Group', 'http://example.com/logo.png')"</ID>
+    <ID>MaxLineLength:PlayerViewModelTest.kt$PlayerViewModelTest$val next = testProgramme(sourceId = 3L, tvgChannelId = "abc.tv", startMs = 4_000_000L, endMs = 8_000_000L, title = "Next")</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())</ID>
+    <ID>MaxLineLength:SettingsScreen.kt$onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?, maxConcurrentStreams: Int) -&gt; Unit</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$fun</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))</ID>
+    <ID>MaxLineLength:SettingsViewModel.kt$SettingsViewModel$sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))</ID>
+    <ID>MayBeConst:GuideScreen.kt$private val SLOT_MINUTES = 30L</ID>
+    <ID>NestedBlockDepth:M3uParser.kt$M3uParser$fun parse(sourceId: Long, content: String): M3uParseResult</ID>
+    <ID>NestedBlockDepth:XmltvParser.kt$XmltvParser$private fun readProgramme(parser: XmlPullParser): ParsedProgramme?</ID>
+    <ID>NestedBlockDepth:XmltvParser.kt$XmltvParser$suspend fun parse( input: InputStream, onChannel: suspend (ParsedChannel) -&gt; Unit = {}, onProgramme: suspend (ParsedProgramme) -&gt; Unit, )</ID>
+    <ID>SwallowedException:XmltvParser.kt$XmltvParser$e: StringIndexOutOfBoundsException</ID>
+    <ID>TooGenericExceptionCaught:EpgSyncService.kt$EpgSyncService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:SourceSyncService.kt$SourceSyncService$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:XmltvParser.kt$XmltvParser$e: Exception</ID>
+    <ID>TooManyFunctions:GuideScreen.kt$dev.goor.tv.ui.screens.guide.GuideScreen.kt</ID>
+    <ID>UnusedPrivateProperty:EpgSyncService.kt$EpgSyncService.Companion$private const val RETENTION_MS = 6L * 3600L * 1000L</ID>
+    <ID>UnusedPrivateProperty:HomeScreenTest.kt$HomeScreenTest$private val epgSyncService = mockk&lt;EpgSyncService&gt; { coEvery { syncAll(any()) } returns emptyList() }</ID>
+  </CurrentIssues>
+</SmellBaseline>
