@@ -48,8 +48,9 @@ import dev.goor.tv.ui.util.focusBorder
 import dev.goor.tv.ui.util.rememberTvFocus
 import dev.goor.tv.ui.util.trackTvFocus
 import org.koin.androidx.compose.koinViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val DP_PER_MINUTE = 3.dp
@@ -59,11 +60,11 @@ private val TIME_HEADER_HEIGHT = 24.dp
 private val PROGRAMME_GAP = 1.dp
 private val SLOT_MINUTES = 30L
 
-private val hmFormatter: SimpleDateFormat by lazy {
-    SimpleDateFormat("HH:mm", Locale.getDefault())
-}
+// java.time formatters are immutable + thread-safe (unlike SimpleDateFormat).
+private val hmFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).withZone(ZoneId.systemDefault())
 
-private fun formatHm(epochMs: Long): String = hmFormatter.format(Date(epochMs))
+private fun formatHm(epochMs: Long): String = hmFormatter.format(Instant.ofEpochMilli(epochMs))
 
 private fun minutesBetween(from: Long, to: Long): Long = (to - from) / 60_000L
 
@@ -229,7 +230,7 @@ private fun ChannelHeaderCell(channel: Channel, onClick: () -> Unit) {
         if (!channel.logoUrl.isNullOrBlank()) {
             AsyncImage(
                 model = channel.logoUrl,
-                contentDescription = null,
+                contentDescription = channel.name,
                 modifier = Modifier.size(36.dp).clip(CircleShape),
                 contentScale = ContentScale.Crop,
             )

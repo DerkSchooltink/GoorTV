@@ -400,7 +400,7 @@ private fun ChannelItem(
             .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ChannelLogo(logoUrl = channel.logoUrl, size = 56)
+        ChannelLogo(logoUrl = channel.logoUrl, size = 56, contentDescription = channel.name)
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -448,7 +448,7 @@ private fun ChannelItem(
         IconButton(onClick = { onFavoriteToggle(channel.id) }) {
             Icon(
                 if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = null,
+                contentDescription = if (channel.isFavorite) "Remove favorite" else "Add favorite",
                 tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -471,6 +471,7 @@ private fun RecentChannelCard(channel: Channel, onClick: () -> Unit) {
             logoUrl = channel.logoUrl,
             size = 80,
             shape = RoundedCornerShape(8.dp),
+            contentDescription = channel.name,
         )
         Text(
             channel.name,
@@ -488,6 +489,7 @@ private fun ChannelLogo(
     logoUrl: String?,
     size: Int,
     shape: Shape = CircleShape,
+    contentDescription: String? = null,
 ) {
     if (logoUrl != null) {
         val sizePx = size * 2
@@ -501,7 +503,7 @@ private fun ChannelLogo(
         }
         AsyncImage(
             model = request,
-            contentDescription = null,
+            contentDescription = contentDescription,
             modifier = Modifier.size(size.dp).clip(shape),
             contentScale = ContentScale.Crop,
         )
