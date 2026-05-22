@@ -11,6 +11,7 @@ import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.util.FakeTimeProvider
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
 import dev.goor.tv.util.testProgramme
@@ -52,7 +53,7 @@ class HomeViewModelTest {
 
     @Before
     fun setup() {
-        coEvery { syncService.syncAll() } returns emptyList()
+        coEvery { syncService.syncAll(any()) } returns emptyList()
         coEvery { epgSyncService.syncAll(any()) } returns emptyList()
         every { programmeDao.observeAllNow(any()) } returns flowOf(emptyList())
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
@@ -71,7 +72,7 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, epgSyncService, programmeDao)
+    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, FakeTimeProvider())
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {
@@ -109,23 +110,22 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `syncAll is called on init when no channels exist`() = runTest {
-        coEvery { channelDao.count() } returns 0
+    fun `manual sync bypasses throttle`() = runTest {
+        coEvery { syncService.syncAll(0L) } returns emptyList()
 
-        makeVm()
+        makeVm().sync()
         advanceUntilIdle()
 
-        coVerify { syncService.syncAll() }
+        coVerify { syncService.syncAll(throttleMs = 0L) }
     }
 
     @Test
-    fun `syncAll is NOT called on init when channels already exist`() = runTest {
-        coEvery { channelDao.count() } returns 5
-
+    fun `init does not trigger sync — that is AppSyncCoordinator's job now`() = runTest {
         makeVm()
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { syncService.syncAll() }
+        coVerify(exactly = 0) { syncService.syncAll(any()) }
+        coVerify(exactly = 0) { epgSyncService.syncAll(any()) }
     }
 
     @Test

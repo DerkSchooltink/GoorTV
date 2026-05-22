@@ -9,8 +9,10 @@ import dev.goor.tv.data.db.AppDatabase
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.preferences.UserPreferencesRepository
+import dev.goor.tv.network.AppSyncCoordinator
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.util.TimeProvider
 import dev.goor.tv.ui.screens.guide.GuideViewModel
 import dev.goor.tv.ui.screens.home.HomeViewModel
 import dev.goor.tv.ui.screens.player.PlayerViewModel
@@ -30,6 +32,8 @@ val appModule = module {
     single { get<AppDatabase>().programmeDao() }
     single { SourceSyncService(get(), get()) }
     single { EpgSyncService(get(), get(), get()) }
+    single { AppSyncCoordinator(get(), get()) }
+    single { TimeProvider() }
     single { StreamConcurrencyTracker() }
     single { SearchHistoryRepository(androidContext()) }
     single<DataStore<Preferences>> {
@@ -40,7 +44,7 @@ val appModule = module {
     single { UserPreferencesRepository(get()) }
 
     viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get()) }
+    viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get()) }
-    viewModel { GuideViewModel(get(), get(), get()) }
+    viewModel { GuideViewModel(get(), get(), get(), get()) }
 }

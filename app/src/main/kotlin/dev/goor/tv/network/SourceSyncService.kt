@@ -8,6 +8,7 @@ import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -29,14 +30,40 @@ class SourceSyncService(
     private val syncMutexes = ConcurrentHashMap<Long, Mutex>()
     private fun mutexFor(sourceId: Long): Mutex = syncMutexes.computeIfAbsent(sourceId) { Mutex() }
 
-    suspend fun syncAll(): List<Throwable> {
+    /**
+     * Syncs all non-manual sources whose [Source.lastSyncedAt] is older than
+     * [throttleMs]. Each failed source is retried with exponential backoff up to
+     * [MAX_ATTEMPTS] before being reported. Returns one [Throwable] per source
+     * that ultimately failed.
+     *
+     * Manual refresh from settings should pass `throttleMs = 0L` to bypass the
+     * skip filter.
+     */
+    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
+        val now = System.currentTimeMillis()
         return sourceDao.getAll().first()
             .filter { it.type != SourceType.MANUAL }
+            .filter { (it.lastSyncedAt ?: 0L) + throttleMs <= now }
             .mapNotNull { source ->
-                runCatching { sync(source) }
-                    .exceptionOrNull()
-                    ?.also { Log.e("SourceSync", "Failed to sync '${source.name}': ${it.message}") }
+                syncWithRetry(source)?.also {
+                    Log.e(TAG, "Sync gave up on '${source.name}' after $MAX_ATTEMPTS attempts: ${it.message}")
+                }
             }
+    }
+
+    private suspend fun syncWithRetry(source: Source): Throwable? {
+        var lastErr: Throwable? = null
+        for (attempt in 0 until MAX_ATTEMPTS) {
+            try {
+                sync(source)
+                return null
+            } catch (e: Exception) {
+                lastErr = e
+                Log.w(TAG, "Sync attempt ${attempt + 1}/$MAX_ATTEMPTS failed for '${source.name}': ${e.message}")
+                if (attempt < MAX_ATTEMPTS - 1) delay(backoffMs(attempt))
+            }
+        }
+        return lastErr
     }
 
     suspend fun sync(source: Source) = mutexFor(source.id).withLock {
@@ -66,5 +93,17 @@ class SourceSyncService(
         if (source.type == SourceType.M3U && source.epgUrl.isNullOrBlank() && !discoveredEpgUrl.isNullOrBlank()) {
             sourceDao.updateEpgUrl(source.id, discoveredEpgUrl)
         }
+    }
+
+    companion object {
+        private const val TAG = "SourceSync"
+        private const val MAX_ATTEMPTS = 3
+        private const val INITIAL_BACKOFF_MS = 30_000L
+        private const val MAX_BACKOFF_MS = 5L * 60L * 1000L  // 5 min
+        private const val DEFAULT_THROTTLE_MS = 60L * 60L * 1000L  // 1 hour
+
+        /** Exponential backoff capped at [MAX_BACKOFF_MS]. Pure for testability. */
+        internal fun backoffMs(attempt: Int): Long =
+            minOf(INITIAL_BACKOFF_MS shl attempt, MAX_BACKOFF_MS)
     }
 }

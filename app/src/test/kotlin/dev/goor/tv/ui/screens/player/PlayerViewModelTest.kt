@@ -4,6 +4,7 @@ import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.util.FakeTimeProvider
 import dev.goor.tv.util.MainDispatcherRule
 import dev.goor.tv.util.testChannel
 import dev.goor.tv.util.testProgramme
@@ -45,6 +46,7 @@ class PlayerViewModelTest {
         sourceDao = sourceDao,
         concurrencyTracker = StreamConcurrencyTracker(),
         programmeDao = programmeDao,
+        timeProvider = FakeTimeProvider(),
     )
 
     @Test

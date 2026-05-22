@@ -8,7 +8,7 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.isEpgEligible
-import dev.goor.tv.util.minuteTicker
+import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -54,11 +54,11 @@ class GuideViewModel(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
     private val programmeDao: ProgrammeDao,
+    timeProvider: TimeProvider,
 ) : ViewModel() {
 
     /** Window anchor — rebased each minute so the "now" indicator stays accurate. */
-    val nowMs: StateFlow<Long> = minuteTicker()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+    val nowMs: StateFlow<Long> = timeProvider.nowMs
 
     /** Window start: 2 hours before now. */
     val windowStartMs: StateFlow<Long> = nowMs

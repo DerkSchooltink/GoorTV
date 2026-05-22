@@ -4,6 +4,19 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * Deterministic [TimeProvider] for tests — exposes a fixed-by-default tick that
+ * tests can advance manually via [tick]. Avoids the real ticker's coroutine
+ * scope (which would leak across tests) and its 5 s WhileSubscribed delay.
+ */
+class FakeTimeProvider(initial: Long = 0L) : TimeProvider() {
+    private val state = MutableStateFlow(initial)
+    override val nowMs: StateFlow<Long> = state
+    fun tick(value: Long) { state.value = value }
+}
 
 fun testChannel(
     id: Long = 1L,

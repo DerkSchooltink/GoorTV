@@ -17,10 +17,8 @@ import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
-import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
-import dev.goor.tv.util.minuteTicker
-import kotlinx.coroutines.Dispatchers
+import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -32,8 +30,8 @@ class HomeViewModel(
     private val syncService: SourceSyncService,
     private val searchHistoryRepo: SearchHistoryRepository,
     private val prefsRepository: UserPreferencesRepository,
-    private val epgSyncService: EpgSyncService,
     private val programmeDao: ProgrammeDao,
+    timeProvider: TimeProvider,
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -65,9 +63,8 @@ class HomeViewModel(
     val sortOrder = prefsRepository.sortOrder
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SortOrder.BY_GROUP)
 
-    /** Ticks once a minute while there are subscribers; used to refresh "now playing". */
-    val nowMs: StateFlow<Long> = minuteTicker()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+    /** Shared minute-cadence clock; used to refresh "now playing". */
+    val nowMs: StateFlow<Long> = timeProvider.nowMs
 
     /**
      * "Now playing" programme per channel, keyed by `(sourceId, tvgChannelId)`.
@@ -100,14 +97,12 @@ class HomeViewModel(
     }.cachedIn(viewModelScope)
 
     init {
-        viewModelScope.launch {
-            if (channelDao.count() == 0) sync()
-        }
+        // Background sync is owned by AppSyncCoordinator (kicked off in App.onCreate)
+        // so opening directly to Guide/Settings still syncs. Only screen-local state
+        // lookup remains here.
         viewModelScope.launch {
             sourceDao.getManualSource()?.let { _manualSourceId.value = it.id }
         }
-        // EPG sync runs independently — never blocks channel UI.
-        viewModelScope.launch(Dispatchers.IO) { epgSyncService.syncAll() }
     }
 
     private suspend fun getOrCreateManualSourceId(): Long {
@@ -139,10 +134,11 @@ class HomeViewModel(
         viewModelScope.launch { channelDao.delete(channel) }
     }
 
+    /** User-initiated refresh — bypasses the throttle that the background coordinator respects. */
     fun sync() {
         viewModelScope.launch {
             _isSyncing.value = true
-            _syncErrors.value = syncService.syncAll().map { it.message ?: "Unknown error" }
+            _syncErrors.value = syncService.syncAll(throttleMs = 0L).map { it.message ?: "Unknown error" }
             _isSyncing.value = false
         }
     }

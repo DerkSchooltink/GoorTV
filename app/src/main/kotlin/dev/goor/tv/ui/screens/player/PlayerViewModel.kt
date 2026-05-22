@@ -9,7 +9,7 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.headersMap
-import dev.goor.tv.util.minuteTicker
+import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +29,7 @@ class PlayerViewModel(
     private val sourceDao: SourceDao,
     private val concurrencyTracker: StreamConcurrencyTracker,
     private val programmeDao: ProgrammeDao,
+    timeProvider: TimeProvider,
 ) : ViewModel() {
     private val _channel = MutableStateFlow<Channel?>(null)
     val channel = _channel.asStateFlow()
@@ -39,8 +40,7 @@ class PlayerViewModel(
     private val _stopped = MutableStateFlow(false)
     val stopped = _stopped.asStateFlow()
 
-    val nowMs: StateFlow<Long> = minuteTicker()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+    val nowMs: StateFlow<Long> = timeProvider.nowMs
 
     /**
      * Current + next programme for this channel. Empty list when the channel has
