@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.ui.util.SystemBarsController
 import dev.goor.tv.ui.util.focusBorder
@@ -119,6 +120,14 @@ fun PlayerScreen(
     val backFocus = rememberTvFocus()
     val aspectFocus = rememberTvFocus()
     val castFocus = rememberTvFocus()
+
+    // Stable callbacks for the overlay sub-composables — without `remember`,
+    // these fresh-lambda each composition and force the (skippable) overlays
+    // to recompose on every parent frame.
+    val onAspectClick = remember { { aspectRatioMode = aspectRatioMode.next } }
+    val onRetry = remember(channel?.id, headers) {
+        { channel?.let { ch -> playerEngine.prepare(ch.url, headers) } ?: Unit }
+    }
 
     BackHandler { onBack() }
 
@@ -215,7 +224,7 @@ fun PlayerScreen(
         if (hasError && !isCasting) {
             PlaybackErrorOverlay(
                 message = errorMessage,
-                onRetry = { channel?.let { ch -> playerEngine.prepare(ch.url, headers) } },
+                onRetry = onRetry,
             )
         }
 
@@ -224,7 +233,7 @@ fun PlayerScreen(
             aspectLabel = aspectRatioMode.label,
             aspectFocus = aspectFocus,
             castFocus = castFocus,
-            onAspectClick = { aspectRatioMode = aspectRatioMode.next },
+            onAspectClick = onAspectClick,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
@@ -335,8 +344,8 @@ private fun PlaybackErrorOverlay(
 private fun PlayerControlsFooter(
     visible: Boolean,
     aspectLabel: String,
-    aspectFocus: androidx.compose.runtime.MutableState<Boolean>,
-    castFocus: androidx.compose.runtime.MutableState<Boolean>,
+    aspectFocus: MutableState<Boolean>,
+    castFocus: MutableState<Boolean>,
     onAspectClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -406,7 +415,7 @@ private fun PlayerControlsFooter(
 @Composable
 private fun ChannelInfoOverlay(
     visible: Boolean,
-    channel: dev.goor.tv.data.model.Channel,
+    channel: Channel,
     nowAndNext: List<Programme>,
     nowMs: Long,
     modifier: Modifier = Modifier,
