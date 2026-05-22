@@ -213,10 +213,19 @@ private fun GroupsDialog(
     onDismiss: () -> Unit,
     onConfirm: (Set<String>) -> Unit,
 ) {
-    val initial = remember(source.includedGroups) {
-        source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+    // Key the selection state on the persisted value so an external sync
+    // (e.g., the user toggled groups elsewhere, or a fresh Room emission)
+    // doesn't leave the dialog showing stale checks. Earlier this was two
+    // separate `remember`s — `initial` was keyed on `includedGroups` but
+    // `selected` wasn't, so it kept the first value forever.
+    var selected by remember(source.includedGroups) {
+        val parsed = source.includedGroups
+            ?.split("|")
+            ?.filter { it.isNotBlank() }
+            ?.toMutableSet()
+            ?: mutableSetOf()
+        mutableStateOf(parsed)
     }
-    var selected by remember { mutableStateOf(initial) }
     var search by remember { mutableStateOf("") }
 
     val visible = remember(search, availableGroups) {
@@ -321,6 +330,14 @@ private fun AddSourceDialog(
     // Land focus on the first field so D-pad / keyboard can type immediately.
     LaunchedEffect(Unit) { nameFocus.requestFocus() }
 
+    val urlValid = remember(url) {
+        val t = url.trim()
+        t.startsWith("http://", ignoreCase = true) || t.startsWith("https://", ignoreCase = true)
+    }
+    val canSubmit = name.isNotBlank() &&
+        urlValid &&
+        (sourceType != SourceType.XTREAM || (username.isNotBlank() && password.isNotBlank()))
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Source") },
@@ -342,7 +359,17 @@ private fun AddSourceDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
                 )
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = url,
+                    onValueChange = { url = it },
+                    label = { Text("URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = url.isNotBlank() && !urlValid,
+                    supportingText = {
+                        if (url.isNotBlank() && !urlValid) Text("Must start with http:// or https://")
+                    },
+                )
                 if (sourceType == SourceType.XTREAM) {
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -366,12 +393,15 @@ private fun AddSourceDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                val h = headers.takeIf { it.isNotBlank() }
-                val max = maxStreams.toIntOrNull() ?: 0
-                if (sourceType == SourceType.M3U) onAddM3u(name, url, h, max)
-                else onAddXtream(name, url, username, password, h, max)
-            }) { Text("Add") }
+            TextButton(
+                onClick = {
+                    val h = headers.takeIf { it.isNotBlank() }
+                    val max = maxStreams.toIntOrNull() ?: 0
+                    if (sourceType == SourceType.M3U) onAddM3u(name.trim(), url.trim(), h, max)
+                    else onAddXtream(name.trim(), url.trim(), username.trim(), password, h, max)
+                },
+                enabled = canSubmit,
+            ) { Text("Add") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
