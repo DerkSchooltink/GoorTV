@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -77,7 +78,15 @@ fun SettingsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        LazyColumn(contentPadding = padding) {
+        // focusRestorer() remembers which per-row button (Edit / Groups / Sync /
+        // Delete) was last focused and restores it whenever focus re-enters the
+        // column — typically after a dialog dismisses, but also on back-stack
+        // return. Complements the explicit FocusRequester on the global Add
+        // Source IconButton (which has its own restore in #42).
+        LazyColumn(
+            contentPadding = padding,
+            modifier = Modifier.focusRestorer(),
+        ) {
             items(sources, key = { it.id }) { source ->
                 SourceItem(
                     source = source,
