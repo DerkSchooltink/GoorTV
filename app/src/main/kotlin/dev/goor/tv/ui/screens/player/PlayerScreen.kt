@@ -204,148 +204,29 @@ fun PlayerScreen(
             )
         }
 
-        // Casting overlay — covers the frozen local PlayerView so it's obvious
-        // playback is happening on the receiver, not the phone.
         if (isCasting) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (castError != null) {
-                        Text(
-                            "Cast failed",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            castError!!,
-                            color = Color.White.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    } else {
-                        Text(
-                            "Casting",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                        castSession?.castDevice?.friendlyName?.let { name ->
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "to $name",
-                                color = Color.White.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-                    }
-                    channel?.let { ch ->
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            ch.name,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                    }
-                }
-            }
+            CastingOverlay(
+                channelName = channel?.name,
+                deviceName = castSession?.castDevice?.friendlyName,
+                castError = castError,
+            )
         }
 
-        // Error overlay (semi-transparent scrim over the player). Hidden during cast —
-        // the cast overlay carries its own error state.
         if (hasError && !isCasting) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.White,
-                    )
-                    Text(
-                        errorMessage ?: "Playback failed",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Button(onClick = {
-                        channel?.let { ch -> playerEngine.prepare(ch.url, headers) }
-                    }) { Text("Retry") }
-                }
-            }
+            PlaybackErrorOverlay(
+                message = errorMessage,
+                onRetry = { channel?.let { ch -> playerEngine.prepare(ch.url, headers) } },
+            )
         }
 
-        // Controls footer — synced with ExoPlayer controller visibility
-        AnimatedVisibility(
+        PlayerControlsFooter(
             visible = showControls && !hasError,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            aspectLabel = aspectRatioMode.label,
+            aspectFocus = aspectFocus,
+            castFocus = castFocus,
+            onAspectClick = { aspectRatioMode = aspectRatioMode.next },
             modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .navigationBarsPadding()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    onClick = { aspectRatioMode = aspectRatioMode.next },
-                    modifier = Modifier
-                        .trackTvFocus(aspectFocus)
-                        .focusBorder(aspectFocus.value, CircleShape, Color.White),
-                ) {
-                    Text(
-                        aspectRatioMode.label,
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-                // Wrap MediaRouteButton in a focusable Box so it participates in
-                // D-pad traversal — the raw AndroidView isn't reachable via the
-                // remote otherwise. The Box owns the focus ring; the inner
-                // AndroidView still handles touch. D-pad Enter / Center is
-                // dispatched manually via performClick() since AndroidView
-                // doesn't bubble key events to a Compose .clickable.
-                var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .trackTvFocus(castFocus)
-                        .focusBorder(castFocus.value, CircleShape, Color.White)
-                        .onPreviewKeyEvent { event ->
-                            val isClick = event.key == Key.DirectionCenter ||
-                                event.key == Key.Enter ||
-                                event.key == Key.NumPadEnter
-                            if (isClick && event.type == KeyEventType.KeyUp) {
-                                routeButton?.performClick() == true
-                            } else false
-                        }
-                        .focusable(),
-                ) {
-                    AndroidView<MediaRouteButton>(
-                        factory = { ctx ->
-                            MediaRouteButton(ctx).also {
-                                CastButtonFactory.setUpMediaRouteButton(ctx, it)
-                                routeButton = it
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-        }
+        )
 
         // Back button — always visible, focus-ring for D-pad visibility.
         // Requested into focus by the LaunchedEffect above so D-pad has somewhere
@@ -367,45 +248,202 @@ fun PlayerScreen(
             )
         }
 
-        // Channel info overlay at the top — shown only with controls
         channel?.let { ch ->
-            AnimatedVisibility(
+            ChannelInfoOverlay(
                 visible = showControls && !hasError,
-                enter = fadeIn(),
-                exit = fadeOut(),
+                channel = ch,
+                nowAndNext = nowAndNext,
+                nowMs = nowMs,
                 modifier = Modifier.align(Alignment.TopCenter),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    ch.logoUrl?.let { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = ch.name,
-                            modifier = Modifier.size(40.dp).clip(CircleShape),
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
-                    Column {
-                        Text(
-                            ch.name,
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                        ProgrammeOverlay(
-                            now = nowAndNext.getOrNull(0),
-                            next = nowAndNext.getOrNull(1),
-                            nowMs = nowMs,
-                        )
-                    }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CastingOverlay(
+    channelName: String?,
+    deviceName: String?,
+    castError: String?,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (castError != null) {
+                Text("Cast failed", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    castError,
+                    color = Color.White.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                Text("Casting", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                if (deviceName != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "to $deviceName",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
+            }
+            if (channelName != null) {
+                Spacer(Modifier.height(12.dp))
+                Text(channelName, color = Color.White, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
+}
 
+@Composable
+private fun PlaybackErrorOverlay(
+    message: String?,
+    onRetry: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.85f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = Color.White,
+            )
+            Text(
+                message ?: "Playback failed",
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Button(onClick = onRetry) { Text("Retry") }
+        }
+    }
+}
+
+@Composable
+private fun PlayerControlsFooter(
+    visible: Boolean,
+    aspectLabel: String,
+    aspectFocus: androidx.compose.runtime.MutableState<Boolean>,
+    castFocus: androidx.compose.runtime.MutableState<Boolean>,
+    onAspectClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .navigationBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(
+                onClick = onAspectClick,
+                modifier = Modifier
+                    .trackTvFocus(aspectFocus)
+                    .focusBorder(aspectFocus.value, CircleShape, Color.White),
+            ) {
+                Text(
+                    aspectLabel,
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            // Wrap MediaRouteButton in a focusable Box so it participates in
+            // D-pad traversal — the raw AndroidView isn't reachable via the
+            // remote otherwise. The Box owns the focus ring; the inner
+            // AndroidView still handles touch. D-pad Enter / Center is
+            // dispatched manually via performClick() since AndroidView
+            // doesn't bubble key events to a Compose .clickable.
+            var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .trackTvFocus(castFocus)
+                    .focusBorder(castFocus.value, CircleShape, Color.White)
+                    .onPreviewKeyEvent { event ->
+                        val isClick = event.key == Key.DirectionCenter ||
+                            event.key == Key.Enter ||
+                            event.key == Key.NumPadEnter
+                        if (isClick && event.type == KeyEventType.KeyUp) {
+                            routeButton?.performClick() == true
+                        } else false
+                    }
+                    .focusable(),
+            ) {
+                AndroidView<MediaRouteButton>(
+                    factory = { ctx ->
+                        MediaRouteButton(ctx).also {
+                            CastButtonFactory.setUpMediaRouteButton(ctx, it)
+                            routeButton = it
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChannelInfoOverlay(
+    visible: Boolean,
+    channel: dev.goor.tv.data.model.Channel,
+    nowAndNext: List<Programme>,
+    nowMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            channel.logoUrl?.let { url ->
+                AsyncImage(
+                    model = url,
+                    contentDescription = channel.name,
+                    modifier = Modifier.size(40.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Column {
+                Text(
+                    channel.name,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                ProgrammeOverlay(
+                    now = nowAndNext.getOrNull(0),
+                    next = nowAndNext.getOrNull(1),
+                    nowMs = nowMs,
+                )
+            }
+        }
+    }
 }
 
 // java.time formatters are immutable + thread-safe (unlike SimpleDateFormat).
