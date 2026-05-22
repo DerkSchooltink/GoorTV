@@ -6,8 +6,10 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
+import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -22,6 +24,8 @@ fun extractPrefix(name: String): String? =
 class SourceSyncService(
     private val sourceDao: SourceDao,
     private val channelDao: ChannelDao,
+    private val httpClient: HttpClient,
+    private val xtreamApi: XtreamApi,
 ) {
     // Serializes concurrent syncs of the same source. Different sources can still
     // sync in parallel. Without this, two overlapping sync(source) calls race on the
@@ -71,14 +75,23 @@ class SourceSyncService(
         var discoveredEpgUrl: String? = null
         when (source.type) {
             SourceType.M3U -> {
-                val content: String = httpClient.get(source.url) {
+                val response = httpClient.get(source.url) {
                     source.headersMap().forEach { (k, v) -> header(k, v) }
-                }.body()
+                }
+                // Without this check a 5xx body would feed into the parser, which
+                // would happily return an empty list — and `replaceForSourcePreservingUserData`
+                // would then wipe the source's channels (and the user data attached
+                // to them). Throwing lets `syncWithRetry` retry, then surface the
+                // failure to the user.
+                if (!response.status.isSuccess()) {
+                    error("M3U HTTP ${response.status.value} for '${source.name}'")
+                }
+                val content: String = response.body()
                 val parsed = M3uParser.parse(source.id, content)
                 fetched = parsed.channels
                 discoveredEpgUrl = parsed.urlTvg
             }
-            SourceType.XTREAM -> fetched = XtreamApi.fetchLiveChannels(source)
+            SourceType.XTREAM -> fetched = xtreamApi.fetchLiveChannels(source)
             SourceType.MANUAL -> return@withLock
         }
         // Derive `group` from name prefix when upstream didn't supply one. Done
