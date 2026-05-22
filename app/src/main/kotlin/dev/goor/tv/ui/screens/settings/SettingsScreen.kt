@@ -39,6 +39,10 @@ fun SettingsScreen(
     var editingSource by remember { mutableStateOf<Source?>(null) }
     var groupsSource by remember { mutableStateOf<Source?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+    // Focus restoration for the global Add Source button (only single-trigger
+    // dialog on this screen; per-row edit/groups dialogs naturally restore via
+    // Compose's focus tree since the row button stays composed).
+    val addSourceFocus = remember { FocusRequester() }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
@@ -61,7 +65,11 @@ fun SettingsScreen(
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(4.dp))
                     }
-                    IconButton(onClick = { showAddDialog = true }, enabled = !syncing) {
+                    IconButton(
+                        onClick = { showAddDialog = true },
+                        enabled = !syncing,
+                        modifier = Modifier.focusRequester(addSourceFocus),
+                    ) {
                         Icon(Icons.Default.Add, contentDescription = "Add source")
                     }
                 }
@@ -98,6 +106,7 @@ fun SettingsScreen(
                 showAddDialog = false
             }
         )
+        DisposableEffect(Unit) { onDispose { addSourceFocus.requestFocus() } }
     }
 
     editingSource?.let { source ->

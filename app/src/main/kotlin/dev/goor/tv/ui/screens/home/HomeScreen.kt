@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -103,6 +105,13 @@ fun HomeScreen(
     val onScrollToTop = remember<() -> Unit> { { coroutineScope.launch { listState.animateScrollToItem(0) } } }
     val onAddChannel = remember<() -> Unit> { { showAddChannelDialog = true } }
 
+    // Focus restoration: when the Add Channel dialog dismisses, return focus to
+    // the FAB that opened it. Without this, D-pad lands on whatever Android
+    // picks as the next focus candidate after the dialog window tears down —
+    // usually the very first focusable in the activity, which on a TV remote
+    // requires a long downward trek to get back to where the user was.
+    val addChannelFabFocus = remember { FocusRequester() }
+
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
             snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
@@ -116,6 +125,7 @@ fun HomeScreen(
                 showScrollToTop = showScrollToTop,
                 onScrollToTop = onScrollToTop,
                 onAddChannel = onAddChannel,
+                addChannelFocus = addChannelFabFocus,
             )
         },
         topBar = {
@@ -176,6 +186,10 @@ fun HomeScreen(
                 showAddChannelDialog = false
             },
         )
+        // Restore focus to the FAB when this branch leaves the composition
+        // (dialog dismissed or saved). The FAB is still composed in the
+        // Scaffold slot, so the FocusRequester is still attached.
+        DisposableEffect(Unit) { onDispose { addChannelFabFocus.requestFocus() } }
     }
 
     editingChannel?.let { channel ->
@@ -269,6 +283,7 @@ private fun HomeFabStack(
     showScrollToTop: Boolean,
     onScrollToTop: () -> Unit,
     onAddChannel: () -> Unit,
+    addChannelFocus: FocusRequester,
 ) {
     Column(
         horizontalAlignment = Alignment.End,
@@ -279,7 +294,10 @@ private fun HomeFabStack(
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
             }
         }
-        FloatingActionButton(onClick = onAddChannel) {
+        FloatingActionButton(
+            onClick = onAddChannel,
+            modifier = Modifier.focusRequester(addChannelFocus),
+        ) {
             Icon(Icons.Default.Add, contentDescription = "Add channel")
         }
     }
