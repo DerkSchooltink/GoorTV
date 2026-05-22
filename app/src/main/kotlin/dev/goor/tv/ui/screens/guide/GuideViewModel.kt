@@ -57,18 +57,41 @@ class GuideViewModel(
     timeProvider: TimeProvider,
 ) : ViewModel() {
 
-    /** Window anchor — rebased each minute so the "now" indicator stays accurate. */
+    /** Minute-cadence clock — drives the now-indicator and "isLive" highlighting only. */
     val nowMs: StateFlow<Long> = timeProvider.nowMs
 
-    /** Window start: 2 hours before now. */
-    val windowStartMs: StateFlow<Long> = nowMs
-        .map { it - WINDOW_BACK_MS }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis() - WINDOW_BACK_MS)
+    /**
+     * Slot-aligned anchor used to derive the programme-fetch window. Floored to
+     * a 30-minute boundary so the underlying Room query only restarts every 30 min
+     * instead of every minute — keeps a fresh `List<Programme>` (potentially huge
+     * for big playlists) from being materialized 60× more often than necessary.
+     */
+    private val slotAlignedAnchorMs: StateFlow<Long> = nowMs
+        .map { (it / SLOT_MS) * SLOT_MS }
+        .distinctUntilChanged()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            (System.currentTimeMillis() / SLOT_MS) * SLOT_MS,
+        )
 
-    /** Window end: 24 hours after now. */
-    val windowEndMs: StateFlow<Long> = nowMs
+    /** Window start: [WINDOW_BACK_MS] before the slot-aligned anchor. */
+    val windowStartMs: StateFlow<Long> = slotAlignedAnchorMs
+        .map { it - WINDOW_BACK_MS }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            slotAlignedAnchorMs.value - WINDOW_BACK_MS,
+        )
+
+    /** Window end: [WINDOW_FORWARD_MS] after the slot-aligned anchor. */
+    val windowEndMs: StateFlow<Long> = slotAlignedAnchorMs
         .map { it + WINDOW_FORWARD_MS }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis() + WINDOW_FORWARD_MS)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            slotAlignedAnchorMs.value + WINDOW_FORWARD_MS,
+        )
 
     /**
      * Rows in the grid. One per channel that has a `tvgChannelId`. Each row carries
@@ -143,6 +166,10 @@ class GuideViewModel(
 
     companion object {
         private const val WINDOW_BACK_MS = 2L * 60L * 60L * 1000L      // 2 hours
-        private const val WINDOW_FORWARD_MS = 24L * 60L * 60L * 1000L  // 24 hours
+        // Forward window shrunk from 24h → 6h to bound the size of the programme
+        // list materialized per emission. A 24h forward window over a large EPG
+        // produced multi-hundred-MB heap retention and an OOM crash.
+        private const val WINDOW_FORWARD_MS = 6L * 60L * 60L * 1000L   // 6 hours
+        private const val SLOT_MS = 30L * 60L * 1000L                  // 30-min slot
     }
 }

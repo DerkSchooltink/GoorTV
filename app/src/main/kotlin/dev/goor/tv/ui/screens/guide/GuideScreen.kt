@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,31 +107,45 @@ fun GuideScreen(
         },
     ) { padding ->
         // Crossfade between Loading / Empty / Ready so the spinner doesn't snap off
-        // when EPG arrives. `contentKey` collapses Ready re-emissions to a single key
-        // so updating programmes don't re-trigger the fade.
+        // when EPG arrives. We key the Crossfade on the state *class* (not the
+        // state value) so re-emissions of `Ready` with updated rows don't pin two
+        // separate `rows` lists in memory for the fade duration — that was a
+        // non-trivial cost on large playlists. The Crossfade lambda reads the
+        // last-seen Ready/Empty so the outgoing fade still shows real content.
+        var lastReady by remember { mutableStateOf<GuideState.Ready?>(null) }
+        var lastEmpty by remember { mutableStateOf<GuideState.Empty?>(null) }
+        when (val s = state) {
+            is GuideState.Ready -> lastReady = s
+            is GuideState.Empty -> lastEmpty = s
+            is GuideState.Loading -> {}
+        }
         Crossfade(
-            targetState = state,
+            targetState = state::class,
             label = "GuideState",
-        ) { s ->
-            when (s) {
-                is GuideState.Loading -> CenteredSpinner(
+        ) { cls ->
+            when (cls) {
+                GuideState.Loading::class -> CenteredSpinner(
                     label = "Waiting for EPG…",
                     modifier = Modifier.padding(padding),
                 )
-                is GuideState.Empty -> EmptyState(
-                    reason = s.reason,
-                    onGoToSettings = onGoToSettings,
-                    modifier = Modifier.padding(padding),
-                )
-                is GuideState.Ready -> GuideGrid(
-                    rows = s.rows,
-                    windowStartMs = windowStartMs,
-                    windowEndMs = windowEndMs,
-                    nowMs = nowMs,
-                    scrollState = scrollState,
-                    onWatch = onWatch,
-                    modifier = Modifier.padding(padding),
-                )
+                GuideState.Empty::class -> lastEmpty?.let { s ->
+                    EmptyState(
+                        reason = s.reason,
+                        onGoToSettings = onGoToSettings,
+                        modifier = Modifier.padding(padding),
+                    )
+                }
+                GuideState.Ready::class -> lastReady?.let { s ->
+                    GuideGrid(
+                        rows = s.rows,
+                        windowStartMs = windowStartMs,
+                        windowEndMs = windowEndMs,
+                        nowMs = nowMs,
+                        scrollState = scrollState,
+                        onWatch = onWatch,
+                        modifier = Modifier.padding(padding),
+                    )
+                }
             }
         }
     }
@@ -153,64 +168,101 @@ private fun GuideGrid(
     // when windowStartMs lands exactly on a slot boundary.
     val firstSlotMs = ((windowStartMs + slotMs - 1) / slotMs) * slotMs
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // Time-axis header
-        Row(modifier = Modifier.height(TIME_HEADER_HEIGHT)) {
-            Spacer(Modifier.width(CHANNEL_COL_WIDTH))
-            Box(modifier = Modifier.horizontalScroll(scrollState).width(railWidth)) {
-                TimeHeader(
-                    firstSlotMs = firstSlotMs,
-                    windowStartMs = windowStartMs,
-                    windowEndMs = windowEndMs,
-                )
+    val density = LocalDensity.current
+    val dpPerMinPx = with(density) { DP_PER_MINUTE.toPx() }
+
+    // The rail area is wrapped in BoxWithConstraints so we know the on-screen
+    // viewport width and can compute which programme cells actually intersect
+    // it. Without this, every row's full-window-wide rail composed every
+    // programme (tens per channel × hundreds of channels) — the dominant heap
+    // cost that pushed the app into OOM territory.
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+            val railViewportPx = with(density) {
+                (this@BoxWithConstraints.maxWidth - CHANNEL_COL_WIDTH).toPx().coerceAtLeast(0f)
             }
-        }
-        // Channel rows
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(rows, key = { "${it.channel.sourceId}_${it.channel.id}" }) { row ->
-                    Row(modifier = Modifier.height(ROW_HEIGHT)) {
-                        ChannelHeaderCell(channel = row.channel, onClick = { onWatch(row.channel.id) })
-                        Box(
-                            modifier = Modifier
-                                .horizontalScroll(scrollState)
-                                .width(railWidth)
-                                .fillMaxHeight(),
-                        ) {
-                            ProgrammeRail(
-                                programmes = row.programmes,
-                                windowStartMs = windowStartMs,
-                                windowEndMs = windowEndMs,
-                                nowMs = nowMs,
-                                onWatch = { onWatch(row.channel.id) },
-                            )
-                        }
-                    }
+            // 30-min buffer on each side so cells just outside the viewport still
+            // get composed and stay scroll-stable. derivedStateOf snapshots only
+            // re-fire when the *clamped* visible range actually changes, so
+            // small scroll deltas inside one slot don't churn recompositions.
+            val visibleRange by remember(windowStartMs, windowEndMs, dpPerMinPx, railViewportPx) {
+                derivedStateOf {
+                    val scrollPx = scrollState.value.toFloat()
+                    val startMin = (scrollPx / dpPerMinPx).toLong() - SLOT_MINUTES
+                    val visibleMin = (railViewportPx / dpPerMinPx).toLong() + 2 * SLOT_MINUTES
+                    val start = (windowStartMs + startMin * 60_000L).coerceAtLeast(windowStartMs)
+                    val end = (start + visibleMin * 60_000L).coerceAtMost(windowEndMs)
+                    start..end
                 }
             }
-            // Now-line overlay — drawn over the rails, clipped to the rail area.
-            NowIndicator(
-                windowStartMs = windowStartMs,
-                nowMs = nowMs,
-                scrollState = scrollState,
-            )
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Time-axis header
+                Row(modifier = Modifier.height(TIME_HEADER_HEIGHT)) {
+                    Spacer(Modifier.width(CHANNEL_COL_WIDTH))
+                    Box(modifier = Modifier.horizontalScroll(scrollState).width(railWidth)) {
+                        TimeHeader(
+                            firstSlotMs = firstSlotMs,
+                            windowStartMs = windowStartMs,
+                            windowEndMs = windowEndMs,
+                            visibleRange = visibleRange,
+                        )
+                    }
+                }
+                // Channel rows
+                Box(modifier = Modifier.weight(1f)) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(rows, key = { "${it.channel.sourceId}_${it.channel.id}" }) { row ->
+                            Row(modifier = Modifier.height(ROW_HEIGHT)) {
+                                ChannelHeaderCell(channel = row.channel, onClick = { onWatch(row.channel.id) })
+                                Box(
+                                    modifier = Modifier
+                                        .horizontalScroll(scrollState)
+                                        .width(railWidth)
+                                        .fillMaxHeight(),
+                                ) {
+                                    ProgrammeRail(
+                                        programmes = row.programmes,
+                                        windowStartMs = windowStartMs,
+                                        windowEndMs = windowEndMs,
+                                        nowMs = nowMs,
+                                        visibleRange = visibleRange,
+                                        onWatch = { onWatch(row.channel.id) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    // Now-line overlay — drawn over the rails, clipped to the rail area.
+                    NowIndicator(
+                        windowStartMs = windowStartMs,
+                        nowMs = nowMs,
+                        scrollState = scrollState,
+                    )
+                }
+            }
         }
     }
-}
 
 @Composable
-private fun TimeHeader(firstSlotMs: Long, windowStartMs: Long, windowEndMs: Long) {
+private fun TimeHeader(
+    firstSlotMs: Long,
+    windowStartMs: Long,
+    windowEndMs: Long,
+    visibleRange: LongRange,
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         var slot = firstSlotMs
         while (slot < windowEndMs) {
-            val offsetMin = minutesBetween(windowStartMs, slot).toInt()
-            Text(
-                formatHm(slot),
-                modifier = Modifier
-                    .padding(start = DP_PER_MINUTE * offsetMin),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (slot in visibleRange) {
+                val offsetMin = minutesBetween(windowStartMs, slot).toInt()
+                Text(
+                    formatHm(slot),
+                    modifier = Modifier
+                        .padding(start = DP_PER_MINUTE * offsetMin),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             slot += SLOT_MINUTES * 60_000L
         }
     }
@@ -251,10 +303,16 @@ private fun ProgrammeRail(
     windowStartMs: Long,
     windowEndMs: Long,
     nowMs: Long,
+    visibleRange: LongRange,
     onWatch: () -> Unit,
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         programmes.forEach { p ->
+            // Skip cells outside the on-screen viewport before composing them. This
+            // is what virtualizes the rail: without it, a 26h × hundreds-of-rows
+            // grid composed every cell. `visibleRange` is widened by one slot on
+            // each side so scrolling stays seamless.
+            if (p.endMs < visibleRange.first || p.startMs > visibleRange.last) return@forEach
             val visibleStart = p.startMs.coerceAtLeast(windowStartMs)
             val visibleEnd = p.endMs.coerceAtMost(windowEndMs)
             if (visibleEnd <= visibleStart) return@forEach
