@@ -1,0 +1,43 @@
+appId: dev.goor.tv
+---
+# Favorite toggle: add a custom channel, mark it favorite, toggle the
+# favorites-only filter, verify it's still shown (and a second non-favorite
+# channel is filtered out).
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+
+# Add the first channel — this one we'll favorite.
+- tapOn: "Add channel"
+- tapOn: "Name"
+- inputText: "Favorite Channel"
+- tapOn: "Stream URL"
+- inputText: "http://example.invalid/fav.ts"
+- tapOn: "Save"
+- assertVisible: "Favorite Channel"
+
+# Add a second channel that we leave un-favorited.
+- tapOn: "Add channel"
+- tapOn: "Name"
+- inputText: "Other Channel"
+- tapOn: "Stream URL"
+- inputText: "http://example.invalid/other.ts"
+- tapOn: "Save"
+- assertVisible: "Other Channel"
+
+# Toggle favorite on the first channel. The non-favorite icon's
+# contentDescription is "Add favorite"; tap the first match (the
+# Favorite Channel row).
+- tapOn:
+    text: "Add favorite"
+    index: 0
+
+# After toggling, that row's icon should now be "Remove favorite".
+- assertVisible: "Remove favorite"
+
+# Flip the favourites-only filter.
+- tapOn: "Favourites"
+
+# Favorite Channel should still be visible; Other Channel should be hidden.
+- assertVisible: "Favorite Channel"
+- assertNotVisible: "Other Channel"
