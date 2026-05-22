@@ -79,7 +79,15 @@ jobs:
           disable-animations: true
           script: echo "AVD snapshot created"
 
-      - name: Run instrumented tests
+      # Install Maestro outside the emulator-runner step so the binary is on
+      # PATH when we run the combined script below. Maestro is a JVM CLI;
+      # setup-java already gave us a JRE.
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Run instrumented + Maestro tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -88,9 +96,14 @@ jobs:
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest
+          # connectedDebugAndroidTest installs + uninstalls its APKs, so we
+          # reinstall the debug build before Maestro runs against it.
+          script: |
+            ./gradlew :app:connectedDebugAndroidTest
+            ./gradlew :app:installDebug
+            maestro test .maestro/
 
-      - name: Upload test report
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -98,6 +111,7 @@ jobs:
           path: |
             app/build/reports/androidTests/connected/
             app/build/outputs/androidTest-results/connected/
+            /home/runner/.maestro/tests/
 
   dependency-review:
     runs-on: ubuntu-latest
