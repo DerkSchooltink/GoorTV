@@ -86,6 +86,29 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun addDialog_addButton_disabledUntilNameAndUrlAreValid() {
+        every { sourceDao.getAll() } returns flowOf(emptyList())
+
+        composeTestRule.setContent {
+            GoorTVTheme { SettingsScreen(onBack = {}, vm = settingsVm()) }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Add source").performClick()
+
+        // Initial state: empty name + empty URL → Add disabled.
+        composeTestRule.onNodeWithText("Add").assertIsNotEnabled()
+
+        // Name only → still disabled (URL is blank).
+        composeTestRule.onNodeWithText("Name").performTextInput("My Source")
+        composeTestRule.onNodeWithText("Add").assertIsNotEnabled()
+
+        // Invalid URL (no http/https) → still disabled, supporting text appears.
+        composeTestRule.onNodeWithText("URL").performTextInput("ftp://example.com/p.m3u")
+        composeTestRule.onNodeWithText("Must start with http:// or https://").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Add").assertIsNotEnabled()
+    }
+
+    @Test
     fun addDialog_switchingToXtream_showsCredentialFields() {
         every { sourceDao.getAll() } returns flowOf(emptyList())
 

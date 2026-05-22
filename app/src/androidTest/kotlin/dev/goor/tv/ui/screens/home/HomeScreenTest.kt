@@ -12,11 +12,11 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.preferences.UserPreferencesRepository
-import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.ui.theme.GoorTVTheme
 import dev.goor.tv.util.TimeProvider
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
@@ -38,9 +38,6 @@ class HomeScreenTest {
     }
     private val searchHistoryRepo = mockk<SearchHistoryRepository>(relaxed = true)
     private val prefsRepository = mockk<UserPreferencesRepository>(relaxed = true)
-    private val epgSyncService = mockk<EpgSyncService> {
-        coEvery { syncAll(any()) } returns emptyList()
-    }
     private val programmeDao = mockk<ProgrammeDao>(relaxed = true)
     private val manualSource = mockk<ManualSourceManager>(relaxed = true)
 
@@ -134,6 +131,54 @@ class HomeScreenTest {
 
         composeTestRule.onNodeWithText("BBC One").performClick()
         assertTrue(clickedId == 7L)
+    }
+
+    // ── Favorites ─────────────────────────────────────────────────────────────
+
+    @Test
+    fun favoriteIcon_onChannelRow_callsToggleFavorite() {
+        every { channelDao.getAll() } returns flowOf(listOf(
+            Channel(id = 42, sourceId = 1, name = "BBC One", url = "http://example.com/1", isFavorite = false),
+        ))
+        every { sourceDao.getAll() } returns flowOf(listOf(
+            Source(id = 1, name = "Test", type = SourceType.M3U, url = "http://example.com")
+        ))
+
+        composeTestRule.setContent {
+            GoorTVTheme { HomeScreen(onChannelClick = {}, onSettingsClick = {}, vm = homeVm()) }
+        }
+
+        // Non-favorite channel exposes "Add favorite" on the row's icon button.
+        composeTestRule.onNodeWithContentDescription("Add favorite").performClick()
+
+        coVerify { channelDao.toggleFavorite(42L) }
+    }
+
+    @Test
+    fun favoritesOnlyFilter_filtersListToFavoritesAfterToggle() {
+        every { channelDao.getAll() } returns flowOf(listOf(
+            Channel(id = 1, sourceId = 1, name = "FavChannel", url = "http://example.com/1", isFavorite = true),
+            Channel(id = 2, sourceId = 1, name = "OtherChannel", url = "http://example.com/2", isFavorite = false),
+        ))
+        every { sourceDao.getAll() } returns flowOf(listOf(
+            Source(id = 1, name = "Test", type = SourceType.M3U, url = "http://example.com")
+        ))
+
+        composeTestRule.setContent {
+            GoorTVTheme { HomeScreen(onChannelClick = {}, onSettingsClick = {}, vm = homeVm()) }
+        }
+
+        // Default: both channels visible.
+        composeTestRule.onNodeWithText("FavChannel").assertIsDisplayed()
+        composeTestRule.onNodeWithText("OtherChannel").assertIsDisplayed()
+
+        // Toggle: only favorites remain. Icon content-description is "Favourites"
+        // before the toggle (it tells the user what flipping will do) and flips
+        // to "Show all" after — click via the pre-toggle description.
+        composeTestRule.onNodeWithContentDescription("Favourites").performClick()
+
+        composeTestRule.onNodeWithText("FavChannel").assertIsDisplayed()
+        composeTestRule.onNodeWithText("OtherChannel").assertDoesNotExist()
     }
 
     // ── Search ────────────────────────────────────────────────────────────────
