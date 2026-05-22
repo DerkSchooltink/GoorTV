@@ -11,6 +11,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
 import io.ktor.client.engine.mock.respondOk
 import java.io.IOException
 import io.ktor.http.HttpStatusCode
@@ -163,6 +164,21 @@ class SourceSyncServiceTest {
 
         assertEquals(1, errors.size)
         assertEquals(3, attempt.get())  // MAX_ATTEMPTS = 3
+        coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
+    }
+
+    @Test
+    fun `sync(M3U) treats HTTP 5xx as a failure and does NOT wipe channels`() = runTest {
+        // Regression: previously a 5xx returned an empty/error body, the M3U
+        // parser silently returned an empty channel list, and
+        // replaceForSourcePreservingUserData wiped the source's channels.
+        val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p", lastSyncedAt = null)
+        every { sourceDao.getAll() } returns flowOf(listOf(source))
+        val engine = MockEngine { respondError(HttpStatusCode.InternalServerError) }
+
+        val errors = service(engine).syncAll()
+
+        assertEquals(1, errors.size)
         coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
     }
 
