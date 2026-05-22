@@ -75,7 +75,6 @@ fun HomeScreen(
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
-    var showSortMenu by remember { mutableStateOf(false) }
     var showAddChannelDialog by remember { mutableStateOf(false) }
     var editingChannel by remember { mutableStateOf<Channel?>(null) }
     val isDefaultView = searchQuery.isBlank() && !showFavoritesOnly
@@ -90,6 +89,19 @@ fun HomeScreen(
     // underlying data hasn't changed.
     val onFavoriteToggle = remember<(Long) -> Unit> { vm::toggleFavorite }
     val onEditChannel = remember<(Channel) -> Unit> { { ch -> editingChannel = ch } }
+    val onToggleSearch = remember<() -> Unit> {
+        {
+            if (searchActive && searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery)
+            searchActive = !searchActive
+            if (!searchActive) vm.setSearchQuery("")
+        }
+    }
+    // Typed as `() -> Unit` so the `coroutineScope.launch` Job is discarded —
+    // without this, the inferred type was `() -> Job` and the call site had to
+    // wrap with `{ onScrollToTop() }`, which created a fresh lambda per recomp
+    // and defeated skipping in HomeFabStack.
+    val onScrollToTop = remember<() -> Unit> { { coroutineScope.launch { listState.animateScrollToItem(0) } } }
+    val onAddChannel = remember<() -> Unit> { { showAddChannelDialog = true } }
 
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
@@ -100,79 +112,23 @@ fun HomeScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                AnimatedVisibility(visible = showScrollToTop) {
-                    SmallFloatingActionButton(
-                        onClick = { coroutineScope.launch { listState.animateScrollToItem(0) } },
-                    ) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
-                    }
-                }
-                FloatingActionButton(onClick = { showAddChannelDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add channel")
-                }
-            }
+            HomeFabStack(
+                showScrollToTop = showScrollToTop,
+                onScrollToTop = onScrollToTop,
+                onAddChannel = onAddChannel,
+            )
         },
         topBar = {
-            TopAppBar(
-                title = { Text("GoorTV") },
-                actions = {
-                    if (isSyncing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                        )
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    IconButton(onClick = vm::toggleFavoritesOnly) {
-                        Icon(
-                            if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (showFavoritesOnly) "Show all" else "Favourites",
-                            tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                        )
-                    }
-                    Box {
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort channels")
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false },
-                        ) {
-                            SortOrder.entries.forEach { order ->
-                                DropdownMenuItem(
-                                    text = { Text(order.displayName) },
-                                    onClick = {
-                                        vm.setSortOrder(order)
-                                        showSortMenu = false
-                                    },
-                                    leadingIcon = if (sortOrder == order) {
-                                        { Icon(Icons.Default.Check, contentDescription = null) }
-                                    } else null,
-                                )
-                            }
-                        }
-                    }
-                    IconButton(onClick = {
-                        if (searchActive && searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery)
-                        searchActive = !searchActive
-                        if (!searchActive) vm.setSearchQuery("")
-                    }) {
-                        Icon(
-                            if (searchActive) Icons.Default.Close else Icons.Default.Search,
-                            contentDescription = if (searchActive) "Close search" else "Search",
-                        )
-                    }
-                    IconButton(onClick = onGuideClick) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = "Guide")
-                    }
-                    IconButton(onClick = onSettingsClick) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
+            HomeTopBar(
+                isSyncing = isSyncing,
+                showFavoritesOnly = showFavoritesOnly,
+                searchActive = searchActive,
+                sortOrder = sortOrder,
+                onToggleFavoritesOnly = vm::toggleFavoritesOnly,
+                onSortSelected = vm::setSortOrder,
+                onToggleSearch = onToggleSearch,
+                onGuideClick = onGuideClick,
+                onSettingsClick = onSettingsClick,
             )
         },
     ) { padding ->
@@ -182,133 +138,31 @@ fun HomeScreen(
                 .fillMaxSize(),
         ) {
             if (searchActive) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = vm::setSearchQuery,
-                    placeholder = { Text("Search channels…") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    singleLine = true,
-                    keyboardActions = KeyboardActions(
-                        onSearch = { if (searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery) },
-                        onDone = { if (searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery) },
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Search,
-                    ),
+                SearchBar(
+                    query = searchQuery,
+                    history = searchHistory,
+                    onQueryChange = vm::setSearchQuery,
+                    onSubmit = { q -> if (q.isNotBlank()) vm.addToSearchHistory(q) },
                 )
-                if (searchHistory.isNotEmpty()) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        items(searchHistory) { query ->
-                            SuggestionChip(
-                                onClick = { vm.setSearchQuery(query) },
-                                label = { Text(query) },
-                                icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                            )
-                        }
-                    }
-                }
             }
 
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when {
-                    sources.isEmpty() -> EmptySourcesState(
-                        onSettingsClick = onSettingsClick,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                    isSyncing && pagingItems.itemCount == 0 -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) { CircularProgressIndicator() }
-                    pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
-                    else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("channel_list")) {
-                        if (recentlyWatched.isNotEmpty() && isDefaultView) {
-                            item(key = "recent_header") {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        "Recently Watched",
-                                        modifier = Modifier.weight(1f).padding(vertical = 8.dp),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    IconButton(onClick = vm::clearRecentlyWatched) {
-                                        Icon(
-                                            Icons.Default.Clear,
-                                            contentDescription = "Clear recently watched",
-                                            modifier = Modifier.size(16.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                            item(key = "recent_row") {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                ) {
-                                    items(recentlyWatched, key = { "recent_${it.id}" }) { channel ->
-                                        RecentChannelCard(
-                                            channel = channel,
-                                            onClick = { onChannelClick(channel.id) },
-                                        )
-                                    }
-                                }
-                            }
-                            item(key = "recent_divider") { HorizontalDivider() }
-                        }
-
-                        items(
-                            count = pagingItems.itemCount,
-                            key = pagingItems.itemKey { item ->
-                                when (item) {
-                                    is ChannelListItem.Header -> "header_${item.title}"
-                                    is ChannelListItem.Item -> item.channel.id
-                                }
-                            },
-                            contentType = pagingItems.itemContentType { item ->
-                                when (item) {
-                                    is ChannelListItem.Header -> "header"
-                                    is ChannelListItem.Item -> "channel"
-                                }
-                            },
-                        ) { index ->
-                            when (val item = pagingItems[index]) {
-                                is ChannelListItem.Header -> stickyGroupHeader(item.title)
-                                is ChannelListItem.Item -> {
-                                    // Cache the (sourceId, tvgChannelId) lookup key + result so
-                                    // ChannelItem sees a stable `nowPlaying?` and skips on most
-                                    // recompositions. Without this, the Pair was rebuilt per item
-                                    // per recomp and the row's body re-ran every minute tick.
-                                    val sourceId = item.channel.sourceId
-                                    val tvgId = item.channel.tvgChannelId
-                                    val nowPlaying = remember(sourceId, tvgId, nowByChannel) {
-                                        tvgId?.let { nowByChannel[sourceId to it] }
-                                    }
-                                    ChannelItem(
-                                        channel = item.channel,
-                                        isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
-                                        nowPlaying = nowPlaying,
-                                        nowMs = nowMs,
-                                        onClick = onChannelClick,
-                                        onFavoriteToggle = onFavoriteToggle,
-                                        onEdit = onEditChannel,
-                                    )
-                                }
-                                null -> {}
-                            }
-                        }
-                    }
-                }
+                HomeContent(
+                    sources = sources,
+                    isSyncing = isSyncing,
+                    pagingItems = pagingItems,
+                    recentlyWatched = recentlyWatched,
+                    isDefaultView = isDefaultView,
+                    manualSourceId = manualSourceId,
+                    nowByChannel = nowByChannel,
+                    nowMs = nowMs,
+                    listState = listState,
+                    onChannelClick = onChannelClick,
+                    onFavoriteToggle = onFavoriteToggle,
+                    onEditChannel = onEditChannel,
+                    onClearRecent = vm::clearRecentlyWatched,
+                    onSettingsClick = onSettingsClick,
+                )
             }
         }
     }
@@ -338,6 +192,246 @@ fun HomeScreen(
                 editingChannel = null
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeTopBar(
+    isSyncing: Boolean,
+    showFavoritesOnly: Boolean,
+    searchActive: Boolean,
+    sortOrder: SortOrder,
+    onToggleFavoritesOnly: () -> Unit,
+    onSortSelected: (SortOrder) -> Unit,
+    onToggleSearch: () -> Unit,
+    onGuideClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+) {
+    var showSortMenu by remember { mutableStateOf(false) }
+    TopAppBar(
+        title = { Text("GoorTV") },
+        actions = {
+            if (isSyncing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.width(4.dp))
+            }
+            IconButton(onClick = onToggleFavoritesOnly) {
+                Icon(
+                    if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (showFavoritesOnly) "Show all" else "Favourites",
+                    tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                )
+            }
+            Box {
+                IconButton(onClick = { showSortMenu = true }) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort channels")
+                }
+                DropdownMenu(
+                    expanded = showSortMenu,
+                    onDismissRequest = { showSortMenu = false },
+                ) {
+                    SortOrder.entries.forEach { order ->
+                        DropdownMenuItem(
+                            text = { Text(order.displayName) },
+                            onClick = {
+                                onSortSelected(order)
+                                showSortMenu = false
+                            },
+                            leadingIcon = if (sortOrder == order) {
+                                { Icon(Icons.Default.Check, contentDescription = null) }
+                            } else null,
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = onToggleSearch) {
+                Icon(
+                    if (searchActive) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = if (searchActive) "Close search" else "Search",
+                )
+            }
+            IconButton(onClick = onGuideClick) {
+                Icon(Icons.Default.CalendarMonth, contentDescription = "Guide")
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(Icons.Default.Settings, contentDescription = "Settings")
+            }
+        }
+    )
+}
+
+@Composable
+private fun HomeFabStack(
+    showScrollToTop: Boolean,
+    onScrollToTop: () -> Unit,
+    onAddChannel: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AnimatedVisibility(visible = showScrollToTop) {
+            SmallFloatingActionButton(onClick = onScrollToTop) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+            }
+        }
+        FloatingActionButton(onClick = onAddChannel) {
+            Icon(Icons.Default.Add, contentDescription = "Add channel")
+        }
+    }
+}
+
+@Composable
+private fun SearchBar(
+    query: String,
+    history: List<String>,
+    onQueryChange: (String) -> Unit,
+    onSubmit: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        placeholder = { Text("Search channels…") },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        singleLine = true,
+        keyboardActions = KeyboardActions(
+            onSearch = { onSubmit(query) },
+            onDone = { onSubmit(query) },
+        ),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+    )
+    if (history.isNotEmpty()) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(history) { q ->
+                SuggestionChip(
+                    onClick = { onQueryChange(q) },
+                    label = { Text(q) },
+                    icon = { Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeContent(
+    sources: List<dev.goor.tv.data.model.Source>,
+    isSyncing: Boolean,
+    pagingItems: androidx.paging.compose.LazyPagingItems<ChannelListItem>,
+    recentlyWatched: List<Channel>,
+    isDefaultView: Boolean,
+    manualSourceId: Long?,
+    nowByChannel: Map<Pair<Long, String>, Programme>,
+    nowMs: Long,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onChannelClick: (Long) -> Unit,
+    onFavoriteToggle: (Long) -> Unit,
+    onEditChannel: (Channel) -> Unit,
+    onClearRecent: () -> Unit,
+    onSettingsClick: () -> Unit,
+) {
+    when {
+        sources.isEmpty() -> EmptySourcesState(
+            onSettingsClick = onSettingsClick,
+            modifier = Modifier.fillMaxSize(),
+        )
+        isSyncing && pagingItems.itemCount == 0 -> Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) { CircularProgressIndicator() }
+        pagingItems.itemCount == 0 && !isSyncing -> EmptyChannelsState(modifier = Modifier.fillMaxSize())
+        else -> LazyColumn(state = listState, modifier = Modifier.fillMaxSize().testTag("channel_list")) {
+            if (recentlyWatched.isNotEmpty() && isDefaultView) {
+                item(key = "recent_header") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Recently Watched",
+                            modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        IconButton(onClick = onClearRecent) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Clear recently watched",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+                item(key = "recent_row") {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    ) {
+                        items(recentlyWatched, key = { "recent_${it.id}" }) { channel ->
+                            RecentChannelCard(
+                                channel = channel,
+                                onClick = { onChannelClick(channel.id) },
+                            )
+                        }
+                    }
+                }
+                item(key = "recent_divider") { HorizontalDivider() }
+            }
+
+            items(
+                count = pagingItems.itemCount,
+                key = pagingItems.itemKey { item ->
+                    when (item) {
+                        is ChannelListItem.Header -> "header_${item.title}"
+                        is ChannelListItem.Item -> item.channel.id
+                    }
+                },
+                contentType = pagingItems.itemContentType { item ->
+                    when (item) {
+                        is ChannelListItem.Header -> "header"
+                        is ChannelListItem.Item -> "channel"
+                    }
+                },
+            ) { index ->
+                when (val item = pagingItems[index]) {
+                    is ChannelListItem.Header -> stickyGroupHeader(item.title)
+                    is ChannelListItem.Item -> {
+                        // Cache the (sourceId, tvgChannelId) lookup key + result so
+                        // ChannelItem sees a stable `nowPlaying?` and skips on most
+                        // recompositions. Without this, the Pair was rebuilt per item
+                        // per recomp and the row's body re-ran every minute tick.
+                        val sourceId = item.channel.sourceId
+                        val tvgId = item.channel.tvgChannelId
+                        val nowPlaying = remember(sourceId, tvgId, nowByChannel) {
+                            tvgId?.let { nowByChannel[sourceId to it] }
+                        }
+                        ChannelItem(
+                            channel = item.channel,
+                            isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
+                            nowPlaying = nowPlaying,
+                            nowMs = nowMs,
+                            onClick = onChannelClick,
+                            onFavoriteToggle = onFavoriteToggle,
+                            onEdit = onEditChannel,
+                        )
+                    }
+                    null -> {}
+                }
+            }
+        }
     }
 }
 
