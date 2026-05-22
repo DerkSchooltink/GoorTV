@@ -1,6 +1,7 @@
 package dev.goor.tv.ui.screens.home
 
 import androidx.paging.PagingSource
+import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
@@ -50,6 +51,7 @@ class HomeViewModelTest {
     private val prefsRepository = mockk<UserPreferencesRepository>()
     private val epgSyncService = mockk<EpgSyncService>()
     private val programmeDao = mockk<ProgrammeDao>()
+    private val manualSource = mockk<ManualSourceManager>(relaxed = true)
 
     @Before
     fun setup() {
@@ -72,7 +74,7 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, FakeTimeProvider())
+    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, manualSource, FakeTimeProvider())
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {
@@ -157,42 +159,29 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `addCustomChannel creates manual source and inserts channel`() = runTest {
+    fun `addCustomChannel delegates to ManualSourceManager`() = runTest {
         makeVm().addCustomChannel("My Channel", "http://example.com/stream", null, "Sports")
         advanceUntilIdle()
 
-        coVerify { sourceDao.insert(match { it.type == SourceType.MANUAL && it.includedGroups == null }) }
-        coVerify { channelDao.insert(match { it.name == "My Channel" && it.url == "http://example.com/stream" && it.group == "Sports" }) }
+        coVerify { manualSource.addChannel("My Channel", "http://example.com/stream", null, "Sports") }
     }
 
     @Test
-    fun `addCustomChannel reuses existing manual source`() = runTest {
-        val existing = testSource(id = 42L, type = SourceType.MANUAL)
-        coEvery { sourceDao.getManualSource() } returns existing
-
-        makeVm().addCustomChannel("Ch", "http://x.com/s", null, null)
-        advanceUntilIdle()
-
-        coVerify(exactly = 0) { sourceDao.insert(any()) }
-        coVerify { channelDao.insert(match { it.sourceId == 42L }) }
-    }
-
-    @Test
-    fun `updateCustomChannel delegates to ChannelDao`() = runTest {
+    fun `updateCustomChannel delegates to ManualSourceManager`() = runTest {
         val channel = testChannel(id = 5L, name = "Updated")
         makeVm().updateCustomChannel(channel)
         advanceUntilIdle()
 
-        coVerify { channelDao.update(channel) }
+        coVerify { manualSource.updateChannel(channel) }
     }
 
     @Test
-    fun `deleteCustomChannel delegates to ChannelDao`() = runTest {
+    fun `deleteCustomChannel delegates to ManualSourceManager`() = runTest {
         val channel = testChannel(id = 7L)
         makeVm().deleteCustomChannel(channel)
         advanceUntilIdle()
 
-        coVerify { channelDao.delete(channel) }
+        coVerify { manualSource.deleteChannel(channel) }
     }
 
     @Test
@@ -212,9 +201,8 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `manualSourceId initialized from existing manual source on startup`() = runTest {
-        val existing = testSource(id = 55L, type = SourceType.MANUAL)
-        coEvery { sourceDao.getManualSource() } returns existing
+    fun `manualSourceId re-exports state from ManualSourceManager`() = runTest {
+        every { manualSource.manualSourceId } returns MutableStateFlow(55L)
 
         val vm = makeVm()
         advanceUntilIdle()

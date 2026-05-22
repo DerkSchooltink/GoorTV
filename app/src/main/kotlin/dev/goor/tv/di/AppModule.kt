@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import dev.goor.tv.data.db.AppDatabase
+import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.StreamConcurrencyTracker
 import dev.goor.tv.data.preferences.UserPreferencesRepository
@@ -35,6 +36,7 @@ val appModule = module {
     single { AppSyncCoordinator(get(), get()) }
     single { TimeProvider() }
     single { StreamConcurrencyTracker() }
+    single { ManualSourceManager(get(), get()) }
     single { SearchHistoryRepository(androidContext()) }
     single<DataStore<Preferences>> {
         PreferenceDataStoreFactory.create(
@@ -43,7 +45,7 @@ val appModule = module {
     }
     single { UserPreferencesRepository(get()) }
 
-    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { HomeViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { params -> PlayerViewModel(params.get(), get(), get(), get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get()) }
     viewModel { GuideViewModel(get(), get(), get(), get()) }

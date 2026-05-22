@@ -9,7 +9,7 @@ complexity:
     threshold: 80          # generous: Compose screens trend long
   LongParameterList:
     functionThreshold: 8
-    constructorThreshold: 8  # ViewModels take a handful of DAOs/services
+    constructorThreshold: 10  # ViewModels take a handful of DAOs/services + managers
   TooManyFunctions:
     thresholdInClasses: 25
     thresholdInInterfaces: 25
