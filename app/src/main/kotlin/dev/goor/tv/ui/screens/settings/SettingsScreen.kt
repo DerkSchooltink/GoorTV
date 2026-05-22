@@ -11,6 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -308,6 +310,7 @@ private fun AddSourceDialog(
     onAddM3u: (name: String, url: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
     onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
 ) {
+    val nameFocus = remember { FocusRequester() }
     var sourceType by remember { mutableStateOf(SourceType.M3U) }
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
@@ -315,6 +318,8 @@ private fun AddSourceDialog(
     var password by remember { mutableStateOf("") }
     var headers by remember { mutableStateOf("") }
     var maxStreams by remember { mutableStateOf("0") }
+    // Land focus on the first field so D-pad / keyboard can type immediately.
+    LaunchedEffect(Unit) { nameFocus.requestFocus() }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -330,7 +335,13 @@ private fun AddSourceDialog(
                         )
                     }
                 }
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
+                )
                 OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (sourceType == SourceType.XTREAM) {
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())

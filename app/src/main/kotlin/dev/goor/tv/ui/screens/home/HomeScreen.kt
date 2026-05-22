@@ -47,6 +47,9 @@ import coil3.size.Size
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
+import dev.goor.tv.ui.util.focusBorder
+import dev.goor.tv.ui.util.rememberTvFocus
+import dev.goor.tv.ui.util.trackTvFocus
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -427,17 +430,13 @@ private fun ChannelItem(
 
 @Composable
 private fun RecentChannelCard(channel: Channel, onClick: () -> Unit) {
-    var isFocused by remember { mutableStateOf(false) }
-    val focusBorderColor = MaterialTheme.colorScheme.primary
+    val focus = rememberTvFocus()
     Column(
         modifier = Modifier
             .width(96.dp)
-            .onFocusChanged { isFocused = it.isFocused }
+            .trackTvFocus(focus)
             .clickable(onClick = onClick)
-            .then(
-                if (isFocused) Modifier.border(2.dp, focusBorderColor, RoundedCornerShape(12.dp))
-                else Modifier
-            )
+            .focusBorder(focus.value)
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

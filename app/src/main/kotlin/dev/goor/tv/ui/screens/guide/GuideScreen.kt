@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +44,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
+import dev.goor.tv.ui.util.focusBorder
+import dev.goor.tv.ui.util.rememberTvFocus
+import dev.goor.tv.ui.util.trackTvFocus
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -275,14 +279,14 @@ private fun ProgrammeBlock(
     isLive: Boolean,
     onWatch: () -> Unit,
 ) {
-    var isFocused by remember { mutableStateOf(false) }
+    val focus = rememberTvFocus()
     val bg = when {
-        isFocused -> MaterialTheme.colorScheme.primary
+        focus.value -> MaterialTheme.colorScheme.primary
         isLive -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val fg = when {
-        isFocused -> MaterialTheme.colorScheme.onPrimary
+        focus.value -> MaterialTheme.colorScheme.onPrimary
         isLive -> MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -292,8 +296,9 @@ private fun ProgrammeBlock(
             .width(widthDp)
             .fillMaxHeight()
             .background(bg)
-            .then(if (isFocused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary) else Modifier)
-            .onFocusChanged { isFocused = it.isFocused }
+            // Square focus border, no corner radius — matches the block fill.
+            .focusBorder(focus.value, shape = RectangleShape)
+            .trackTvFocus(focus)
             .clickable(onClick = onWatch)
             .padding(horizontal = 6.dp, vertical = 4.dp),
     ) {

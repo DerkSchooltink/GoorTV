@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import dev.goor.tv.data.model.Channel
 
@@ -16,8 +18,12 @@ fun AddEditChannelDialog(
     onSave: (name: String, url: String, logoUrl: String?, group: String?) -> Unit,
     onDelete: (() -> Unit)? = null,
 ) {
+    val nameFocus = remember { FocusRequester() }
     var name by remember { mutableStateOf(channel?.name ?: "") }
     var url by remember { mutableStateOf(channel?.url ?: "") }
+    // Land focus on the first field so the D-pad / hardware keyboard can type
+    // immediately without an extra navigation step.
+    LaunchedEffect(Unit) { nameFocus.requestFocus() }
     val urlValid = remember(url) {
         val t = url.trim()
         t.startsWith("http://", ignoreCase = true) || t.startsWith("https://", ignoreCase = true)
@@ -51,7 +57,7 @@ fun AddEditChannelDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
                     singleLine = true,
                 )
                 OutlinedTextField(

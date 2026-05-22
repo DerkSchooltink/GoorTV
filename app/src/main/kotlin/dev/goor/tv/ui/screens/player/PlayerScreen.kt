@@ -7,11 +7,13 @@ import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -24,14 +26,19 @@ import dev.goor.tv.cast.loadOnCastSession
 import dev.goor.tv.cast.rememberCastSession
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.goor.tv.data.model.Programme
+import dev.goor.tv.ui.util.focusBorder
+import dev.goor.tv.ui.util.rememberTvFocus
+import dev.goor.tv.ui.util.trackTvFocus
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -69,6 +79,12 @@ private enum class AspectRatioMode(val label: String) {
 private val AspectRatioMode.next: AspectRatioMode
     get() = AspectRatioMode.entries[(ordinal + 1) % AspectRatioMode.entries.size]
 
+/** Saves the enum ordinal — `autoSaver()` doesn't know how to serialize enums. */
+private val AspectRatioModeSaver: Saver<AspectRatioMode, Int> = Saver(
+    save = { it.ordinal },
+    restore = { AspectRatioMode.entries[it] },
+)
+
 @Composable
 fun PlayerScreen(
     channelId: Long,
@@ -95,13 +111,24 @@ fun PlayerScreen(
     var castError by remember { mutableStateOf<String?>(null) }
     var isBuffering by remember { mutableStateOf(true) }
     var showControls by remember { mutableStateOf(false) }
-    var aspectRatioMode by remember { mutableStateOf(AspectRatioMode.FIT) }
-    val backFocusRequester = remember { FocusRequester() }
-    var backFocused by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        try { backFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
+    // User-selected aspect ratio persists across config changes (rotation,
+    // dark-mode toggle, etc.). Stored as ordinal because Saver can't reflect
+    // through enums without a custom Saver.
+    var aspectRatioMode by rememberSaveable(stateSaver = AspectRatioModeSaver) {
+        mutableStateOf(AspectRatioMode.FIT)
     }
+    val backFocusRequester = remember { FocusRequester() }
+    val backFocus = rememberTvFocus()
+    val aspectFocus = rememberTvFocus()
+    val castFocus = rememberTvFocus()
+
+    BackHandler { onBack() }
+
+    // Land focus on the back button once composition completes so the user can
+    // press D-pad back/right immediately without first navigating into the
+    // overlay tree. LaunchedEffect runs after the focus tree is built — the
+    // earlier try/catch around IllegalStateException is no longer needed.
+    LaunchedEffect(Unit) { backFocusRequester.requestFocus() }
 
     LaunchedEffect(showControls) {
         if (showControls) {
@@ -325,35 +352,65 @@ fun PlayerScreen(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { aspectRatioMode = aspectRatioMode.next }) {
+                TextButton(
+                    onClick = { aspectRatioMode = aspectRatioMode.next },
+                    modifier = Modifier
+                        .trackTvFocus(aspectFocus)
+                        .focusBorder(aspectFocus.value, CircleShape, Color.White),
+                ) {
                     Text(
                         aspectRatioMode.label,
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
-                AndroidView<MediaRouteButton>(
-                    factory = { ctx ->
-                        MediaRouteButton(ctx).also { CastButtonFactory.setUpMediaRouteButton(ctx, it) }
-                    },
-                    modifier = Modifier.size(48.dp),
-                )
+                // Wrap MediaRouteButton in a focusable Box so it participates in
+                // D-pad traversal — the raw AndroidView isn't reachable via the
+                // remote otherwise. The Box owns the focus ring; the inner
+                // AndroidView still handles touch. D-pad Enter / Center is
+                // dispatched manually via performClick() since AndroidView
+                // doesn't bubble key events to a Compose .clickable.
+                var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .trackTvFocus(castFocus)
+                        .focusBorder(castFocus.value, CircleShape, Color.White)
+                        .onPreviewKeyEvent { event ->
+                            val isClick = event.key == Key.DirectionCenter ||
+                                event.key == Key.Enter ||
+                                event.key == Key.NumPadEnter
+                            if (isClick && event.type == KeyEventType.KeyUp) {
+                                routeButton?.performClick() == true
+                            } else false
+                        }
+                        .focusable(),
+                ) {
+                    AndroidView<MediaRouteButton>(
+                        factory = { ctx ->
+                            MediaRouteButton(ctx).also {
+                                CastButtonFactory.setUpMediaRouteButton(ctx, it)
+                                routeButton = it
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
-        // Back button — always visible, focus-ring for D-pad visibility
+        // Back button — always visible, focus-ring for D-pad visibility.
+        // Requested into focus by the LaunchedEffect above so D-pad has somewhere
+        // to land on first composition.
         IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
                 .padding(8.dp)
-                .onFocusChanged { backFocused = it.isFocused }
                 .focusRequester(backFocusRequester)
-                .then(
-                    if (backFocused) Modifier.border(2.dp, Color.White, CircleShape)
-                    else Modifier
-                ),
+                .trackTvFocus(backFocus)
+                .focusBorder(backFocus.value, CircleShape, Color.White),
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
