@@ -14,3 +14,4 @@ app/build/
 
 # Gradle daemon config is machine-local
 gradle/gradle-daemon-jvm.properties
+IMPROVEMENTS.md
