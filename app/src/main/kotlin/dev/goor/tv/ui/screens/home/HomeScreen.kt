@@ -96,8 +96,12 @@ fun HomeScreen(
             if (!searchActive) vm.setSearchQuery("")
         }
     }
-    val onScrollToTop = remember { { coroutineScope.launch { listState.animateScrollToItem(0) } } }
-    val onAddChannel = remember { { showAddChannelDialog = true } }
+    // Typed as `() -> Unit` so the `coroutineScope.launch` Job is discarded —
+    // without this, the inferred type was `() -> Job` and the call site had to
+    // wrap with `{ onScrollToTop() }`, which created a fresh lambda per recomp
+    // and defeated skipping in HomeFabStack.
+    val onScrollToTop = remember<() -> Unit> { { coroutineScope.launch { listState.animateScrollToItem(0) } } }
+    val onAddChannel = remember<() -> Unit> { { showAddChannelDialog = true } }
 
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
@@ -110,7 +114,7 @@ fun HomeScreen(
         floatingActionButton = {
             HomeFabStack(
                 showScrollToTop = showScrollToTop,
-                onScrollToTop = { onScrollToTop() },
+                onScrollToTop = onScrollToTop,
                 onAddChannel = onAddChannel,
             )
         },
