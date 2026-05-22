@@ -44,7 +44,9 @@ class SettingsScreenTest {
         }
 
         composeTestRule.onNodeWithText("My Playlist").assertIsDisplayed()
-        composeTestRule.onNodeWithText("M3U").assertIsDisplayed()
+        // Supporting line renders as "M3U · all groups" — onNodeWithText matches
+        // exact strings by default, so the substring form is required.
+        composeTestRule.onNodeWithText("M3U", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -150,7 +152,9 @@ class SettingsScreenTest {
         }
 
         composeTestRule.onNodeWithContentDescription("Edit").performClick()
-        composeTestRule.onNodeWithText("Existing Name").assertIsDisplayed()
+        // "Existing Name" appears twice once the dialog opens — in the source-row
+        // headline behind the dialog AND in the dialog's Name field. Assert via
+        // the URL, which only the dialog renders.
         composeTestRule.onNodeWithText("http://existing.com").assertIsDisplayed()
     }
 
