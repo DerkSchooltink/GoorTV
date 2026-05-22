@@ -178,6 +178,50 @@ class GuideViewModelTest {
     }
 
     @Test
+    fun `window is slot-aligned — minute ticks within the same slot don't change windowStartMs`() = runTest {
+        stubSources(emptyList())
+        stubChannelsAndProgrammes()
+        val slotMs = GuideViewModel.SLOT_MS
+        // Start at an arbitrary offset inside a slot (slot boundary + 7 min).
+        val slotBoundary = 10L * slotMs
+        val clock = FakeTimeProvider(initial = slotBoundary + 7L * 60_000L)
+        val vm = GuideViewModel(sourceDao, channelDao, programmeDao, clock)
+        backgroundScope.launch { vm.windowStartMs.collect {} }
+        backgroundScope.launch { vm.windowEndMs.collect {} }
+        runCurrent()
+
+        val startBefore = vm.windowStartMs.value
+        val endBefore = vm.windowEndMs.value
+        // Tick by 1 min — still inside the same 30-min slot.
+        clock.tick(slotBoundary + 8L * 60_000L)
+        runCurrent()
+
+        assertEquals(startBefore, vm.windowStartMs.value)
+        assertEquals(endBefore, vm.windowEndMs.value)
+        // And the window really is aligned to the slot floor.
+        assertEquals(0L, vm.windowStartMs.value % slotMs)
+    }
+
+    @Test
+    fun `window shifts when the clock crosses a slot boundary`() = runTest {
+        stubSources(emptyList())
+        stubChannelsAndProgrammes()
+        val slotMs = GuideViewModel.SLOT_MS
+        val slotBoundary = 10L * slotMs
+        val clock = FakeTimeProvider(initial = slotBoundary + 25L * 60_000L)
+        val vm = GuideViewModel(sourceDao, channelDao, programmeDao, clock)
+        backgroundScope.launch { vm.windowStartMs.collect {} }
+        runCurrent()
+
+        val startBefore = vm.windowStartMs.value
+        // Tick past the next slot boundary.
+        clock.tick(slotBoundary + 32L * 60_000L)
+        runCurrent()
+
+        assertEquals(startBefore + slotMs, vm.windowStartMs.value)
+    }
+
+    @Test
     fun `Fetching transitions to Ready when source completes sync`() = runTest {
         val sources = MutableStateFlow(listOf(eligibleSource(synced = false)))
         every { sourceDao.getAll() } returns sources

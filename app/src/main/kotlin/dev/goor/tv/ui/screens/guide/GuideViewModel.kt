@@ -170,6 +170,10 @@ class GuideViewModel(
         // list materialized per emission. A 24h forward window over a large EPG
         // produced multi-hundred-MB heap retention and an OOM crash.
         private const val WINDOW_FORWARD_MS = 6L * 60L * 60L * 1000L   // 6 hours
-        private const val SLOT_MS = 30L * 60L * 1000L                  // 30-min slot
+
+        /** Length of one slot in minutes. The grid time-axis labels every [SLOT_MINUTES] min. */
+        const val SLOT_MINUTES = 30L
+        /** Length of one slot in ms — shared with the UI viewport buffer. */
+        const val SLOT_MS = SLOT_MINUTES * 60L * 1000L
     }
 }

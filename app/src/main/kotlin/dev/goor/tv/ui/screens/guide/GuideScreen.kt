@@ -1,6 +1,8 @@
 package dev.goor.tv.ui.screens.guide
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,9 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,7 +59,9 @@ private val CHANNEL_COL_WIDTH = 160.dp
 private val ROW_HEIGHT = 64.dp
 private val TIME_HEADER_HEIGHT = 24.dp
 private val PROGRAMME_GAP = 1.dp
-private val SLOT_MINUTES = 30L
+// Single source of truth lives on the ViewModel so the rail-fetch quantization
+// and the on-screen viewport buffer can't drift apart.
+private val SLOT_MINUTES = GuideViewModel.SLOT_MINUTES
 
 // java.time formatters are immutable + thread-safe (unlike SimpleDateFormat).
 private val hmFormatter: DateTimeFormatter =
@@ -69,7 +71,7 @@ private fun formatHm(epochMs: Long): String = hmFormatter.format(Instant.ofEpoch
 
 private fun minutesBetween(from: Long, to: Long): Long = (to - from) / 60_000L
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun GuideScreen(
     onBack: () -> Unit,
@@ -83,16 +85,6 @@ fun GuideScreen(
     val windowEndMs by vm.windowEndMs.collectAsStateWithLifecycle()
 
     val scrollState = rememberScrollState()
-    val density = LocalDensity.current
-
-    // Auto-scroll horizontally to "now" once when the screen first lands.
-    LaunchedEffect(Unit) {
-        val xPx = with(density) {
-            (minutesBetween(windowStartMs, nowMs) * DP_PER_MINUTE.toPx() / 1).toInt()
-        }
-        // Center "now" by subtracting half the visible width — best-effort, viewport size is unknown here.
-        scrollState.scrollTo((xPx - 200).coerceAtLeast(0))
-    }
 
     Scaffold(
         topBar = {
@@ -107,45 +99,33 @@ fun GuideScreen(
         },
     ) { padding ->
         // Crossfade between Loading / Empty / Ready so the spinner doesn't snap off
-        // when EPG arrives. We key the Crossfade on the state *class* (not the
-        // state value) so re-emissions of `Ready` with updated rows don't pin two
-        // separate `rows` lists in memory for the fade duration — that was a
-        // non-trivial cost on large playlists. The Crossfade lambda reads the
-        // last-seen Ready/Empty so the outgoing fade still shows real content.
-        var lastReady by remember { mutableStateOf<GuideState.Ready?>(null) }
-        var lastEmpty by remember { mutableStateOf<GuideState.Empty?>(null) }
-        when (val s = state) {
-            is GuideState.Ready -> lastReady = s
-            is GuideState.Empty -> lastEmpty = s
-            is GuideState.Loading -> {}
-        }
-        Crossfade(
-            targetState = state::class,
-            label = "GuideState",
-        ) { cls ->
-            when (cls) {
-                GuideState.Loading::class -> CenteredSpinner(
+        // when EPG arrives. The `Transition<T>.Crossfade` overload accepts a
+        // `contentKey` — we key on the state *class* so re-emissions of `Ready`
+        // with updated rows don't pin two `rows` lists in heap for the fade
+        // duration (a non-trivial cost on large playlists). The top-level
+        // `Crossfade(T, …)` overload does *not* expose `contentKey`, which is
+        // why this path uses `updateTransition` directly.
+        val transition = updateTransition(targetState = state, label = "GuideState")
+        transition.Crossfade(contentKey = { it::class }) { s ->
+            when (s) {
+                is GuideState.Loading -> CenteredSpinner(
                     label = "Waiting for EPG…",
                     modifier = Modifier.padding(padding),
                 )
-                GuideState.Empty::class -> lastEmpty?.let { s ->
-                    EmptyState(
-                        reason = s.reason,
-                        onGoToSettings = onGoToSettings,
-                        modifier = Modifier.padding(padding),
-                    )
-                }
-                GuideState.Ready::class -> lastReady?.let { s ->
-                    GuideGrid(
-                        rows = s.rows,
-                        windowStartMs = windowStartMs,
-                        windowEndMs = windowEndMs,
-                        nowMs = nowMs,
-                        scrollState = scrollState,
-                        onWatch = onWatch,
-                        modifier = Modifier.padding(padding),
-                    )
-                }
+                is GuideState.Empty -> EmptyState(
+                    reason = s.reason,
+                    onGoToSettings = onGoToSettings,
+                    modifier = Modifier.padding(padding),
+                )
+                is GuideState.Ready -> GuideGrid(
+                    rows = s.rows,
+                    windowStartMs = windowStartMs,
+                    windowEndMs = windowEndMs,
+                    nowMs = nowMs,
+                    scrollState = scrollState,
+                    onWatch = onWatch,
+                    modifier = Modifier.padding(padding),
+                )
             }
         }
     }
@@ -170,78 +150,92 @@ private fun GuideGrid(
 
     val density = LocalDensity.current
     val dpPerMinPx = with(density) { DP_PER_MINUTE.toPx() }
+    // Stable lambda so LazyColumn item rows don't recompose just because the
+    // callback identity changed on each parent recomposition.
+    val onWatchProgramme: (Long) -> Unit = remember(onWatch) { { id -> onWatch(id) } }
 
     // The rail area is wrapped in BoxWithConstraints so we know the on-screen
     // viewport width and can compute which programme cells actually intersect
     // it. Without this, every row's full-window-wide rail composed every
     // programme (tens per channel × hundreds of channels) — the dominant heap
     // cost that pushed the app into OOM territory.
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-            val railViewportPx = with(density) {
-                (this@BoxWithConstraints.maxWidth - CHANNEL_COL_WIDTH).toPx().coerceAtLeast(0f)
+    BoxWithConstraints(modifier = modifier) {
+        val railViewportPx = with(density) {
+            (maxWidth - CHANNEL_COL_WIDTH).toPx().coerceAtLeast(0f)
+        }
+        // 30-min buffer on each side so cells just outside the viewport still
+        // get composed and stay scroll-stable. derivedStateOf snapshots only
+        // re-fire when the *clamped* visible range actually changes, so
+        // small scroll deltas inside one slot don't churn recompositions.
+        val visibleRange by remember(windowStartMs, windowEndMs, dpPerMinPx, railViewportPx) {
+            derivedStateOf {
+                val scrollPx = scrollState.value.toFloat()
+                val startMin = (scrollPx / dpPerMinPx).toLong() - SLOT_MINUTES
+                val visibleMin = (railViewportPx / dpPerMinPx).toLong() + 2 * SLOT_MINUTES
+                val start = (windowStartMs + startMin * 60_000L).coerceAtLeast(windowStartMs)
+                val end = (start + visibleMin * 60_000L).coerceAtMost(windowEndMs)
+                start..end
             }
-            // 30-min buffer on each side so cells just outside the viewport still
-            // get composed and stay scroll-stable. derivedStateOf snapshots only
-            // re-fire when the *clamped* visible range actually changes, so
-            // small scroll deltas inside one slot don't churn recompositions.
-            val visibleRange by remember(windowStartMs, windowEndMs, dpPerMinPx, railViewportPx) {
-                derivedStateOf {
-                    val scrollPx = scrollState.value.toFloat()
-                    val startMin = (scrollPx / dpPerMinPx).toLong() - SLOT_MINUTES
-                    val visibleMin = (railViewportPx / dpPerMinPx).toLong() + 2 * SLOT_MINUTES
-                    val start = (windowStartMs + startMin * 60_000L).coerceAtLeast(windowStartMs)
-                    val end = (start + visibleMin * 60_000L).coerceAtMost(windowEndMs)
-                    start..end
-                }
-            }
+        }
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Time-axis header
-                Row(modifier = Modifier.height(TIME_HEADER_HEIGHT)) {
-                    Spacer(Modifier.width(CHANNEL_COL_WIDTH))
-                    Box(modifier = Modifier.horizontalScroll(scrollState).width(railWidth)) {
-                        TimeHeader(
-                            firstSlotMs = firstSlotMs,
-                            windowStartMs = windowStartMs,
-                            windowEndMs = windowEndMs,
-                            visibleRange = visibleRange,
-                        )
-                    }
-                }
-                // Channel rows
-                Box(modifier = Modifier.weight(1f)) {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(rows, key = { "${it.channel.sourceId}_${it.channel.id}" }) { row ->
-                            Row(modifier = Modifier.height(ROW_HEIGHT)) {
-                                ChannelHeaderCell(channel = row.channel, onClick = { onWatch(row.channel.id) })
-                                Box(
-                                    modifier = Modifier
-                                        .horizontalScroll(scrollState)
-                                        .width(railWidth)
-                                        .fillMaxHeight(),
-                                ) {
-                                    ProgrammeRail(
-                                        programmes = row.programmes,
-                                        windowStartMs = windowStartMs,
-                                        windowEndMs = windowEndMs,
-                                        nowMs = nowMs,
-                                        visibleRange = visibleRange,
-                                        onWatch = { onWatch(row.channel.id) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    // Now-line overlay — drawn over the rails, clipped to the rail area.
-                    NowIndicator(
+        // Auto-scroll horizontally to centre "now" once when the grid first lands.
+        // BoxWithConstraints gives us the real viewport width, so the centring is
+        // accurate (the old GuideScreen-level effect ran before layout and used a
+        // hard-coded -200 px offset).
+        LaunchedEffect(Unit) {
+            val nowOffsetPx = minutesBetween(windowStartMs, nowMs) * dpPerMinPx
+            val target = (nowOffsetPx - railViewportPx / 2f).toInt().coerceAtLeast(0)
+            scrollState.scrollTo(target)
+        }
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Time-axis header
+            Row(modifier = Modifier.height(TIME_HEADER_HEIGHT)) {
+                Spacer(Modifier.width(CHANNEL_COL_WIDTH))
+                Box(modifier = Modifier.horizontalScroll(scrollState).width(railWidth)) {
+                    TimeHeader(
+                        firstSlotMs = firstSlotMs,
                         windowStartMs = windowStartMs,
-                        nowMs = nowMs,
-                        scrollState = scrollState,
+                        windowEndMs = windowEndMs,
+                        visibleRange = visibleRange,
                     )
                 }
             }
+            // Channel rows
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(rows, key = { "${it.channel.sourceId}_${it.channel.id}" }) { row ->
+                        Row(modifier = Modifier.height(ROW_HEIGHT)) {
+                            ChannelHeaderCell(channel = row.channel, onClick = { onWatchProgramme(row.channel.id) })
+                            Box(
+                                modifier = Modifier
+                                    .horizontalScroll(scrollState)
+                                    .width(railWidth)
+                                    .fillMaxHeight(),
+                            ) {
+                                ProgrammeRail(
+                                    programmes = row.programmes,
+                                    windowStartMs = windowStartMs,
+                                    windowEndMs = windowEndMs,
+                                    nowMs = nowMs,
+                                    visibleRange = visibleRange,
+                                    channelId = row.channel.id,
+                                    onWatch = onWatchProgramme,
+                                )
+                            }
+                        }
+                    }
+                }
+                // Now-line overlay — drawn over the rails, clipped to the rail area.
+                NowIndicator(
+                    windowStartMs = windowStartMs,
+                    nowMs = nowMs,
+                    scrollState = scrollState,
+                )
+            }
         }
     }
+}
 
 @Composable
 private fun TimeHeader(
@@ -304,14 +298,18 @@ private fun ProgrammeRail(
     windowEndMs: Long,
     nowMs: Long,
     visibleRange: LongRange,
-    onWatch: () -> Unit,
+    channelId: Long,
+    onWatch: (Long) -> Unit,
 ) {
+    // Stable click callback for every ProgrammeBlock in this row — re-allocated
+    // only when the channel or the parent onWatch identity changes.
+    val onClick = remember(channelId, onWatch) { { onWatch(channelId) } }
     Box(modifier = Modifier.fillMaxSize()) {
         programmes.forEach { p ->
             // Skip cells outside the on-screen viewport before composing them. This
-            // is what virtualizes the rail: without it, a 26h × hundreds-of-rows
-            // grid composed every cell. `visibleRange` is widened by one slot on
-            // each side so scrolling stays seamless.
+            // is what virtualizes the rail: without it, a full-window-wide rail
+            // composed every cell across every visible row. `visibleRange` is
+            // widened by one slot on each side so scrolling stays seamless.
             if (p.endMs < visibleRange.first || p.startMs > visibleRange.last) return@forEach
             val visibleStart = p.startMs.coerceAtLeast(windowStartMs)
             val visibleEnd = p.endMs.coerceAtMost(windowEndMs)
@@ -324,7 +322,7 @@ private fun ProgrammeRail(
                 offsetDp = DP_PER_MINUTE * offsetMin,
                 widthDp = (DP_PER_MINUTE * widthMin - PROGRAMME_GAP).coerceAtLeast(0.dp),
                 isLive = isLive,
-                onWatch = onWatch,
+                onWatch = onClick,
             )
         }
     }
