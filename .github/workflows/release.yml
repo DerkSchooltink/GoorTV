@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write  # create releases and upload APK assets
+  contents: write  # create releases and upload APK + AAB assets
 
 jobs:
   build:
@@ -27,8 +27,9 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
         run: printf '%s' "$KEYSTORE_B64" | base64 -d > app/release.jks
 
-      - name: Build release APK
-        run: ./gradlew :app:assembleRelease
+      # APK for sideload via GitHub Releases; AAB for Play Console upload.
+      - name: Build release APK + AAB
+        run: ./gradlew :app:assembleRelease :app:bundleRelease
         env:
           SIGNING_STORE_FILE: release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
@@ -38,5 +39,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          files: app/build/outputs/apk/release/app-release.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
           generate_release_notes: true
