@@ -28,6 +28,11 @@ jobs:
         run: printf '%s' "$KEYSTORE_B64" | base64 -d > app/release.jks
 
       # APK for sideload via GitHub Releases; AAB for Play Console upload.
+      # SENTRY_DSN bakes the DSN into BuildConfig so the app initialises Sentry
+      # at runtime. SENTRY_AUTH_TOKEN authorises the Gradle plugin to upload
+      # R8 mappings so the dashboard can de-obfuscate stack traces. Either may
+      # be unset on forks/manual triggers; the build still succeeds, Sentry
+      # just stays a no-op and mappings aren't uploaded.
       - name: Build release APK + AAB
         run: ./gradlew :app:assembleRelease :app:bundleRelease
         env:
@@ -35,6 +40,8 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3

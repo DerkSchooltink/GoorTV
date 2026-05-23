@@ -12,6 +12,12 @@ app/build/
 *.jks
 *.keystore
 
+# Sentry — DSN/auth-token live in env vars (release.yml) and BuildConfig at
+# build time. The wizard drops these locally; don't let them commit.
+sentry.properties
+.sentryclirc
+sentry-wizard
+
 # Gradle daemon config is machine-local
 gradle/gradle-daemon-jvm.properties
 IMPROVEMENTS.md

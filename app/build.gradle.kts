@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.sentry)
 }
 
 kotlin {
@@ -19,6 +20,15 @@ android {
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 9
         versionName = "1.4.1"
+
+        // Sentry DSN is read from the env at build time. Empty value → Sentry
+        // is not initialised at runtime (see App.onCreate), so local debug
+        // builds without the env var never ship events.
+        buildConfigField(
+            "String",
+            "SENTRY_DSN",
+            "\"${System.getenv("SENTRY_DSN").orEmpty()}\"",
+        )
     }
 
     signingConfigs {
@@ -51,6 +61,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
@@ -70,6 +81,7 @@ android {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
 
 dependencies {
     implementation(platform(libs.compose.bom))
@@ -112,6 +124,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
+    implementation(libs.sentry.android)
+
     // Unit tests (JVM)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
@@ -130,4 +144,24 @@ dependencies {
     androidTestImplementation(libs.mockk.agent)
     androidTestImplementation(libs.room.testing)
     debugImplementation(libs.compose.ui.test.manifest)
+}
+
+
+// Sentry plugin handles the R8 mapping + (optionally) source-context upload so
+// the dashboard can render readable stack traces. Manifest auto-init is left
+// disabled — we init manually in App.kt so DSN and PII settings stay in code.
+// Source-context + mapping uploads need SENTRY_AUTH_TOKEN at build time; when
+// it's absent (forks, local builds) the plugin's upload tasks become no-ops
+// and the build still succeeds.
+sentry {
+    org.set("derk-schooltink")
+    projectName.set("android")
+    autoInstallation { enabled.set(false) }
+    autoUploadProguardMapping.set(System.getenv("SENTRY_AUTH_TOKEN") != null)
+    includeProguardMapping.set(true)
+    // OSS app — fine to expose sources alongside stack traces. Gated on the
+    // auth token so local builds don't fail trying to upload.
+    includeSourceContext.set(System.getenv("SENTRY_AUTH_TOKEN") != null)
+    ignoredBuildTypes.set(setOf("debug", "benchmark"))
+    tracingInstrumentation { enabled.set(false) }
 }

@@ -261,7 +261,7 @@ Findings from a code-side audit on 2026-05-23 (branch `main` @ `b58477e`).
 
 - [x] **A2.1** Switch `release.yml` from `assembleRelease` → `bundleRelease`, upload `.aab` not `.apk`. *(Done — workflow now builds both; APK kept for GitHub-Releases sideload, AAB added for Play.)*
 - [ ] **A2.2** Enroll in Play App Signing, generate a new upload key, rotate `KEYSTORE_BASE64` secret if needed, document the procedure for re-issuing the key if compromised.
-- [ ] **A2.3** Add Firebase Crashlytics (or Sentry — pick one). This is the single biggest gap.
+- [x] **A2.3** Add Firebase Crashlytics (or Sentry — pick one). This is the single biggest gap. *(Done — Sentry SaaS (EU region). Init in `App.initSentry()` is a no-op without `SENTRY_DSN` baked into BuildConfig at build time, and skipped for debug builds. PII off, no replays, no perf traces. R8 mapping upload runs via `sentry-cli` in CI — Sentry Gradle plugin 5.8.0 doesn't support AGP 9 yet; reintroduce the plugin when 5.9.x ships.)*
 - [ ] **A2.4** Verify all 4 ABIs ship in the AAB (`bundletool` after a release build).
 - [ ] **A2.5** Measure AAB install size; act if >30 MB.
 - [x] **A2.6** Add a `network_security_config.xml` even if it only documents the cleartext allow. Helps with the Data Safety form rationale. *(Done — `app/src/main/res/xml/network_security_config.xml`, referenced from manifest.)*
@@ -500,7 +500,7 @@ prerequisite chain so you can pick up where this leaves off.
 
 - [x] **A2.1** Switch `release.yml` from `assembleRelease` → `bundleRelease`,
   upload `.aab`. *(Done — both artifacts published per release tag.)*
-- [ ] **A2.3** Wire Crashlytics (or Sentry). Without this, you cannot
+- [x] **A2.3** Wire Crashlytics (or Sentry). Without this, you cannot
   monitor the closed-test phase meaningfully.
 - [ ] **A3.2** Write + host the privacy policy.
 - [ ] **A3.3** Fill the Data Safety form per the inventory table.
