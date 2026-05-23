@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    GoorTV is a BYOC media player: every network destination is a host the
+    user typed into Settings (M3U / EPG / Xtream / channel-logo URLs). Many
+    IPTV providers still ship over plain HTTP, so cleartext is permitted
+    globally. We document the policy here so the Data Safety form has a
+    concrete reference instead of just the manifest's blanket
+    usesCleartextTraffic="true".
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

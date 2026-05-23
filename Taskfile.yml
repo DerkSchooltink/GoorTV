@@ -9,6 +9,10 @@ tasks:
     desc: Assemble release APK
     cmd: ./gradlew assembleRelease
 
+  bundle:release:
+    desc: Build release AAB (Play Store upload artifact)
+    cmd: ./gradlew :app:bundleRelease
+
   install:
     desc: Install debug APK on connected device
     cmd: ./gradlew installDebug
