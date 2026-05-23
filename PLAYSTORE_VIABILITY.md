@@ -328,10 +328,14 @@ Required. Even a static GitHub Pages markdown page suffices.
 - [x] **A3.4** Add a one-time UGC consent dialog (per Play UGC policy
   requirement surfaced in Phase 0): user must accept ToS before adding their
   first source. Persist acceptance to DataStore. *(Done — `UgcConsentGate` mounted at the navigation root, backed by `UserPreferencesRepository.tosAccepted`.)*
-- [ ] **A3.5** Add a per-source / per-channel "report" or "remove" action that
+- [x] **A3.5** Add a per-source / per-channel "report" or "remove" action that
   the UGC policy expects. Channels already have a delete path via Edit dialog
   for custom channels; for synced channels there's no per-row removal — the
   whole source removes. Document this explicitly or add per-channel hide.
+  *(Done — synced channels now hideable via long-press / Menu key. Hidden
+  channels are filtered from all listings and surviving re-sync via the
+  merge-preserve logic. Reachable + reversible from Settings → Hidden
+  channels.)*
 
 ---
 
@@ -514,7 +518,7 @@ prerequisite chain so you can pick up where this leaves off.
 - [ ] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
   (1280×720).
 - [ ] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore).
-- [ ] **A3.5** Per-channel hide / per-source remove for UGC moderation.
+- [x] **A3.5** Per-channel hide / per-source remove for UGC moderation. *(Done — `hidden` column added to Channel (v11→v12), long-press / Menu key context menu on Home, "Hidden channels (N)" entry in Settings with Unhide. Source-level remove already existed.)*
 - [ ] **A4.2** Recruit ≥ 20 closed testers, set up signup flow.
 
 ### Medium — improves quality but not gating

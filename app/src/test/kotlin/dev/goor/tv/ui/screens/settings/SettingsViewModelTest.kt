@@ -40,6 +40,7 @@ class SettingsViewModelTest {
     @Before
     fun setup() {
         every { sourceDao.getAll() } returns flowOf(emptyList())
+        every { channelDao.getHiddenCount() } returns flowOf(0)
     }
 
     private fun makeVm() = SettingsViewModel(sourceDao, channelDao, syncService, epgSyncService)

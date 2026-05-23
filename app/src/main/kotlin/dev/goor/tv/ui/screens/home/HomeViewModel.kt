@@ -125,6 +125,10 @@ class HomeViewModel(
         viewModelScope.launch { channelDao.toggleFavorite(channelId) }
     }
 
+    fun hideChannel(channelId: Long) {
+        viewModelScope.launch { channelDao.setHidden(channelId, true) }
+    }
+
     fun clearRecentlyWatched() {
         viewModelScope.launch { channelDao.clearRecentlyWatched() }
     }

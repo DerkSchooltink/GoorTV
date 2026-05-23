@@ -26,6 +26,10 @@ class SettingsViewModel(
     val sources = sourceDao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Count of user-hidden channels — drives the "Hidden channels (N)" Settings entry. */
+    val hiddenCount = channelDao.getHiddenCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     private val _syncingIds = MutableStateFlow<Set<Long>>(emptySet())
     val syncingIds = _syncingIds.asStateFlow()
     val syncing = _syncingIds.map { it.isNotEmpty() }

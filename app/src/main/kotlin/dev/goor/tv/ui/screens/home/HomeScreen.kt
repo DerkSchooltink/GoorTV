@@ -8,6 +8,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -92,6 +98,7 @@ fun HomeScreen(
     // underlying data hasn't changed.
     val onFavoriteToggle = remember<(Long) -> Unit> { vm::toggleFavorite }
     val onEditChannel = remember<(Channel) -> Unit> { { ch -> editingChannel = ch } }
+    val onHideChannel = remember<(Long) -> Unit> { vm::hideChannel }
     val onToggleSearch = remember<() -> Unit> {
         {
             if (searchActive && searchQuery.isNotBlank()) vm.addToSearchHistory(searchQuery)
@@ -171,6 +178,7 @@ fun HomeScreen(
                     onChannelClick = onChannelClick,
                     onFavoriteToggle = onFavoriteToggle,
                     onEditChannel = onEditChannel,
+                    onHideChannel = onHideChannel,
                     onClearRecent = vm::clearRecentlyWatched,
                     onSettingsClick = onSettingsClick,
                 )
@@ -357,6 +365,7 @@ private fun HomeContent(
     onChannelClick: (Long) -> Unit,
     onFavoriteToggle: (Long) -> Unit,
     onEditChannel: (Channel) -> Unit,
+    onHideChannel: (Long) -> Unit,
     onClearRecent: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
@@ -456,6 +465,7 @@ private fun HomeContent(
                             onClick = onChannelClick,
                             onFavoriteToggle = onFavoriteToggle,
                             onEdit = onEditChannel,
+                            onHide = onHideChannel,
                         )
                     }
                     null -> {}
@@ -490,6 +500,7 @@ private fun stickyGroupHeader(title: String) {
  * `System.currentTimeMillis()` default looked like a convenience but
  * non-stable defaults defeat skipping for the entire function.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelItem(
     channel: Channel,
@@ -499,11 +510,28 @@ private fun ChannelItem(
     onClick: (Long) -> Unit,
     onFavoriteToggle: (Long) -> Unit,
     onEdit: (Channel) -> Unit,
+    onHide: (Long) -> Unit,
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val primaryColor = MaterialTheme.colorScheme.primary
     val focusBg = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
     var isFocused by remember { mutableStateOf(false) }
+    // Hide is offered only for synced channels — MANUAL (custom) channels already
+    // have a Delete action via the edit dialog.
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            // Menu / KEYCODE_MENU on a TV remote opens the row's context menu —
+            // long-press is the touch equivalent. onPreviewKeyEvent runs before
+            // the row's click handler sees the key.
+            .onPreviewKeyEvent { ev ->
+                if (!isCustom && ev.type == KeyEventType.KeyDown && ev.key == Key.Menu) {
+                    menuExpanded = true
+                    true
+                } else false
+            },
+    ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -520,7 +548,10 @@ private fun ChannelItem(
                 }
             }
             .onFocusChanged { isFocused = it.isFocused }
-            .clickable { onClick(channel.id) }
+            .combinedClickable(
+                onClick = { onClick(channel.id) },
+                onLongClick = if (isCustom) null else ({ menuExpanded = true }),
+            )
             .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -574,6 +605,20 @@ private fun ChannelItem(
                 if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (channel.isFavorite) "Remove favorite" else "Add favorite",
                 tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Hide channel") },
+                leadingIcon = { Icon(Icons.Default.VisibilityOff, contentDescription = null) },
+                onClick = {
+                    menuExpanded = false
+                    onHide(channel.id)
+                },
             )
         }
     }

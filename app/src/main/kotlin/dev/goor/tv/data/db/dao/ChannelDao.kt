@@ -19,6 +19,7 @@ interface ChannelDao {
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
         WHERE c.tvgChannelId IS NOT NULL AND c.tvgChannelId != ''
+          AND c.hidden = 0
           AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         ORDER BY c.`group`, c.name
     """)
@@ -27,7 +28,8 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
-        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        WHERE c.hidden = 0
+        AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
         AND (:query = '' OR c.name LIKE '%' || :query || '%')
         AND (:favOnly = 0 OR c.isFavorite = 1)
@@ -38,7 +40,8 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
-        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        WHERE c.hidden = 0
+        AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
         AND (:query = '' OR c.name LIKE '%' || :query || '%')
         AND (:favOnly = 0 OR c.isFavorite = 1)
@@ -49,7 +52,8 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
-        WHERE (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+        WHERE c.hidden = 0
+        AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
         AND (:query = '' OR c.name LIKE '%' || :query || '%')
         AND (:favOnly = 0 OR c.isFavorite = 1)
@@ -57,14 +61,28 @@ interface ChannelDao {
     """)
     fun getChannelsPagedByLastWatched(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
 
-    @Query("SELECT DISTINCT `group` FROM channels WHERE sourceId = :sourceId AND `group` IS NOT NULL ORDER BY `group`")
+    @Query("""
+        SELECT DISTINCT `group` FROM channels
+        WHERE sourceId = :sourceId AND `group` IS NOT NULL AND hidden = 0
+        ORDER BY `group`
+    """)
     fun getGroupsForSource(sourceId: Long): Flow<List<String>>
 
-    @Query("SELECT DISTINCT `group` FROM channels WHERE `group` IS NOT NULL ORDER BY `group`")
+    @Query("SELECT DISTINCT `group` FROM channels WHERE `group` IS NOT NULL AND hidden = 0 ORDER BY `group`")
     fun getGroups(): Flow<List<String>>
 
-    @Query("SELECT * FROM channels WHERE lastWatchedAt IS NOT NULL ORDER BY lastWatchedAt DESC LIMIT 10")
+    @Query("SELECT * FROM channels WHERE lastWatchedAt IS NOT NULL AND hidden = 0 ORDER BY lastWatchedAt DESC LIMIT 10")
     fun getRecentlyWatched(): Flow<List<Channel>>
+
+    /** Hidden channels — the inverse of every other listing query. Powers Settings → Hidden channels. */
+    @Query("SELECT * FROM channels WHERE hidden = 1 ORDER BY `group`, name")
+    fun getHidden(): Flow<List<Channel>>
+
+    @Query("SELECT COUNT(*) FROM channels WHERE hidden = 1")
+    fun getHiddenCount(): Flow<Int>
+
+    @Query("UPDATE channels SET hidden = :hidden WHERE id = :id")
+    suspend fun setHidden(id: Long, hidden: Boolean)
 
     @Query("SELECT * FROM channels WHERE sourceId = :sourceId ORDER BY `group`, name")
     fun getBySource(sourceId: Long): Flow<List<Channel>>
@@ -95,7 +113,7 @@ interface ChannelDao {
 
     /**
      * Replaces all channels for [sourceId] with [fetched], preserving user data
-     * (favorites, last-watched) from the existing rows.
+     * (favorites, last-watched, hidden) from the existing rows.
      *
      * Matching cascades through three keys, in order, so user data survives
      * upstream renames/re-encodings that change just one of them:
@@ -113,7 +131,7 @@ interface ChannelDao {
     @Transaction
     suspend fun replaceForSourcePreservingUserData(sourceId: Long, fetched: List<Channel>) {
         val existing = getBySourceOnce(sourceId)
-            .filter { it.isFavorite || it.lastWatchedAt != null }
+            .filter { it.isFavorite || it.lastWatchedAt != null || it.hidden }
             .toMutableList()
         val byUrl = existing.associateBy { it.url }.toMutableMap()
         val byTvgId = existing.filter { !it.tvgChannelId.isNullOrBlank() }
@@ -132,7 +150,11 @@ interface ChannelDao {
                 ?: byNameGroup[ch.name to ch.group]
             if (match != null) {
                 consume(match)
-                ch.copy(isFavorite = match.isFavorite, lastWatchedAt = match.lastWatchedAt)
+                ch.copy(
+                    isFavorite = match.isFavorite,
+                    lastWatchedAt = match.lastWatchedAt,
+                    hidden = match.hidden,
+                )
             } else {
                 ch
             }

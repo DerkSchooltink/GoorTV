@@ -35,4 +35,5 @@ data class Channel(
     val isFavorite: Boolean = false,
     val lastWatchedAt: Long? = null,
     val tvgChannelId: String? = null,
+    val hidden: Boolean = false,
 )

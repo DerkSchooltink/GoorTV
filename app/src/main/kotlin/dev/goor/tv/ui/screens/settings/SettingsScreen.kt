@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +29,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onHiddenChannelsClick: () -> Unit = {},
     vm: SettingsViewModel = koinViewModel(),
 ) {
     val sources by vm.sources.collectAsStateWithLifecycle()
@@ -35,6 +37,7 @@ fun SettingsScreen(
     val syncingIds by vm.syncingIds.collectAsStateWithLifecycle()
     val epgSyncingIds by vm.epgSyncingIds.collectAsStateWithLifecycle()
     val snackbarMessage by vm.snackbarMessage.collectAsStateWithLifecycle()
+    val hiddenCount by vm.hiddenCount.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingSource by remember { mutableStateOf<Source?>(null) }
@@ -99,6 +102,34 @@ fun SettingsScreen(
                     onDelete = { vm.deleteSource(source) },
                 )
                 HorizontalDivider()
+            }
+            if (hiddenCount > 0) {
+                item(key = "hidden_channels_entry") {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onHiddenChannelsClick)
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            "Hidden channels ($hiddenCount)",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }

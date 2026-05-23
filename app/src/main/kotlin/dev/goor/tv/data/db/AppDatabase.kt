@@ -11,7 +11,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 11, exportSchema = true)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 12, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao
@@ -121,6 +121,17 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent())
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_sources_type_url ON sources(type, url)")
+            }
+        }
+
+        /**
+         * Adds a per-channel `hidden` flag for user-driven moderation
+         * (Play Store UGC policy A3.5). Preserved across re-syncs by the
+         * merge in `ChannelDao.replaceForSourcePreservingUserData`.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE channels ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
             }
         }
     }
