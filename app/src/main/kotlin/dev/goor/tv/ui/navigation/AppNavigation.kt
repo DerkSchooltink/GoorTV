@@ -9,6 +9,7 @@ import dev.goor.tv.ui.consent.UgcConsentGate
 import dev.goor.tv.ui.screens.guide.GuideScreen
 import dev.goor.tv.ui.screens.home.HomeScreen
 import dev.goor.tv.ui.screens.player.PlayerScreen
+import dev.goor.tv.ui.screens.settings.HiddenChannelsScreen
 import dev.goor.tv.ui.screens.settings.SettingsScreen
 import kotlinx.serialization.Serializable
 
@@ -30,6 +31,9 @@ internal object Settings
 @Serializable
 internal object Guide
 
+@Serializable
+internal object HiddenChannels
+
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
@@ -49,7 +53,13 @@ fun AppNavigation() {
             )
         }
         composable<Settings> {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onHiddenChannelsClick = { navController.navigate(HiddenChannels) },
+            )
+        }
+        composable<HiddenChannels> {
+            HiddenChannelsScreen(onBack = { navController.popBackStack() })
         }
         composable<Guide> {
             GuideScreen(
