@@ -19,6 +19,7 @@ import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastSession
 import androidx.compose.runtime.State
+import dev.goor.tv.cast.isCastAvailable
 import dev.goor.tv.cast.loadOnCastSession
 import dev.goor.tv.cast.rememberCastSession
 import androidx.compose.material3.*
@@ -376,37 +377,40 @@ private fun PlayerControlsFooter(
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
-            // Wrap MediaRouteButton in a focusable Box so it participates in
-            // D-pad traversal — the raw AndroidView isn't reachable via the
-            // remote otherwise. The Box owns the focus ring; the inner
-            // AndroidView still handles touch. D-pad Enter / Center is
-            // dispatched manually via performClick() since AndroidView
-            // doesn't bubble key events to a Compose .clickable.
-            var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .trackTvFocus(castFocus)
-                    .focusBorder(castFocus.value, CircleShape, Color.White)
-                    .onPreviewKeyEvent { event ->
-                        val isClick = event.key == Key.DirectionCenter ||
-                            event.key == Key.Enter ||
-                            event.key == Key.NumPadEnter
-                        if (isClick && event.type == KeyEventType.KeyUp) {
-                            routeButton?.performClick() == true
-                        } else false
-                    }
-                    .focusable(),
-            ) {
-                AndroidView<MediaRouteButton>(
-                    factory = { ctx ->
-                        MediaRouteButton(ctx).also {
-                            CastButtonFactory.setUpMediaRouteButton(ctx, it)
-                            routeButton = it
+            // Skip the Cast button on devices without Google Play Services —
+            // CastButtonFactory.setUpMediaRouteButton internally calls
+            // CastContext.getSharedInstance which throws
+            // ModuleUnavailableException on AOSP TV / Fire TV / de-Googled
+            // devices and crashes the process.
+            val context = LocalContext.current
+            val castAvailable = remember { context.isCastAvailable() }
+            if (castAvailable) {
+                var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .trackTvFocus(castFocus)
+                        .focusBorder(castFocus.value, CircleShape, Color.White)
+                        .onPreviewKeyEvent { event ->
+                            val isClick = event.key == Key.DirectionCenter ||
+                                event.key == Key.Enter ||
+                                event.key == Key.NumPadEnter
+                            if (isClick && event.type == KeyEventType.KeyUp) {
+                                routeButton?.performClick() == true
+                            } else false
                         }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                        .focusable(),
+                ) {
+                    AndroidView<MediaRouteButton>(
+                        factory = { ctx ->
+                            MediaRouteButton(ctx).also {
+                                CastButtonFactory.setUpMediaRouteButton(ctx, it)
+                                routeButton = it
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

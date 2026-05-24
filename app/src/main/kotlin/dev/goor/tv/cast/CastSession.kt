@@ -31,6 +31,9 @@ fun rememberCastSession(): State<CastSession?> {
     val context = LocalContext.current
     val session = remember { mutableStateOf<CastSession?>(null) }
     DisposableEffect(Unit) {
+        if (!context.isCastAvailable()) {
+            return@DisposableEffect onDispose { }
+        }
         val sessionManager = CastContext.getSharedInstance(context).sessionManager
         session.value = sessionManager.currentCastSession
         val listener = object : SessionManagerListener<CastSession> {
