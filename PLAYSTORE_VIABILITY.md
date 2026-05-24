@@ -314,7 +314,7 @@ Required. Even a static GitHub Pages markdown page suffices.
 ### Action items
 
 - [ ] **A3.1** Decide on Path A vs Path B for Xtream credential storage.
-- [ ] **A3.2** Write the privacy policy. Skeleton:
+- [x] **A3.2** Write the privacy policy. Skeleton:
   - What data the app collects (essentially: nothing leaves device, except
     network metadata to user-supplied URLs and Google's Cast receiver).
   - What rights users have (the data IS on their device; uninstall = deleted).
@@ -322,6 +322,9 @@ Required. Even a static GitHub Pages markdown page suffices.
   - Effective date.
   - Host at `https://<user>.github.io/goortv-privacy/` (separate repo or
     `docs/` in this one).
+  *(Done — `docs/privacy.md`, Pages enabled from `main:/docs`. Live at
+  https://derkschooltink.github.io/GoorTV/privacy/. In-app link from
+  Settings → Privacy policy.)*
 - [ ] **A3.3** Fill the Data Safety form per the table above. Mark "Data
   encrypted in transit" honestly — HTTPS yes, cleartext HTTP no, depends on
   user-supplied URL.
@@ -502,7 +505,7 @@ prerequisite chain so you can pick up where this leaves off.
   upload `.aab`. *(Done — both artifacts published per release tag.)*
 - [x] **A2.3** Wire Crashlytics (or Sentry). Without this, you cannot
   monitor the closed-test phase meaningfully.
-- [ ] **A3.2** Write + host the privacy policy.
+- [x] **A3.2** Write + host the privacy policy.
 - [ ] **A3.3** Fill the Data Safety form per the inventory table.
 - [x] **A3.4** UGC consent dialog on first launch (Play UGC policy).
 - [ ] **A4.1** Create Play developer account, complete identity verification.
