@@ -49,23 +49,22 @@ unmistakable.
 ≤ 4000 characters. Appears on the listing page once expanded.
 
 ```
-GoorTV is a clean, open-source media player for Android TV and Android phones.
+GoorTV is an open-source media player for Android TV and Android phones.
 It plays the M3U playlists, XMLTV electronic programme guides, and
-Xtream-compatible streams that **you** supply.
+Xtream-compatible streams that you supply.
 
-The app ships with **no content**, no playlists, no preset URLs, and no
+The app ships with no content, no playlists, no preset URLs, and no
 account system. You provide the source URLs; GoorTV renders them.
 
 WHAT IT DOES
 
 • Adds M3U and Xtream-API sources from URLs you paste into Settings
-• Auto-syncs sources hourly and EPGs every six hours, on-demand refresh available
+• Auto-syncs sources hourly and EPGs every six hours, with on-demand refresh
 • Plays HLS, DASH, MP4, and MKV streams via Media3 ExoPlayer
 • Surfaces a now-and-next mini-guide from your XMLTV data
 • Lets you favorite channels, sort them, and hide ones you do not want to see
 • Saves your last-watched timestamps so the Recently Watched rail stays useful
-• Casts to any Google Cast receiver in your home network (where available)
-• Works fully offline once a source is synced — no second network round-trip per channel switch
+• Casts to Google Cast receivers on your network (on devices that support Cast)
 
 WHAT IT DOES NOT DO
 
@@ -73,17 +72,18 @@ WHAT IT DOES NOT DO
 • It does not contact any analytics service
 • It does not host, curate, or distribute any media content
 • It does not bundle any playlists, even as examples — you must add your own
-• It does not phone home for content lookups — every request goes to a server you configured
+• It does not contact any server you did not configure, except to send
+  anonymous crash reports (see Privacy below)
 
 PRIVACY
 
-GoorTV does not collect personal information about you. The only data that
-leaves your device is (a) network requests to the URLs you typed into
-Settings, and (b) anonymous crash reports used to fix bugs. Crash reports
-are scoped to non-personal technical data only (stack trace, device model,
-app version) and are hosted on Sentry's EU data centres. IP address
-capture, screenshots, view hierarchies, and session replay are all
-explicitly disabled.
+GoorTV does not collect personal information about you. The only data
+that leaves your device is (a) network requests to the URLs you typed
+into Settings, and (b) anonymous crash reports used to fix bugs. Crash
+reports are scoped to non-personal technical data only (stack trace,
+device model, app version) and are hosted on Sentry's EU data centers.
+IP address capture, screenshots, view hierarchies, and session replay
+are all explicitly disabled.
 
 The Android permissions GoorTV requests are INTERNET,
 ACCESS_NETWORK_STATE, and ACCESS_WIFI_STATE only.
@@ -92,27 +92,27 @@ Full privacy policy: https://derkschooltink.github.io/GoorTV/privacy/
 
 OPEN SOURCE
 
-GoorTV is published under an open-source licence and the data inventory
+GoorTV is published under an open-source license and the data inventory
 above is auditable in the source code:
 https://github.com/DerkSchooltink/GoorTV
 
 YOUR RESPONSIBILITY
 
-The legality of the streams you play through GoorTV is your responsibility.
-You confirm this on first launch. GoorTV is a media player, not a content
-service — it has no way to verify the licensing status of arbitrary URLs
-you configure, and it is your obligation to ensure you have the right to
-access the sources you add.
+The legality of the streams you play through GoorTV is your
+responsibility. You confirm this on first launch. GoorTV is a media
+player, not a content service — it has no way to verify the licensing
+status of arbitrary URLs you configure, and it is your obligation to
+ensure you have the right to access the sources you add.
 
 REQUIREMENTS
 
 • Android 8.0 (API 26) or later
 • Phone, tablet, or Android TV
-• Internet connection (Wi-Fi or Ethernet)
+• Internet connection
 • Optional: a Google Cast receiver on the same network
 ```
 
-Character count: ~3050 / 4000. Leaves headroom for future additions
+Character count: ~2900 / 4000. Leaves headroom for future additions
 without hitting the cap.
 
 ---
@@ -120,12 +120,13 @@ without hitting the cap.
 ## Category & content rating — for reference
 
 - **Category:** Entertainment → Video Players & Editors
-- **Content rating:** IARC self-assessment: "Reference, News, or
-  Educational" → rated 3+ (the app has no built-in content, so the
-  IARC questionnaire has no boxes to check beyond "user-generated
-  content moderated by the user themselves")
-- **Tags / keywords:** m3u, media player, xmltv, epg, hls, dash, exoplayer,
-  cast, android tv, open source
+- **Content rating:** Expected IARC rating: **3+ / Everyone / PEGI 3**.
+  The app ships no rated content; the questionnaire returns 3+ as long
+  as we declare (a) it allows users to interact with user-supplied URLs,
+  (b) those URLs are not curated or moderated by us, (c) moderation
+  tooling exists in-app (hide channel + remove source per A3.5).
+- **Tags / keywords:** m3u, media player, xmltv, epg, hls, dash,
+  exoplayer, cast, android tv, open source
 
 ---
 
