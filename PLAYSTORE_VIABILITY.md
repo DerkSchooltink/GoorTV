@@ -221,13 +221,14 @@ matter to reviewers.)
 - [ ] **A1.2** Produce a 1024×500 feature graphic.
 - [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
   banner).
-- [ ] **A1.4** Build a tiny fixture M3U for screenshot capture — bundle a
+- [x] **A1.4** Build a tiny fixture M3U for screenshot capture — bundle a
   `screenshots.m3u` with placeholder names ("Demo News", "Demo Sports",
   "Public Domain Channel") and public-domain stream URLs (e.g. Big Buck
   Bunny HLS, Tears of Steel). Same fixture can host the Maestro real-M3U
-  flow.
-- [ ] **A1.5** Capture 5+ phone screenshots and 5+ TV screenshots against
-  the fixture.
+  flow. *Done in docs/screenshots.m3u, hosted at GitHub Pages.*
+- [x] **A1.5** Capture 5+ phone screenshots and 5+ TV screenshots against
+  the fixture. *Phone shots in docs/screenshots/phone/, TV shots in
+  docs/screenshots/tv/.*
 - [ ] **A1.6** Draft and lock the final 80-char short and ≤4000-char full
   descriptions.
 - [ ] **A1.7** Decide on rename: `GoorTV` vs `GoorTV — M3U Media Player`.
@@ -516,8 +517,8 @@ prerequisite chain so you can pick up where this leaves off.
 - [ ] **A1.6** Lock the description copy (avoid "IPTV" and "Xtream Codes"
   by brand name).
 - [ ] **A1.7** Decide on title: `GoorTV` vs `GoorTV — M3U Media Player`.
-- [ ] **A1.4** Bundle a fixture M3U for screenshots + Maestro.
-- [ ] **A1.5** Capture phone + TV screenshots against the fixture.
+- [x] **A1.4** Bundle a fixture M3U for screenshots + Maestro.
+- [x] **A1.5** Capture phone + TV screenshots against the fixture.
 - [ ] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
   (1280×720).
 - [ ] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore).
