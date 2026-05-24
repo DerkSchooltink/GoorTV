@@ -217,7 +217,10 @@ matter to reviewers.)
 
 ### Action items
 
-- [ ] **A1.1** Trademark check for "GoorTV" (USPTO TESS, EUIPO TMview, BOIP).
+- [ ] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO eSearch+,
+  TMview, BOIP, WIPO Global Brand DB). *Preliminary open-web sweep +
+  procedure + decision criteria captured in docs/trademark-check.md.
+  Five-minute manual register sweep still required before submission.*
 - [ ] **A1.2** Produce a 1024×500 feature graphic.
 - [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
   banner).
