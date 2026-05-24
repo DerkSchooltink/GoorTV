@@ -6,7 +6,7 @@ permalink: /privacy/
 # GoorTV Privacy Policy
 
 **Effective date:** 2026-05-24
-**Contact:** derkschooltink@proton.me
+**Contact:** goortv@proton.me
 
 GoorTV is a media player for Android TV and Android phones. It plays
 M3U playlists, XMLTV electronic programme guides, and Xtream-compatible
@@ -127,7 +127,7 @@ of this file.
 ## Contact
 
 Questions about this policy or about how the app handles your data:
-**derkschooltink@proton.me**
+**goortv@proton.me**
 
 The app is open source — the data inventory above is auditable in the
 source code at
