@@ -21,4 +21,21 @@ release APK v1.4.2). Re-capture by:
 | `phone/04-search.png` | Search | Search bar focused, Recently Watched rail, grouped channel list |
 | `phone/05-hide-menu.png` | Home (long-press) | DropdownMenu with "Hide channel" — demonstrates UGC moderation per A3.5 |
 
-TV screenshots (1920×1080) pending Android TV emulator capture.
+## TV (3840×2160)
+
+Captured against the same fixture on an AOSP TV on x86 emulator (Android 16,
+debug build from `fix/cast-non-gms-crash`). Play Store accepts either
+1920×1080 or 3840×2160 for TV screenshots; the 4K natives are kept as-is.
+
+| File | Surface | What it shows |
+|---|---|---|
+| `tv/01-home.png` | Home | Top bar, Recently Watched, category-grouped channel list |
+| `tv/02-player.png` | Player | Big Buck Bunny fullscreen via Media3 ExoPlayer (back arrow is intentionally always visible) |
+| `tv/03-settings.png` | Settings | Sources list with M3U source + Privacy policy entry |
+| `tv/04-search.png` | Search | Search bar focused, channel list below |
+| `tv/05-hide-menu.png` | Home (MENU key) | DropdownMenu with "Hide channel" — UGC moderation per A3.5 |
+
+**Capture note:** AOSP TV on x86 ships GMS basic (Play Store is present) but
+lacks the Cast dynamite module. Pre-`fix/cast-non-gms-crash` builds would
+crash the process on every channel tap. The fix probes
+`CastContext.getSharedInstance` once and skips Cast UI when unavailable.
