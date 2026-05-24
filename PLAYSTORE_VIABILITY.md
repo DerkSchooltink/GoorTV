@@ -229,9 +229,11 @@ matter to reviewers.)
 - [x] **A1.5** Capture 5+ phone screenshots and 5+ TV screenshots against
   the fixture. *Phone shots in docs/screenshots/phone/, TV shots in
   docs/screenshots/tv/.*
-- [ ] **A1.6** Draft and lock the final 80-char short and ≤4000-char full
-  descriptions.
-- [ ] **A1.7** Decide on rename: `GoorTV` vs `GoorTV — M3U Media Player`.
+- [x] **A1.6** Draft and lock the final 80-char short and ≤4000-char full
+  descriptions. *Locked in docs/store-listing.md.*
+- [x] **A1.7** Decide on rename: `GoorTV` vs `GoorTV — M3U Media Player`.
+  *Chose `GoorTV — M3U Media Player` (25/30 chars) for store title; in-app
+  branding stays `GoorTV`.*
 
 ---
 
@@ -514,9 +516,9 @@ prerequisite chain so you can pick up where this leaves off.
 
 ### High value — visibly improves listing-acceptance odds
 
-- [ ] **A1.6** Lock the description copy (avoid "IPTV" and "Xtream Codes"
+- [x] **A1.6** Lock the description copy (avoid "IPTV" and "Xtream Codes"
   by brand name).
-- [ ] **A1.7** Decide on title: `GoorTV` vs `GoorTV — M3U Media Player`.
+- [x] **A1.7** Decide on title: `GoorTV` vs `GoorTV — M3U Media Player`.
 - [x] **A1.4** Bundle a fixture M3U for screenshots + Maestro.
 - [x] **A1.5** Capture phone + TV screenshots against the fixture.
 - [ ] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
