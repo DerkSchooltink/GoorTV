@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="500" viewBox="0 0 1024 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c0c11"/>
+      <stop offset="0.55" stop-color="#121219"/>
+      <stop offset="1" stop-color="#181826"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="820" cy="120" r="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2b2b4a" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#2b2b4a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <rect width="1024" height="500" fill="url(#glow)"/>
+
+  <!-- faint concentric motif, top-right (echoes the TV banner) -->
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.05">
+    <circle cx="900" cy="90" r="90"  stroke-width="2"/>
+    <circle cx="900" cy="90" r="160" stroke-width="2"/>
+    <circle cx="900" cy="90" r="230" stroke-width="2"/>
+    <circle cx="900" cy="90" r="300" stroke-width="2"/>
+  </g>
+
+  <!-- GTV launcher mark (vector recreation of ic_launcher) -->
+  <g>
+    <rect x="74" y="170" width="160" height="160" rx="36" fill="#141414"/>
+    <text x="154" y="276" text-anchor="middle"
+          font-family="Noto Sans" font-weight="900"
+          font-size="74" letter-spacing="-2"
+          fill="#ffffff">GTV</text>
+  </g>
+
+  <!-- wordmark -->
+  <text x="276" y="290"
+        font-family="Noto Sans" font-weight="900"
+        font-size="124" letter-spacing="-3"
+        fill="#ffffff">GoorTV</text>
+
+  <!-- divider rule (spans wordmark width) -->
+  <rect x="280" y="320" width="448" height="4" rx="2" fill="#ffffff" fill-opacity="0.85"/>
+
+  <!-- subtitle -->
+  <text x="282" y="374"
+        font-family="Noto Sans" font-weight="500"
+        font-size="40" letter-spacing="1"
+        fill="#cfd2dc">M3U Media Player</text>
+</svg>

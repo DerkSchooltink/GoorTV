@@ -206,7 +206,8 @@ matter to reviewers.)
 
 - **App icon**: ✓ ships at `res/mipmap-*/ic_launcher.png`. Verify it follows
   Google's adaptive-icon spec (foreground + background layers).
-- **Feature graphic** (1024×500): not yet produced. Action.
+- **Feature graphic** (1024×500): ✓ at `docs/store-assets/feature-graphic-1024x500.png`
+  (24-bit, no alpha; SVG source alongside).
 - **TV banner** (1280×720): ✓ at `res/drawable/banner.png` (640×360 — Play
   requires 1280×720 for *TV banner asset upload*; the in-app banner is a
   separate requirement and is fine at 640×360 per current Android TV docs).
@@ -221,7 +222,7 @@ matter to reviewers.)
 - [x] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO, BOIP, WIPO,
   UKIPO). *Done 2026-05-25 — register sweep across cl. 9/38/41/42 found
   no conflicting mark. Verdict: clear. Details in private notes.*
-- [ ] **A1.2** Produce a 1024×500 feature graphic.
+- [x] **A1.2** Produce a 1024×500 feature graphic. *docs/store-assets/feature-graphic-1024x500.png (24-bit, no alpha; SVG source alongside).*
 - [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
   banner).
 - [x] **A1.4** Build a tiny fixture M3U for screenshot capture — bundle a
@@ -524,8 +525,8 @@ prerequisite chain so you can pick up where this leaves off.
 - [x] **A1.7** Decide on title: `GoorTV` vs `GoorTV — M3U Media Player`.
 - [x] **A1.4** Bundle a fixture M3U for screenshots + Maestro.
 - [x] **A1.5** Capture phone + TV screenshots against the fixture.
-- [ ] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
-  (1280×720).
+- [x] **A1.2** Produce feature graphic (1024×500). *Done — docs/store-assets/.*
+- [ ] **A1.3** Produce TV banner asset (1280×720).
 - [ ] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore).
 - [x] **A3.5** Per-channel hide / per-source remove for UGC moderation. *(Done — `hidden` column added to Channel (v11→v12), long-press / Menu key context menu on Home, "Hidden channels (N)" entry in Settings with Unhide. Source-level remove already existed.)*
 - [ ] **A4.2** Recruit ≥ 20 closed testers, set up signup flow.
