@@ -204,12 +204,15 @@ matter to reviewers.)
 
 ### Screenshots & graphics
 
-- **App icon**: ✓ ships at `res/mipmap-*/ic_launcher.png`. Verify it follows
-  Google's adaptive-icon spec (foreground + background layers).
-- **Feature graphic** (1024×500): not yet produced. Action.
-- **TV banner** (1280×720): ✓ at `res/drawable/banner.png` (640×360 — Play
-  requires 1280×720 for *TV banner asset upload*; the in-app banner is a
-  separate requirement and is fine at 640×360 per current Android TV docs).
+- **App icon**: ✓ now a proper adaptive icon — `res/drawable/ic_launcher_foreground.xml`
+  + `ic_launcher_background.xml` + `ic_launcher_monochrome.xml` (Android 13+
+  themed icons), wired via `mipmap-anydpi-v26/`, with legacy PNG + round
+  fallbacks in `mipmap-*/` and `roundIcon` in the manifest.
+- **Feature graphic** (1024×500): ✓ at `docs/store-assets/feature-graphic-1024x500.png`
+  (24-bit, no alpha; editable SVG source alongside).
+- **TV banner** (1280×720): ✓ Play upload asset at
+  `docs/store-assets/tv-banner-1280x720.png`. In-app banner refreshed at
+  `res/drawable/banner.png` (640×360, fine per current Android TV docs).
 - **Phone screenshots** (3–8): not yet produced. Must avoid recognizable
   broadcaster logos. Easiest path: capture against a tiny fixture M3U
   bundled in the test infra (also unblocks §8.M Maestro real-M3U sub-item).
@@ -221,9 +224,9 @@ matter to reviewers.)
 - [x] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO, BOIP, WIPO,
   UKIPO). *Done 2026-05-25 — register sweep across cl. 9/38/41/42 found
   no conflicting mark. Verdict: clear. Details in private notes.*
-- [ ] **A1.2** Produce a 1024×500 feature graphic.
-- [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
-  banner).
+- [x] **A1.2** Produce a 1024×500 feature graphic. *docs/store-assets/feature-graphic-1024x500.png.*
+- [x] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
+  banner). *docs/store-assets/tv-banner-1280x720.png.*
 - [x] **A1.4** Build a tiny fixture M3U for screenshot capture — bundle a
   `screenshots.m3u` with placeholder names ("Demo News", "Demo Sports",
   "Public Domain Channel") and public-domain stream URLs (e.g. Big Buck
@@ -524,8 +527,8 @@ prerequisite chain so you can pick up where this leaves off.
 - [x] **A1.7** Decide on title: `GoorTV` vs `GoorTV — M3U Media Player`.
 - [x] **A1.4** Bundle a fixture M3U for screenshots + Maestro.
 - [x] **A1.5** Capture phone + TV screenshots against the fixture.
-- [ ] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
-  (1280×720).
+- [x] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
+  (1280×720). *Done — docs/store-assets/. Shipped with the amber redesign.*
 - [ ] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore).
 - [x] **A3.5** Per-channel hide / per-source remove for UGC moderation. *(Done — `hidden` column added to Channel (v11→v12), long-press / Menu key context menu on Home, "Hidden channels (N)" entry in Settings with Unhide. Source-level remove already existed.)*
 - [ ] **A4.2** Recruit ≥ 20 closed testers, set up signup flow.
