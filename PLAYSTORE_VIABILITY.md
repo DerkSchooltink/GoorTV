@@ -307,14 +307,20 @@ the Room database (`Source.kt:21-22`). On a rooted device or via ADB backup
 
 - **Path A**: declare plaintext on-device storage and rely on `allowBackup=false`
   + Android sandboxing. Acceptable per Play policy if disclosed.
-- **Path B**: implement Android Keystore-wrapped encryption for the
-  username/password columns. Already an open low-priority item in
-  `IMPROVEMENTS.md §2`. Slightly safer but adds key-management complexity
-  (key destroyed if user clears app data = stored creds become unreadable).
+- **Path B** ✅ **IMPLEMENTED (2026-05-25):** Android Keystore AES/GCM encryption
+  of the `username`/`password` columns. `Source.username`/`password` are now a
+  `Secret` type persisted via a `@ProvidedTypeConverter` (`SecretConverter`)
+  backed by `KeystoreCredentialCipher`. Storage format `v1:`+Base64(iv‖ct);
+  values without the prefix are treated as legacy plaintext and re-encrypted on
+  next write, so **no DB migration / schema bump** was needed. `Secret.toString()`
+  is redacted so creds never leak to logs/Sentry. Decrypt never throws (returns
+  "" on key loss) so a Room read can't crash. Verified by unit test
+  (`SecretConverterTest`) + on-device test (`KeystoreCredentialCipherTest`) +
+  the existing DAO/migration instrumented tests.
 
-**Recommendation:** ship Path A for v1, declare honestly, plan Path B as a
-v1.x improvement. Path A is what nearly every Xtream-compatible player does
-today; users expect creds to be cleared with the app.
+**Outcome:** shipped Path B. The Data Safety form (A3.3) should now state Xtream
+credentials are encrypted at rest. Note the key is wiped when the user clears
+app data (creds were already lost in that case under plaintext, so no UX change).
 
 ### Privacy policy
 
@@ -322,7 +328,7 @@ Required. Even a static GitHub Pages markdown page suffices.
 
 ### Action items
 
-- [ ] **A3.1** Decide on Path A vs Path B for Xtream credential storage.
+- [x] **A3.1** Decide on Path A vs Path B for Xtream credential storage. *Chose + shipped **Path B** (2026-05-25) — Android Keystore AES/GCM encryption of username/password via `Secret` + `SecretConverter`/`KeystoreCredentialCipher`. Lazy legacy-plaintext upgrade, no migration. See the Critical-risk section above.*
 - [x] **A3.2** Write the privacy policy. Skeleton:
   - What data the app collects (essentially: nothing leaves device, except
     network metadata to user-supplied URLs and Google's Cast receiver).
@@ -529,7 +535,7 @@ prerequisite chain so you can pick up where this leaves off.
 - [x] **A1.5** Capture phone + TV screenshots against the fixture.
 - [x] **A1.2 / A1.3** Produce feature graphic (1024×500) and TV banner asset
   (1280×720). *Done — docs/store-assets/. Shipped with the amber redesign.*
-- [ ] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore).
+- [x] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore). *Shipped Path B — Keystore AES/GCM encryption.*
 - [x] **A3.5** Per-channel hide / per-source remove for UGC moderation. *(Done — `hidden` column added to Channel (v11→v12), long-press / Menu key context menu on Home, "Hidden channels (N)" entry in Settings with Unhide. Source-level remove already existed.)*
 - [ ] **A4.2** Recruit ≥ 20 closed testers, set up signup flow.
 

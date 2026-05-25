@@ -4,9 +4,11 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.goor.tv.data.db.AppDatabase
+import dev.goor.tv.data.db.SecretConverter
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.util.TestCredentialCipher
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -31,7 +33,9 @@ class ChannelDaoTest {
         db = Room.inMemoryDatabaseBuilder(
             InstrumentationRegistry.getInstrumentation().targetContext,
             AppDatabase::class.java,
-        ).allowMainThreadQueries().build()
+        ).allowMainThreadQueries()
+            .addTypeConverter(SecretConverter(TestCredentialCipher))
+            .build()
         sourceDao = db.sourceDao()
         channelDao = db.channelDao()
         sourceId = sourceDao.insert(

@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.style.TextOverflow
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.Secret
 import dev.goor.tv.data.model.isEpgEligible
 import org.koin.androidx.compose.koinViewModel
 
@@ -514,8 +515,8 @@ private fun EditSourceDialog(
 ) {
     var name by remember { mutableStateOf(source.name) }
     var url by remember { mutableStateOf(source.url) }
-    var username by remember { mutableStateOf(source.username ?: "") }
-    var password by remember { mutableStateOf(source.password ?: "") }
+    var username by remember { mutableStateOf(source.username?.value ?: "") }
+    var password by remember { mutableStateOf(source.password?.value ?: "") }
     var headers by remember { mutableStateOf(source.headers ?: "") }
     var maxStreams by remember { mutableStateOf(source.maxConcurrentStreams.toString()) }
     var epgUrl by remember { mutableStateOf(source.epgUrl ?: "") }
@@ -565,8 +566,8 @@ private fun EditSourceDialog(
                     source.copy(
                         name = name,
                         url = url,
-                        username = username.takeIf { it.isNotBlank() },
-                        password = password.takeIf { it.isNotBlank() },
+                        username = username.takeIf { it.isNotBlank() }?.let(::Secret),
+                        password = password.takeIf { it.isNotBlank() }?.let(::Secret),
                         headers = headers.takeIf { it.isNotBlank() },
                         maxConcurrentStreams = maxStreams.toIntOrNull() ?: 0,
                         epgUrl = epgUrl.takeIf { it.isNotBlank() && source.type == SourceType.M3U },

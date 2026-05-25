@@ -8,6 +8,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.goor.tv.data.model.Programme
+import dev.goor.tv.util.TestCredentialCipher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -62,6 +63,7 @@ class MigrationTest {
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, dbName)
             .addMigrations(*allMigrations)
+            .addTypeConverter(SecretConverter(TestCredentialCipher))
             .build()
 
         runBlocking {

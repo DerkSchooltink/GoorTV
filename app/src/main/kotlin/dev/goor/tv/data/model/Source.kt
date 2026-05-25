@@ -18,8 +18,9 @@ data class Source(
     val name: String,
     val type: SourceType,
     val url: String,
-    val username: String? = null,
-    val password: String? = null,
+    // Xtream credentials — encrypted at rest via SecretConverter (A3.1, Path B).
+    val username: Secret? = null,
+    val password: Secret? = null,
     // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
     val includedGroups: String? = "",
     val lastSyncedAt: Long? = null,
@@ -40,7 +41,7 @@ data class Source(
  * [dev.goor.tv.network.EpgSyncService.sync].
  */
 fun Source.isEpgEligible(): Boolean = when (type) {
-    SourceType.XTREAM -> !username.isNullOrBlank() && !password.isNullOrBlank()
+    SourceType.XTREAM -> !username?.value.isNullOrBlank() && !password?.value.isNullOrBlank()
     SourceType.M3U -> !epgUrl.isNullOrBlank()
     SourceType.MANUAL -> false
 }
