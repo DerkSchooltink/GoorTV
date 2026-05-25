@@ -110,6 +110,9 @@ HSPLandroidx/activity/EdgeToEdgeApi29;->setUp(Landroidx/activity/SystemBarStyle;
 Landroidx/activity/EdgeToEdgeApi30;
 HSPLandroidx/activity/EdgeToEdgeApi30;-><init>()V
 HSPLandroidx/activity/EdgeToEdgeApi30;->adjustLayoutInDisplayCutoutMode(Landroid/view/Window;)V
+Landroidx/activity/EdgeToEdgeApi35;
+SPLandroidx/activity/EdgeToEdgeApi35;-><init>()V
+SPLandroidx/activity/EdgeToEdgeApi35;->setUp(Landroidx/activity/SystemBarStyle;Landroidx/activity/SystemBarStyle;Landroid/view/Window;Landroid/view/View;ZZ)V
 Landroidx/activity/EdgeToEdgeBase;
 HSPLandroidx/activity/EdgeToEdgeBase;-><init>()V
 Landroidx/activity/EdgeToEdgeImpl;
@@ -4426,6 +4429,7 @@ Landroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda5;
 HSPLandroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda5;-><init>(Landroidx/compose/runtime/ControlledComposition;Landroidx/collection/MutableScatterSet;)V
 HSPLandroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda5;->invoke(Ljava/lang/Object;)Ljava/lang/Object;
 Landroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda6;
+SPLandroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda6;-><init>(Landroidx/collection/MutableScatterSet;Landroidx/compose/runtime/ControlledComposition;)V
 HSPLandroidx/compose/runtime/Recomposer$$ExternalSyntheticLambda6;->invoke()Ljava/lang/Object;
 Landroidx/compose/runtime/Recomposer$Companion;
 HSPLandroidx/compose/runtime/Recomposer$Companion;-><init>()V
@@ -7523,6 +7527,7 @@ HSPLandroidx/compose/ui/input/pointer/PointerEvent;-><init>(Ljava/util/List;)V
 HSPLandroidx/compose/ui/input/pointer/PointerEvent;-><init>(Ljava/util/List;Landroidx/compose/ui/input/pointer/InternalPointerEvent;)V
 HSPLandroidx/compose/ui/input/pointer/PointerEvent;->calculatePointerEventType-7fucELk()I
 HSPLandroidx/compose/ui/input/pointer/PointerEvent;->getMotionEvent()Landroid/view/MotionEvent;
+Landroidx/compose/ui/input/pointer/PointerEventTimeoutCancellationException;
 Landroidx/compose/ui/input/pointer/PointerEventType;
 HSPLandroidx/compose/ui/input/pointer/PointerEventType;-><clinit>()V
 HSPLandroidx/compose/ui/input/pointer/PointerEventType;->access$getMove$cp()I
@@ -9212,6 +9217,10 @@ Landroidx/compose/ui/platform/Api30Impl;
 HSPLandroidx/compose/ui/platform/Api30Impl;-><clinit>()V
 HSPLandroidx/compose/ui/platform/Api30Impl;-><init>()V
 HSPLandroidx/compose/ui/platform/Api30Impl;->isShowingLayoutBounds(Landroid/view/View;)Z
+Landroidx/compose/ui/platform/Api35Impl;
+SPLandroidx/compose/ui/platform/Api35Impl;-><clinit>()V
+SPLandroidx/compose/ui/platform/Api35Impl;-><init>()V
+SPLandroidx/compose/ui/platform/Api35Impl;->setRequestedFrameRate(Landroid/view/View;F)V
 Landroidx/compose/ui/platform/CalculateMatrixToWindow;
 Landroidx/compose/ui/platform/CalculateMatrixToWindowApi29;
 HSPLandroidx/compose/ui/platform/CalculateMatrixToWindowApi29;-><init>()V
@@ -9420,6 +9429,7 @@ HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;-><clinit>()V
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;-><init>(Landroidx/compose/ui/graphics/layer/GraphicsLayer;Landroidx/compose/ui/graphics/GraphicsContext;Landroidx/compose/ui/platform/AndroidComposeView;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function0;)V
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->access$getDrawBlock$p(Landroidx/compose/ui/platform/GraphicsLayerOwnerLayer;)Lkotlin/jvm/functions/Function2;
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->drawLayer(Landroidx/compose/ui/graphics/Canvas;Landroidx/compose/ui/graphics/layer/GraphicsLayer;)V
+SPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->getFrameRate()F
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->getMatrix-sQKQjiQ()[F
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->getUnderlyingMatrix-sQKQjiQ()[F
 HSPLandroidx/compose/ui/platform/GraphicsLayerOwnerLayer;->invalidate()V
@@ -10456,6 +10466,10 @@ HSPLandroidx/compose/ui/text/android/StaticLayoutFactory33;-><clinit>()V
 HSPLandroidx/compose/ui/text/android/StaticLayoutFactory33;-><init>()V
 HSPLandroidx/compose/ui/text/android/StaticLayoutFactory33;->isFallbackLineSpacingEnabled(Landroid/text/StaticLayout;)Z
 HSPLandroidx/compose/ui/text/android/StaticLayoutFactory33;->setLineBreakConfig(Landroid/text/StaticLayout$Builder;II)V
+Landroidx/compose/ui/text/android/StaticLayoutFactory35;
+SPLandroidx/compose/ui/text/android/StaticLayoutFactory35;-><clinit>()V
+SPLandroidx/compose/ui/text/android/StaticLayoutFactory35;-><init>()V
+SPLandroidx/compose/ui/text/android/StaticLayoutFactory35;->disableUseBoundsForWidth(Landroid/text/StaticLayout$Builder;)V
 Landroidx/compose/ui/text/android/StaticLayoutFactoryImpl;
 Landroidx/compose/ui/text/android/StaticLayoutParams;
 HSPLandroidx/compose/ui/text/android/StaticLayoutParams;-><init>(Ljava/lang/CharSequence;IILandroid/text/TextPaint;ILandroid/text/TextDirectionHeuristic;Landroid/text/Layout$Alignment;ILandroid/text/TextUtils$TruncateAt;IFFIZZIIII[I[I)V
@@ -11684,6 +11698,8 @@ Landroidx/core/view/WindowCompat;
 HSPLandroidx/core/view/WindowCompat;->setDecorFitsSystemWindows(Landroid/view/Window;Z)V
 Landroidx/core/view/WindowCompat$Api30Impl;
 HSPLandroidx/core/view/WindowCompat$Api30Impl;->setDecorFitsSystemWindows(Landroid/view/Window;Z)V
+Landroidx/core/view/WindowCompat$Api35Impl;
+SPLandroidx/core/view/WindowCompat$Api35Impl;->setDecorFitsSystemWindows(Landroid/view/Window;Z)V
 Landroidx/core/view/WindowInsetsAnimationCompat;
 HSPLandroidx/core/view/WindowInsetsAnimationCompat;->setCallback(Landroid/view/View;Landroidx/core/view/WindowInsetsAnimationCompat$Callback;)V
 Landroidx/core/view/WindowInsetsAnimationCompat$Callback;
@@ -11735,6 +11751,9 @@ Landroidx/core/view/WindowInsetsCompat$BuilderImpl31;
 HSPLandroidx/core/view/WindowInsetsCompat$BuilderImpl31;-><init>()V
 Landroidx/core/view/WindowInsetsCompat$BuilderImpl34;
 HSPLandroidx/core/view/WindowInsetsCompat$BuilderImpl34;-><init>()V
+Landroidx/core/view/WindowInsetsCompat$BuilderImpl35;
+SPLandroidx/core/view/WindowInsetsCompat$BuilderImpl35;-><init>()V
+SPLandroidx/core/view/WindowInsetsCompat$BuilderImpl35;->initTypeBoundingRects(Landroidx/core/view/WindowInsetsCompat;)V
 Landroidx/core/view/WindowInsetsCompat$Impl;
 HSPLandroidx/core/view/WindowInsetsCompat$Impl;-><clinit>()V
 HSPLandroidx/core/view/WindowInsetsCompat$Impl;-><init>(Landroidx/core/view/WindowInsetsCompat;)V
@@ -11775,6 +11794,9 @@ HSPLandroidx/core/view/WindowInsetsCompat$Impl34;->getInsets(I)Landroidx/core/gr
 HSPLandroidx/core/view/WindowInsetsCompat$Impl34;->getInsetsIgnoringVisibility(I)Landroidx/core/graphics/Insets;
 HSPLandroidx/core/view/WindowInsetsCompat$Impl34;->initDisplayShape(Landroid/view/View;)V
 HSPLandroidx/core/view/WindowInsetsCompat$Impl34;->isVisible(I)Z
+Landroidx/core/view/WindowInsetsCompat$Impl35;
+SPLandroidx/core/view/WindowInsetsCompat$Impl35;-><init>(Landroidx/core/view/WindowInsetsCompat;Landroid/view/WindowInsets;)V
+SPLandroidx/core/view/WindowInsetsCompat$Impl35;->initTypeBoundingRectsMaps()V
 Landroidx/core/view/WindowInsetsCompat$Type;
 HSPLandroidx/core/view/WindowInsetsCompat$Type;->captionBar()I
 HSPLandroidx/core/view/WindowInsetsCompat$Type;->displayCutout()I
@@ -11801,6 +11823,12 @@ HSPLandroidx/core/view/WindowInsetsControllerCompat$Impl30;->setAppearanceLight(
 HSPLandroidx/core/view/WindowInsetsControllerCompat$Impl30;->setAppearanceLightNavigationBars(Z)V
 HSPLandroidx/core/view/WindowInsetsControllerCompat$Impl30;->setAppearanceLightStatusBars(Z)V
 HSPLandroidx/core/view/WindowInsetsControllerCompat$Impl30;->setSystemUiFlag(I)V
+Landroidx/core/view/WindowInsetsControllerCompat$Impl31;
+SPLandroidx/core/view/WindowInsetsControllerCompat$Impl31;-><init>(Landroid/view/Window;Landroidx/core/view/WindowInsetsControllerCompat;Landroidx/core/view/SoftwareKeyboardControllerCompat;)V
+Landroidx/core/view/WindowInsetsControllerCompat$Impl35;
+SPLandroidx/core/view/WindowInsetsControllerCompat$Impl35;-><init>(Landroid/view/Window;Landroidx/core/view/WindowInsetsControllerCompat;Landroidx/core/view/SoftwareKeyboardControllerCompat;)V
+SPLandroidx/core/view/WindowInsetsControllerCompat$Impl35;->setAppearanceLightNavigationBars(Z)V
+SPLandroidx/core/view/WindowInsetsControllerCompat$Impl35;->setAppearanceLightStatusBars(Z)V
 Landroidx/core/view/accessibility/AccessibilityManagerCompat;
 HSPLandroidx/core/view/accessibility/AccessibilityManagerCompat;->isRequestFromAccessibilityTool(Landroid/view/accessibility/AccessibilityManager;)Z
 Landroidx/core/view/accessibility/AccessibilityManagerCompat$Api34Impl;
@@ -14601,11 +14629,13 @@ HSPLandroidx/room/TriggerBasedInvalidationTracker;->access$getDatabase$p(Landroi
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->access$getObservedTableStates$p(Landroidx/room/TriggerBasedInvalidationTracker;)Landroidx/room/ObservedTableStates;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->access$getObservedTableVersions$p(Landroidx/room/TriggerBasedInvalidationTracker;)Landroidx/room/ObservedTableVersions;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->access$startTrackingTable(Landroidx/room/TriggerBasedInvalidationTracker;Landroidx/room/PooledConnection;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+SPLandroidx/room/TriggerBasedInvalidationTracker;->access$stopTrackingTable(Landroidx/room/TriggerBasedInvalidationTracker;Landroidx/room/PooledConnection;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->configureConnection(Landroidx/sqlite/SQLiteConnection;)V
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->createFlow$room_runtime([Ljava/lang/String;[IZ)Lkotlinx/coroutines/flow/Flow;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->resolveViews([Ljava/lang/String;)[Ljava/lang/String;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->setOnAllowRefresh$room_runtime(Lkotlin/jvm/functions/Function0;)V
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->startTrackingTable(Landroidx/room/PooledConnection;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+SPLandroidx/room/TriggerBasedInvalidationTracker;->stopTrackingTable(Landroidx/room/PooledConnection;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->syncTriggers$room_runtime(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 HSPLandroidx/room/TriggerBasedInvalidationTracker;->validateTableNames$room_runtime([Ljava/lang/String;)Lkotlin/Pair;
 Landroidx/room/TriggerBasedInvalidationTracker$$ExternalSyntheticLambda1;
@@ -14635,6 +14665,8 @@ Landroidx/room/TriggerBasedInvalidationTracker$createFlow$1$2$emit$1;
 HSPLandroidx/room/TriggerBasedInvalidationTracker$createFlow$1$2$emit$1;-><init>(Landroidx/room/TriggerBasedInvalidationTracker$createFlow$1$2;Lkotlin/coroutines/Continuation;)V
 Landroidx/room/TriggerBasedInvalidationTracker$startTrackingTable$1;
 HSPLandroidx/room/TriggerBasedInvalidationTracker$startTrackingTable$1;-><init>(Landroidx/room/TriggerBasedInvalidationTracker;Lkotlin/coroutines/Continuation;)V
+Landroidx/room/TriggerBasedInvalidationTracker$stopTrackingTable$1;
+SPLandroidx/room/TriggerBasedInvalidationTracker$stopTrackingTable$1;-><init>(Landroidx/room/TriggerBasedInvalidationTracker;Lkotlin/coroutines/Continuation;)V
 Landroidx/room/TriggerBasedInvalidationTracker$syncTriggers$1;
 HSPLandroidx/room/TriggerBasedInvalidationTracker$syncTriggers$1;-><init>(Landroidx/room/TriggerBasedInvalidationTracker;Lkotlin/coroutines/Continuation;)V
 Landroidx/room/TriggerBasedInvalidationTracker$syncTriggers$2$1;
@@ -17233,6 +17265,7 @@ Lkotlin/jvm/internal/CollectionToArray;
 HSPLkotlin/jvm/internal/CollectionToArray;-><clinit>()V
 HSPLkotlin/jvm/internal/CollectionToArray;->toArray(Ljava/util/Collection;)[Ljava/lang/Object;
 HSPLkotlin/jvm/internal/CollectionToArray;->toArray(Ljava/util/Collection;[Ljava/lang/Object;)[Ljava/lang/Object;
+Lkotlin/jvm/internal/DefaultConstructorMarker;
 Lkotlin/jvm/internal/FloatCompanionObject;
 HSPLkotlin/jvm/internal/FloatCompanionObject;-><clinit>()V
 HSPLkotlin/jvm/internal/FloatCompanionObject;-><init>()V
@@ -19066,6 +19099,7 @@ HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;-><init>(Lkotlinx/co
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->access$getThis$0$p(Lkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;)Lkotlinx/coroutines/scheduling/CoroutineScheduler;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->executeTask(Lkotlinx/coroutines/scheduling/Task;)V
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->findAnyTask(Z)Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->findBlockingTask()Lkotlinx/coroutines/scheduling/Task;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->findTask(Z)Lkotlinx/coroutines/scheduling/Task;
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->getIndexInArray()I
 HSPLkotlinx/coroutines/scheduling/CoroutineScheduler$Worker;->getNextParkedWorker()Ljava/lang/Object;
@@ -19124,11 +19158,17 @@ Lkotlinx/coroutines/scheduling/WorkQueue;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;-><clinit>()V
 HSPLkotlinx/coroutines/scheduling/WorkQueue;-><init>()V
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->add(Lkotlinx/coroutines/scheduling/Task;Z)Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/WorkQueue;->addLast(Lkotlinx/coroutines/scheduling/Task;)Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/WorkQueue;->decrementIfBlocking(Lkotlinx/coroutines/scheduling/Task;)V
+SPLkotlinx/coroutines/scheduling/WorkQueue;->getBufferSize()I
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->getConsumerIndex$volatile$FU()Ljava/util/concurrent/atomic/AtomicIntegerFieldUpdater;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->getLastScheduledTask$volatile$FU()Ljava/util/concurrent/atomic/AtomicReferenceFieldUpdater;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->getProducerIndex$volatile$FU()Ljava/util/concurrent/atomic/AtomicIntegerFieldUpdater;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->poll()Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/WorkQueue;->pollBlocking()Lkotlinx/coroutines/scheduling/Task;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->pollBuffer()Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/WorkQueue;->pollWithExclusiveMode(Z)Lkotlinx/coroutines/scheduling/Task;
+SPLkotlinx/coroutines/scheduling/WorkQueue;->stealWithExclusiveMode(Z)Lkotlinx/coroutines/scheduling/Task;
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->trySteal(ILkotlin/jvm/internal/Ref$ObjectRef;)J
 HSPLkotlinx/coroutines/scheduling/WorkQueue;->tryStealLastScheduled(ILkotlin/jvm/internal/Ref$ObjectRef;)J
 Lkotlinx/coroutines/selects/SelectInstance;

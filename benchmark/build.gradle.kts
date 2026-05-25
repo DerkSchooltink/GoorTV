@@ -35,7 +35,7 @@ android {
             localDevices {
                 create("profileGen") {
                     device = "Pixel 6"
-                    apiLevel = 34
+                    apiLevel = 35
                     systemImageSource = "aosp-atd"
                 }
             }
