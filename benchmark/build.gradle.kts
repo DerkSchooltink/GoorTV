@@ -1,5 +1,6 @@
 plugins {
     id("com.android.test")
+    id("androidx.baselineprofile")
 }
 
 android {
@@ -9,7 +10,11 @@ android {
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        testInstrumentationRunner = "androidx.benchmark.junit4.AndroidBenchmarkRunner"
+        // Macrobenchmark + baseline-profile run OUT of process against :app, so
+        // they need the standard runner. AndroidBenchmarkRunner is for in-process
+        // MICRObenchmarks and forces every test through IsolationActivity (which
+        // can't launch here), so it's wrong for this module.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     targetProjectPath = ":app"
@@ -22,6 +27,27 @@ android {
             matchingFallbacks += listOf("release")
         }
     }
+
+    // Gradle Managed Device for reproducible baseline-profile generation (A2.7).
+    // AOSP ATD image — Google's recommended target for profile capture in CI.
+    testOptions {
+        managedDevices {
+            localDevices {
+                create("profileGen") {
+                    device = "Pixel 6"
+                    apiLevel = 35
+                    systemImageSource = "aosp-atd"
+                }
+            }
+        }
+    }
+}
+
+// Generate the baseline profile on the managed device above, not whatever
+// happens to be plugged in.
+baselineProfile {
+    managedDevices += "profileGen"
+    useConnectedDevices = false
 }
 
 dependencies {

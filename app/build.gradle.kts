@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.sentry)
+    alias(libs.plugins.baselineprofile)
 }
 
 kotlin {
@@ -48,8 +49,12 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            val releaseSigningConfig = signingConfigs.findByName("release")
-            if (releaseSigningConfig != null) signingConfig = releaseSigningConfig
+            // Prefer the env-provided release keystore (CI). Locally — and for
+            // the baseline-profile generation variants derived from `release` —
+            // fall back to debug signing so the APK is installable without
+            // shipping secrets. CI sets SIGNING_STORE_FILE so it uses the real key.
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
         create("benchmark") {
             initWith(getByName("release"))
@@ -144,6 +149,10 @@ dependencies {
     androidTestImplementation(libs.mockk.agent)
     androidTestImplementation(libs.room.testing)
     debugImplementation(libs.compose.ui.test.manifest)
+
+    // Baseline profile produced by the :benchmark module (A2.7). The plugin
+    // merges the generated profile into the release build for faster cold start.
+    baselineProfile(project(":benchmark"))
 }
 
 

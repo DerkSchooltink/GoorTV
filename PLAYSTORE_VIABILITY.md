@@ -274,7 +274,7 @@ Findings from a code-side audit on 2026-05-23 (branch `main` @ `b58477e`).
 - [x] **A2.4** Verify all 4 ABIs ship in the AAB (`bundletool` after a release build). *Done 2026-05-25 — `bundleRelease` AAB contains `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` (4 `.so` each). Note: `x86` is dead weight for real devices (emulator-only); could drop it via an `abiFilters`/split to trim, but per-device splits make it moot (see A2.5).*
 - [x] **A2.5** Measure AAB install size; act if >30 MB. *Done 2026-05-25 — per-device download ~4.1–4.3 MB (max 4.28 MB across all ABI×density configs). Far under the 30 MB budget; R8 + per-device splits keep Cast SDK cost negligible.*
 - [x] **A2.6** Add a `network_security_config.xml` even if it only documents the cleartext allow. Helps with the Data Safety form rationale. *(Done — `app/src/main/res/xml/network_security_config.xml`, referenced from manifest.)*
-- [ ] **A2.7** Generate a baseline profile via Macrobenchmark module. Improves cold-start metrics that Play's pre-launch report grades. *NOTE (2026-05-25): the benchmark module only has `ChannelListBenchmark.kt` (scroll macrobench) — there is no `BaselineProfileGenerator` and the `androidx.baselineprofile` plugin is not applied. This item requires real wiring (producer/consumer plugin + generator test + device capture + commit the profile), not just running a task.*
+- [x] **A2.7** Generate a baseline profile via Macrobenchmark module. Improves cold-start metrics that Play's pre-launch report grades. *Done 2026-05-25 — wired `androidx.baselineprofile` (producer `:benchmark`, consumer `:app`), added `BaselineProfileGenerator`, generated on a Gradle Managed Device (AOSP ATD API 35, `profileGen`) → committed `app/src/release/generated/baselineProfiles/baseline-prof.txt` (19.7k lines, 768 GoorTV entries; ships as `assets/dexopt/baseline.prof` in the release APK). Notes: needed benchmark stack on `1.5.0-alpha06` (only line supporting AGP 9 — revert to stable when available); also fixed the benchmark module's runner (`AndroidBenchmarkRunner` → `AndroidJUnitRunner`) — the micro runner forced IsolationActivity and broke macrobench + profile capture. Regenerate (the `class=` filter skips the scroll macrobench, which can't trace on an emulator): `./gradlew :app:generateBaselineProfile -Pandroid.testInstrumentationRunnerArguments.class=dev.goor.tv.benchmark.BaselineProfileGenerator -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR`.*
 
 ---
 
@@ -547,7 +547,7 @@ prerequisite chain so you can pick up where this leaves off.
 
 ### Lower priority — post-launch / robustness
 
-- [ ] **A2.7** Generate a baseline profile via Macrobenchmark.
+- [x] **A2.7** Generate a baseline profile via Macrobenchmark. *Done — committed + ships in release APK.*
 - [ ] **A6.1** Crashlytics alerting.
 - [ ] **A6.2** `noCast` build flavor for F-Droid.
 - [ ] **A6.3** Subscribe Play Console policy emails.
