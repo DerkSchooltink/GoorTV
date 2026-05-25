@@ -11,7 +11,10 @@ navigation-compose = "2.9.8"
 media3 = "1.10.1"
 room = "2.8.4"
 paging = "3.5.0"
-benchmark = "1.4.1"
+# 1.5.0-alpha is the first benchmark/baseline-profile line that supports AGP 9.
+# Revert to a stable release once one ships with AGP 9 support (cf. the Sentry
+# plugin note). Keeps the macrobench libs + baselineprofile plugin aligned.
+benchmark = "1.5.0-alpha06"
 uiautomator = "2.3.0"
 ktor = "3.5.0"
 koin = "4.2.1"
@@ -99,3 +102,4 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 sentry = { id = "io.sentry.android.gradle", version.ref = "sentry-plugin" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
