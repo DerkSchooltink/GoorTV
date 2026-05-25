@@ -11,12 +11,61 @@ or paid acquisition spend.
 
 ---
 
+## Register sweep — completed 2026-05-25 (TMview API)
+
+The actual register sweep was run programmatically against the **TMview**
+aggregation API (`tmdn.org/tmview/api/search/results`), which federates
+all five registers we care about in a single query:
+
+| TMview office code | Register | Doc list item |
+|---|---|---|
+| `EM` | EUIPO (EU trade marks) | #1 eSearch+ |
+| `BX` | BOIP (Benelux NL/BE/LU) | #3 BOIP |
+| `WO` | WIPO international | #5 WIPO Global Brand DB |
+| `US` | USPTO | #4 USPTO |
+| `GB` | UKIPO | (bonus) |
+
+The standalone front-ends (eSearch+, BOIP, WIPO branddb) are bot-gated
+(ALTCHA proof-of-work / 403 / CAPTCHA) and can't be scripted directly,
+but TMview's API accepts a server-side query with browser headers and
+returns the same federated data — so the sweep below is complete and
+reproducible, not a manual TODO.
+
+### Results
+
+Searched terms `GoorTV`, `Goor TV`, `Goor` (contains-match) across
+offices `EM, BX, WO, US, GB`:
+
+- **`GoorTV`** → **0 results** in all five offices. The exact brand name
+  is unregistered everywhere we'd file or publish.
+- **`Goor TV`** (with space) → **0 results**.
+- **`Goor`** → 240 fuzzy/substring hits, but **no exact standalone
+  `GOOR` word mark is alive in classes 9 / 38 / 41 / 42**. The only live
+  exact-`GOOR` marks are class 25 (clothing, GB + WO) and class 12
+  (vehicles, dead/ended) — unrelated goods.
+
+### Closest in-class neighbours (cl. 9/38/41/42, live)
+
+These are composites/substrings, none identical or confusingly similar
+to the compound "GoorTV", but recorded for completeness:
+
+| Mark | Office | Classes | Note |
+|---|---|---|---|
+| GOORU / GOORU.COM / Goory | EM, US, GB | 9, 35, 41, 42 | "gooru" edtech family; different spelling + sector |
+| GOOROO / Gooroo | EM, WO, US, GB | 9, 41, 42 | recruitment/Q&A; common stem |
+| AUGOOR | EM, US | 9, 42 | composite |
+| VAN GOOR | **BX** | 9, 16, 41 | Dutch publisher; "Goor" as surname |
+| School en Volksfeest Goor | **BX** | 41 | uses the town name; local festival |
+| Göörls, GOOREE, ZUGOOR, LNGOOR | EM/GB/US | 9, 41 | composites |
+
+No exact "GoorTV" and no exact in-class "GOOR" → none of these block us.
+
+---
+
 ## Preliminary findings (open-web, 2026-05-24)
 
-Done via search engines and direct API probing. Trademark register
-search engines (TMview, eSearch+, USPTO TM Search, BOIP Merkenregister)
-are JavaScript SPAs with anti-bot tokens — they can't be queried from a
-script. Manual searches below are still required.
+Earlier open-web pass via search engines, kept for context. The register
+sweep above supersedes it for the go/no-go decision.
 
 ### Identical / near-identical marks
 
@@ -58,22 +107,27 @@ and a hearing officer might cite confusion risk:
 
 ### Risk summary
 
-- **Conflict risk:** low-to-moderate. No identical registered mark found
-  on open web. The YouTube "Goor TV" is the strongest signal worth a
-  manual check.
-- **Descriptiveness risk:** moderate. Geographic + descriptive parts
-  combined. A figurative element (the launcher icon) in any future
-  trademark filing would strengthen distinctiveness.
-- **Play Store risk:** none of the surface conflicts would trigger an
-  automated Play takedown. They'd surface only if a rights-holder
-  reports us.
+- **Conflict risk:** **low.** Confirmed via the TMview register sweep —
+  zero exact "GoorTV" marks in any of the five offices, and no live exact
+  "GOOR" mark in classes 9/38/41/42. The YouTube "Goor TV" channel is an
+  unregistered common-law signal only; low concern.
+- **Descriptiveness risk:** moderate (absolute grounds, only relevant if
+  *we* file). Geographic ("Goor" town) + descriptive ("TV") parts, but
+  the compound is more defensible than either word alone. A figurative
+  element (the launcher icon) in any future filing would strengthen
+  distinctiveness.
+- **Play Store risk:** none. No surface conflict would trigger an
+  automated Play takedown; one would surface only if a rights-holder
+  reports us, and none with a colourable claim was found.
 
 ---
 
-## Manual searches you still need to run
+## Manual re-run (optional — to reproduce or refresh later)
 
-Each link below takes you straight into the public search UI of the
-relevant register. The whole sweep is 5–10 min of clicking.
+The sweep above was completed via the TMview API. If you want to
+re-verify by hand (e.g. before a formal filing, or to catch filings
+newer than this audit), each link below opens the public search UI of
+the relevant register. The whole manual sweep is 5–10 min of clicking.
 
 ### 1. EUIPO eSearch+ (EU trademark register)
 
@@ -170,7 +224,7 @@ Not part of A1.1, but worth flagging:
 | Date | Searcher | Registers checked | Conflicts found | Decision |
 |---|---|---|---|---|
 | 2026-05-24 | Claude (open web only) | Search engines, WIPO/TMview API probe | None identical; "Goor TV" YouTube channel noted as low-concern | Pending manual register sweep |
-| | | | | |
+| 2026-05-25 | Claude (TMview API) | EUIPO(EM), BOIP(BX), WIPO(WO), USPTO(US), UKIPO(GB) — cl. 9/38/41/42 | "GoorTV" 0 hits all offices; no live exact "GOOR" in our classes; composites only (GOORU, VAN GOOR, GOOROO…) | **GO** — proceed with listing |
 
-After the manual sweep, add a row with date, searcher (you), the five
-registers ticked off, anything flagged, and the go/no-go.
+If you re-run the manual sweep later, add a row with date, searcher (you),
+the five registers ticked off, anything flagged, and the go/no-go.

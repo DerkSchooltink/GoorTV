@@ -217,10 +217,11 @@ matter to reviewers.)
 
 ### Action items
 
-- [ ] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO eSearch+,
-  TMview, BOIP, WIPO Global Brand DB). *Preliminary open-web sweep +
-  procedure + decision criteria captured in docs/trademark-check.md.
-  Five-minute manual register sweep still required before submission.*
+- [x] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO eSearch+,
+  TMview, BOIP, WIPO Global Brand DB). *Register sweep completed
+  2026-05-25 via TMview API across EM/BX/WO/US/GB, cl. 9/38/41/42:
+  "GoorTV" 0 hits, no live exact "GOOR" in our classes. **GO.** Full
+  results + audit log in docs/trademark-check.md.*
 - [ ] **A1.2** Produce a 1024×500 feature graphic.
 - [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
   banner).
@@ -532,7 +533,7 @@ prerequisite chain so you can pick up where this leaves off.
 
 ### Medium — improves quality but not gating
 
-- [ ] **A1.1** Trademark check for "GoorTV".
+- [x] **A1.1** Trademark check for "GoorTV". *GO — TMview sweep 2026-05-25.*
 - [ ] **A2.2** Enroll Play App Signing; rotate keys if needed.
 - [ ] **A2.4** Verify all 4 ABIs in the AAB.
 - [ ] **A2.5** Measure AAB install size.
