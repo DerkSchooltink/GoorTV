@@ -32,6 +32,11 @@ A free, open source video streaming player for Android and Android TV. Supports 
 
 Download the latest `app-release.apk` from the [Releases](https://github.com/DerkSchooltink/GoorTV/releases) page and sideload it.
 
+> **Pick one channel and stick with it.** The Google Play build and the
+> GitHub/Obtainium build are signed with different keys (Play re-signs via Play
+> App Signing). Android won't update one over the other — to switch channels you
+> must uninstall first, which clears your sources and favorites.
+
 ---
 
 ## Getting started

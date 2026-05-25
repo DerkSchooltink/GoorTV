@@ -482,9 +482,17 @@ apps in busy periods).
 
 - [ ] **A6.1** Set up Crashlytics alerting (email/Slack) for crash-rate spikes
   (depends on A2.3).
-- [ ] **A6.2** Pre-emptively add a `noCast` build flavor for F-Droid
-  publishing. Builds on the existing `PlayerEngine` seam — Cast removal is
-  cleaner now post-#40 than before.
+- [x] **A6.2** ~~Pre-emptively add a `noCast` build flavor for F-Droid~~ —
+  **Won't do (2026-05-25): superseded by Obtainium.** The `noCast` flavor only
+  existed to satisfy F-Droid's FOSS-purity rule (no proprietary
+  `play-services-cast-framework`). We're skipping F-Droid in favour of
+  **Obtainium + GitHub Releases** as the non-Play channel — Obtainium installs
+  the normal signed APK (Cast included) straight from `release.yml`'s release
+  assets and auto-updates from tags, with no FOSS constraint. Already
+  functional; documented in `README.md`. Caveat: the Play build is re-signed by
+  Play App Signing while the GitHub APK uses our own release key, so the two
+  install channels can't cross-update (uninstall required to switch) — inherent,
+  documented for users.
 - [ ] **A6.3** Subscribe the maintainer's Play Console email to policy
   updates.
 - [ ] **A6.4** Schedule a quarterly /loop reminder to re-verify Phase 0
@@ -555,7 +563,7 @@ prerequisite chain so you can pick up where this leaves off.
 
 - [x] **A2.7** Generate a baseline profile via Macrobenchmark. *Done — committed + ships in release APK.*
 - [ ] **A6.1** Crashlytics alerting.
-- [ ] **A6.2** `noCast` build flavor for F-Droid.
+- [x] **A6.2** ~~`noCast` build flavor for F-Droid.~~ *Won't do — using Obtainium + GitHub Releases instead (no FOSS constraint, no second flavor).*
 - [ ] **A6.3** Subscribe Play Console policy emails.
 - [ ] **A6.4** Quarterly Phase 0 re-verification.
 
@@ -575,12 +583,14 @@ review waits.
 
 1. **Personal project or commercial intent?** Affects account type and tax
    posture.
-2. **Title rename to `GoorTV — M3U Media Player`?** Recommended.
-3. **Xtream credential storage — Path A (plaintext + disclosure) or Path B
-   (Keystore)?** Recommended A for v1.
-4. **`noCast` flavor for F-Droid — yes or no?** Affects scope of A6.2.
-5. **Crashlytics vs Sentry?** Personal preference; Crashlytics is more
-   integrated with Play Console.
+2. ~~**Title rename to `GoorTV — M3U Media Player`?**~~ ✅ Decided — title is
+   `GoorTV — M3U Media Player` (A1.7).
+3. ~~**Xtream credential storage — Path A or Path B?**~~ ✅ Decided — shipped
+   **Path B** (Keystore encryption, A3.1).
+4. ~~**`noCast` flavor for F-Droid — yes or no?**~~ ✅ Decided — **no**; using
+   Obtainium + GitHub Releases instead of F-Droid (A6.2 won't-do).
+5. ~~**Crashlytics vs Sentry?**~~ ✅ Decided — **Sentry** (SaaS, EU region;
+   A2.3).
 6. **Monetization?** Free / Free+ads / Paid / Donations. Affects review path
    and listing copy.
 7. **Target countries?** NL/EU/US recommended start; explicitly exclude IT.
