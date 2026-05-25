@@ -21,3 +21,6 @@ sentry-wizard
 # Gradle daemon config is machine-local
 gradle/gradle-daemon-jvm.properties
 IMPROVEMENTS.md
+
+# Private project notes (e.g. trademark clearance analysis) — never commit
+private/

@@ -154,9 +154,10 @@ mirror the disclaimer language that listed survivors use.
   reviewers see first).
 - **Developer name**: must match the verified individual / org account.
 - **Package name**: `dev.goor.tv` ✓ (already set).
-- **Trademark check** — Action: search USPTO TESS, EUIPO TMview, and BOIP
-  (Benelux) for "GoorTV". Likely clean (`Goor` is a Dutch place name + a
-  common Dutch surname); confirm before listing.
+- **Trademark check** — Done 2026-05-25: register sweep across EUIPO,
+  Benelux, WIPO, USPTO and UKIPO (Nice cl. 9/38/41/42) found no
+  conflicting mark for "GoorTV". Verdict: clear to list. Detailed
+  results are kept in private project notes (not committed).
 
 ### Descriptions (draft)
 
@@ -217,7 +218,9 @@ matter to reviewers.)
 
 ### Action items
 
-- [ ] **A1.1** Trademark check for "GoorTV" (USPTO TESS, EUIPO TMview, BOIP).
+- [x] **A1.1** Trademark check for "GoorTV" (USPTO, EUIPO, BOIP, WIPO,
+  UKIPO). *Done 2026-05-25 — register sweep across cl. 9/38/41/42 found
+  no conflicting mark. Verdict: clear. Details in private notes.*
 - [ ] **A1.2** Produce a 1024×500 feature graphic.
 - [ ] **A1.3** Produce a 1280×720 TV banner asset (separate from the in-app
   banner).
@@ -529,7 +532,7 @@ prerequisite chain so you can pick up where this leaves off.
 
 ### Medium — improves quality but not gating
 
-- [ ] **A1.1** Trademark check for "GoorTV".
+- [x] **A1.1** Trademark check for "GoorTV". *Done 2026-05-25 — clear.*
 - [ ] **A2.2** Enroll Play App Signing; rotate keys if needed.
 - [ ] **A2.4** Verify all 4 ABIs in the AAB.
 - [ ] **A2.5** Measure AAB install size.
