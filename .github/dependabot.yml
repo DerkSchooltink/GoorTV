@@ -28,6 +28,20 @@ updates:
       room:
         patterns:
           - "androidx.room:*"
+    # These are transitive dependencies of the Gradle plugin/build classpath
+    # (foojay-resolver, AGP tooling, Google Play API libs, grpc/netty). They are
+    # NOT in the app's release runtime classpath and do not ship in the APK, so
+    # we don't want update-PR churn for them. NOTE: this only suppresses version
+    # update PRs — it does NOT silence Dependabot security alerts (GitHub has no
+    # config-file alert suppression). Such alerts are dismissed as "not_used".
+    ignore:
+      - dependency-name: "io.netty:*"
+      - dependency-name: "com.squareup.wire:*"
+      - dependency-name: "org.bouncycastle:*"
+      - dependency-name: "org.bitbucket.b_c:jose4j"
+      - dependency-name: "org.jdom:jdom2"
+      - dependency-name: "org.apache.commons:commons-lang3"
+      - dependency-name: "org.apache.httpcomponents:httpclient"
 
   - package-ecosystem: "github-actions"
     directory: "/"
