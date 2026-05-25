@@ -9,10 +9,18 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Generates the baseline profile consumed by `:app` (A2.7). Run via
- * `./gradlew :app:generateBaselineProfile` against a rooted / AOSP userdebug
- * device or a Gradle Managed Device — the result is written to
- * `app/src/<variant>/generated/baselineProfiles/`.
+ * Generates the baseline profile consumed by `:app` (A2.7). Generation runs on
+ * the `profileGen` managed device (AOSP ATD). The result is written to
+ * `app/src/<variant>/generated/baselineProfiles/`. Run with:
+ *
+ * ```
+ * ./gradlew :app:generateBaselineProfile \
+ *   -Pandroid.testInstrumentationRunnerArguments.class=dev.goor.tv.benchmark.BaselineProfileGenerator \
+ *   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR
+ * ```
+ *
+ * The `class=` filter is needed because the module also holds [ChannelListBenchmark],
+ * a macrobench that can't trace on an emulator and would otherwise fail the run.
  *
  * The journey mirrors `ChannelListBenchmark`: cold start into the channel list,
  * then scroll, so the profile covers the hottest startup + first-scroll paths.
