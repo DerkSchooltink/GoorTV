@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import android.database.sqlite.SQLiteConstraintException
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.model.Secret
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.network.EpgSyncService
@@ -70,7 +71,17 @@ class SettingsViewModel(
                 return@launch
             }
             val id = try {
-                sourceDao.insert(Source(name = name, type = SourceType.XTREAM, url = url, username = username, password = password, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
+                sourceDao.insert(
+                    Source(
+                        name = name,
+                        type = SourceType.XTREAM,
+                        url = url,
+                        username = username.takeIf { it.isNotBlank() }?.let(::Secret),
+                        password = password.takeIf { it.isNotBlank() }?.let(::Secret),
+                        headers = headers?.takeIf { it.isNotBlank() },
+                        maxConcurrentStreams = maxConcurrentStreams,
+                    ),
+                )
             } catch (_: SQLiteConstraintException) {
                 _snackbarMessage.value = "An Xtream source with that URL already exists"
                 return@launch

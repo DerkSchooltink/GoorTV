@@ -156,8 +156,8 @@ class EpgSyncService(
     private fun epgUrlFor(source: Source): String? = when (source.type) {
         SourceType.M3U -> source.epgUrl?.takeIf { it.isNotBlank() }
         SourceType.XTREAM -> {
-            val u = source.username?.takeIf { it.isNotBlank() } ?: return null
-            val p = source.password?.takeIf { it.isNotBlank() } ?: return null
+            val u = source.username?.value?.takeIf { it.isNotBlank() } ?: return null
+            val p = source.password?.value?.takeIf { it.isNotBlank() } ?: return null
             val parsed = Url(source.url)
             val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
             val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"

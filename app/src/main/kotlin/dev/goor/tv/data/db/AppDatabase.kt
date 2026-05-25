@@ -2,6 +2,7 @@ package dev.goor.tv.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import dev.goor.tv.data.db.dao.ChannelDao
@@ -12,6 +13,7 @@ import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
 @Database(entities = [Source::class, Channel::class, Programme::class], version = 12, exportSchema = true)
+@TypeConverters(SecretConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
     abstract fun channelDao(): ChannelDao

@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import dev.goor.tv.data.db.AppDatabase
+import dev.goor.tv.data.db.SecretConverter
+import dev.goor.tv.data.crypto.KeystoreCredentialCipher
 import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.StreamConcurrencyTracker
@@ -29,6 +31,8 @@ val appModule = module {
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "goortv.db")
             .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8, AppDatabase.MIGRATION_8_9, AppDatabase.MIGRATION_9_10, AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12)
+            // Encrypts Xtream username/password columns at rest (A3.1, Path B).
+            .addTypeConverter(SecretConverter(KeystoreCredentialCipher()))
             .build()
     }
     single { get<AppDatabase>().sourceDao() }
