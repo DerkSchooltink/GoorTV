@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -52,11 +54,23 @@ fun SettingsScreen(
     // dialog on this screen; per-row edit/groups dialogs naturally restore via
     // Compose's focus tree since the row button stays composed).
     val addSourceFocus = remember { FocusRequester() }
+    // Land D-pad focus on the first source row once the list loads, so a remote
+    // has somewhere to go on entry. One-shot + runCatching-guarded: if the node
+    // isn't placed yet, we just fall back to no initial focus rather than crash.
+    val firstSourceFocus = remember { FocusRequester() }
+    var initialFocusDone by remember { mutableStateOf(false) }
 
     LaunchedEffect(snackbarMessage) {
         snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             vm.clearSnackbar()
+        }
+    }
+
+    LaunchedEffect(sources) {
+        if (!initialFocusDone && sources.isNotEmpty()) {
+            initialFocusDone = true
+            runCatching { firstSourceFocus.requestFocus() }
         }
     }
 
@@ -95,7 +109,7 @@ fun SettingsScreen(
             contentPadding = padding,
             modifier = Modifier.focusRestorer(),
         ) {
-            items(sources, key = { it.id }) { source ->
+            itemsIndexed(sources, key = { _, s -> s.id }) { index, source ->
                 SourceItem(
                     source = source,
                     isSyncing = source.id in syncingIds,
@@ -105,6 +119,13 @@ fun SettingsScreen(
                     onEdit = { editingSource = source },
                     onGroups = { groupsSource = source },
                     onDelete = { vm.deleteSource(source) },
+                    // ListItem itself isn't focusable; focusGroup redirects the
+                    // focus request to its first focusable child (the Sync button).
+                    modifier = if (index == 0) {
+                        Modifier.focusRequester(firstSourceFocus).focusGroup()
+                    } else {
+                        Modifier
+                    },
                 )
                 HorizontalDivider()
             }
@@ -223,10 +244,12 @@ private fun SourceItem(
     onEdit: () -> Unit,
     onGroups: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val groupCount = source.includedGroups?.split("|")?.filter { it.isNotBlank() }?.size
     val epgEligible = source.isEpgEligible()
     ListItem(
+        modifier = modifier,
         headlineContent = { Text(source.name) },
         supportingContent = {
             Column {
