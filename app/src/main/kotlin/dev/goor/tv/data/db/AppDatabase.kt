@@ -12,7 +12,7 @@ import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.model.Source
 
-@Database(entities = [Source::class, Channel::class, Programme::class], version = 12, exportSchema = true)
+@Database(entities = [Source::class, Channel::class, Programme::class], version = 13, exportSchema = true)
 @TypeConverters(SecretConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun sourceDao(): SourceDao
@@ -134,6 +134,17 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE channels ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * Adds a per-source Xtream container preference. Stored by enum name
+         * (Room enum persistence); existing rows default to MPEG-TS, matching
+         * the previously-hardcoded `.ts` URL.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE sources ADD COLUMN xtreamOutput TEXT NOT NULL DEFAULT 'TS'")
             }
         }
     }

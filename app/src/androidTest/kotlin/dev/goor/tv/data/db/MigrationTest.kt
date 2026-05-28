@@ -38,6 +38,7 @@ class MigrationTest {
         AppDatabase.MIGRATION_9_10,
         AppDatabase.MIGRATION_10_11,
         AppDatabase.MIGRATION_11_12,
+        AppDatabase.MIGRATION_12_13,
     )
 
     @Before
@@ -81,6 +82,8 @@ class MigrationTest {
             assertNull(source.epgUrl)
             assertNull(source.lastEpgSyncedAt)
             assertNull(source.epgLastError)
+            // v13 column hydrates legacy rows to the TS default.
+            assertEquals(dev.goor.tv.data.model.XtreamOutput.TS, source.xtreamOutput)
 
             val channels = db.channelDao().getAll().first()
             assertEquals(1, channels.size)
