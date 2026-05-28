@@ -33,6 +33,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -109,6 +110,30 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         coVerify { channelDao.toggleFavorite(42L) }
+    }
+
+    @Test
+    fun `failed write surfaces an actionError message`() = runTest {
+        coEvery { channelDao.toggleFavorite(any()) } throws RuntimeException("disk full")
+
+        val vm = makeVm()
+        vm.toggleFavorite(42L)
+        advanceUntilIdle()
+
+        assertEquals("Couldn't update favourite", vm.actionError.value)
+    }
+
+    @Test
+    fun `clearActionError resets the message`() = runTest {
+        coEvery { channelDao.setHidden(any(), any()) } throws RuntimeException("io error")
+
+        val vm = makeVm()
+        vm.hideChannel(1L)
+        advanceUntilIdle()
+        assertNotNull(vm.actionError.value)
+
+        vm.clearActionError()
+        assertNull(vm.actionError.value)
     }
 
     @Test

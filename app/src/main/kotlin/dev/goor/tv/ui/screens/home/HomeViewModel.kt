@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -45,6 +46,26 @@ class HomeViewModel(
 
     private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
+
+    /** One-shot message for a failed user action (favourite toggle, hide, etc.). */
+    private val _actionError = MutableStateFlow<String?>(null)
+    val actionError = _actionError.asStateFlow()
+
+    fun clearActionError() { _actionError.value = null }
+
+    /**
+     * Runs a Room write off the UI, surfacing [failureMessage] if it throws.
+     * Previously these were fire-and-forget `launch {}` blocks that swallowed
+     * write failures (disk full, corruption, constraint) with no feedback.
+     */
+    private fun launchWrite(failureMessage: String, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            runCatching { block() }.onFailure {
+                Log.e(TAG, "$failureMessage: ${it.message}", it)
+                _actionError.value = failureMessage
+            }
+        }
+    }
 
     /** ID of the singleton "Custom Channels" source, or null if it hasn't been created yet. */
     val manualSourceId: StateFlow<Long?> = manualSource.manualSourceId
@@ -96,17 +117,14 @@ class HomeViewModel(
         }
     }.cachedIn(viewModelScope)
 
-    fun addCustomChannel(name: String, url: String, logoUrl: String?, group: String?) {
-        viewModelScope.launch { manualSource.addChannel(name, url, logoUrl, group) }
-    }
+    fun addCustomChannel(name: String, url: String, logoUrl: String?, group: String?) =
+        launchWrite("Couldn't add channel") { manualSource.addChannel(name, url, logoUrl, group) }
 
-    fun updateCustomChannel(channel: Channel) {
-        viewModelScope.launch { manualSource.updateChannel(channel) }
-    }
+    fun updateCustomChannel(channel: Channel) =
+        launchWrite("Couldn't update channel") { manualSource.updateChannel(channel) }
 
-    fun deleteCustomChannel(channel: Channel) {
-        viewModelScope.launch { manualSource.deleteChannel(channel) }
-    }
+    fun deleteCustomChannel(channel: Channel) =
+        launchWrite("Couldn't delete channel") { manualSource.deleteChannel(channel) }
 
     /** User-initiated refresh — bypasses the throttle that the background coordinator respects. */
     fun sync() {
@@ -121,19 +139,19 @@ class HomeViewModel(
     fun addToSearchHistory(query: String) { searchHistoryRepo.add(query) }
     fun toggleFavoritesOnly() { _showFavoritesOnly.value = !_showFavoritesOnly.value }
 
-    fun toggleFavorite(channelId: Long) {
-        viewModelScope.launch { channelDao.toggleFavorite(channelId) }
-    }
+    fun toggleFavorite(channelId: Long) =
+        launchWrite("Couldn't update favourite") { channelDao.toggleFavorite(channelId) }
 
-    fun hideChannel(channelId: Long) {
-        viewModelScope.launch { channelDao.setHidden(channelId, true) }
-    }
+    fun hideChannel(channelId: Long) =
+        launchWrite("Couldn't hide channel") { channelDao.setHidden(channelId, true) }
 
-    fun clearRecentlyWatched() {
-        viewModelScope.launch { channelDao.clearRecentlyWatched() }
-    }
+    fun clearRecentlyWatched() =
+        launchWrite("Couldn't clear recently watched") { channelDao.clearRecentlyWatched() }
 
-    fun setSortOrder(order: SortOrder) {
-        viewModelScope.launch { prefsRepository.setSortOrder(order) }
+    fun setSortOrder(order: SortOrder) =
+        launchWrite("Couldn't change sort order") { prefsRepository.setSortOrder(order) }
+
+    private companion object {
+        const val TAG = "HomeViewModel"
     }
 }
