@@ -10,6 +10,7 @@ import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
+import io.ktor.http.Url
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,10 @@ class SettingsViewModel(
 
     fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
+            if (!isValidSourceUrl(url)) {
+                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                return@launch
+            }
             if (sourceDao.findByTypeAndUrl(SourceType.M3U.name, url) != null) {
                 _snackbarMessage.value = "An M3U source with that URL already exists"
                 return@launch
@@ -66,6 +71,10 @@ class SettingsViewModel(
 
     fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
+            if (!isValidSourceUrl(url)) {
+                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                return@launch
+            }
             if (sourceDao.findByTypeAndUrl(SourceType.XTREAM.name, url) != null) {
                 _snackbarMessage.value = "An Xtream source with that URL already exists"
                 return@launch
@@ -93,7 +102,26 @@ class SettingsViewModel(
     }
 
     fun updateSource(source: Source) {
-        viewModelScope.launch { sourceDao.update(source) }
+        viewModelScope.launch {
+            if (!isValidSourceUrl(source.url)) {
+                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                return@launch
+            }
+            sourceDao.update(source)
+        }
+    }
+
+    /**
+     * Rejects unparseable / non-http(s) URLs at the entry point so a malformed
+     * source URL can't burn the sync layer's full retry budget on a permanent
+     * `Url(...)` parse failure before surfacing.
+     */
+    private fun isValidSourceUrl(url: String): Boolean {
+        val trimmed = url.trim()
+        if (!trimmed.startsWith("http://", ignoreCase = true) &&
+            !trimmed.startsWith("https://", ignoreCase = true)
+        ) return false
+        return runCatching { Url(trimmed).host.isNotBlank() }.getOrDefault(false)
     }
 
     fun deleteSource(source: Source) {

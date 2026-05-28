@@ -76,6 +76,7 @@ fun HomeScreen(
     val sources by vm.sources.collectAsStateWithLifecycle()
     val recentlyWatched by vm.recentlyWatched.collectAsStateWithLifecycle()
     val syncErrors by vm.syncErrors.collectAsStateWithLifecycle()
+    val actionError by vm.actionError.collectAsStateWithLifecycle()
     val searchHistory by vm.searchHistory.collectAsStateWithLifecycle()
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
     val manualSourceId by vm.manualSourceId.collectAsStateWithLifecycle()
@@ -130,6 +131,13 @@ fun HomeScreen(
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
             snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
+        }
+    }
+
+    LaunchedEffect(actionError) {
+        actionError?.let {
+            snackbarHostState.showSnackbar(it)
+            vm.clearActionError()
         }
     }
 

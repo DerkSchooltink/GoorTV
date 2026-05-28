@@ -130,6 +130,12 @@ class EpgSyncService(
         }
         if (buffer.isNotEmpty()) programmeDao.insertAll(buffer)
 
+        // XMLTV feeds routinely carry a long past tail (days of already-aired
+        // programmes). Drop everything that ended more than RETENTION_MS ago so a
+        // single source's table stays bounded to a short trailing window plus the
+        // upcoming schedule.
+        programmeDao.deleteOlderThan(sourceId, System.currentTimeMillis() - RETENTION_MS)
+
         backfillTvgIds(sourceId, nameToTvgId)
     }
 

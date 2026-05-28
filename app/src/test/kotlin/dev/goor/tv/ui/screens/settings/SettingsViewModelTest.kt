@@ -111,6 +111,48 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `addM3uSource rejects an invalid url without inserting`() = runTest {
+        val vm = makeVm()
+        vm.addM3uSource(name = "Bad", url = "not-a-url")
+        advanceUntilIdle()
+
+        assertNotNull(vm.snackbarMessage.value)
+        assertTrue(vm.snackbarMessage.value!!.contains("valid"))
+        coVerify(exactly = 0) { sourceDao.insert(any()) }
+    }
+
+    @Test
+    fun `addXtreamSource rejects a non-http url without inserting`() = runTest {
+        val vm = makeVm()
+        vm.addXtreamSource(name = "Bad", url = "ftp://example.com", username = "u", password = "p")
+        advanceUntilIdle()
+
+        assertNotNull(vm.snackbarMessage.value)
+        coVerify(exactly = 0) { sourceDao.insert(any()) }
+    }
+
+    @Test
+    fun `addM3uSource accepts a valid http url`() = runTest {
+        coEvery { sourceDao.findByTypeAndUrl(any(), any()) } returns null
+
+        val vm = makeVm()
+        vm.addM3uSource(name = "Good", url = "https://example.com/playlist.m3u")
+        advanceUntilIdle()
+
+        coVerify { sourceDao.insert(any()) }
+    }
+
+    @Test
+    fun `updateSource rejects an invalid url without updating`() = runTest {
+        val vm = makeVm()
+        vm.updateSource(testSource(id = 1L, url = "garbage"))
+        advanceUntilIdle()
+
+        assertNotNull(vm.snackbarMessage.value)
+        coVerify(exactly = 0) { sourceDao.update(any()) }
+    }
+
+    @Test
     fun `deleteSource delegates to SourceDao`() = runTest {
         val source = testSource(id = 1L)
         coEvery { sourceDao.delete(any()) } just Runs

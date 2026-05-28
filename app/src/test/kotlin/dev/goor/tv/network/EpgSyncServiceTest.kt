@@ -136,6 +136,16 @@ class EpgSyncServiceTest {
     }
 
     @Test
+    fun `processXmltv prunes programmes older than the retention window`() = runTest {
+        val xml = "<tv><channel id=\"x.tv\"><display-name>X</display-name></channel></tv>"
+
+        service().processXmltv(1L, ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
+
+        // After re-inserting, the past tail is trimmed for this source.
+        coVerify { programmeDao.deleteOlderThan(eq(1L), any()) }
+    }
+
+    @Test
     fun `processXmltv applies zero assignments when no matches`() = runTest {
         coEvery { channelDao.getMissingTvgIdsBySource(1L) } returns listOf(
             ChannelIdName(id = 20L, name = "Some Obscure Channel"),
