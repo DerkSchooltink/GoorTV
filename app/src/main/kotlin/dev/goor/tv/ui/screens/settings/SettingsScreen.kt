@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.Secret
+import dev.goor.tv.data.model.XtreamOutput
 import dev.goor.tv.data.model.isEpgEligible
 import org.koin.androidx.compose.koinViewModel
 
@@ -201,8 +202,8 @@ fun SettingsScreen(
                 vm.addM3uSource(name, url, headers, maxStreams)
                 showAddDialog = false
             },
-            onAddXtream = { name, url, user, pass, headers, maxStreams ->
-                vm.addXtreamSource(name, url, user, pass, headers, maxStreams)
+            onAddXtream = { name, url, user, pass, headers, maxStreams, output ->
+                vm.addXtreamSource(name, url, user, pass, headers, maxStreams, output)
                 showAddDialog = false
             }
         )
@@ -428,7 +429,10 @@ private fun GroupsDialog(
 private fun AddSourceDialog(
     onDismiss: () -> Unit,
     onAddM3u: (name: String, url: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
-    onAddXtream: (name: String, url: String, user: String, pass: String, headers: String?, maxConcurrentStreams: Int) -> Unit,
+    onAddXtream: (
+        name: String, url: String, user: String, pass: String,
+        headers: String?, maxConcurrentStreams: Int, output: XtreamOutput,
+    ) -> Unit,
 ) {
     val nameFocus = remember { FocusRequester() }
     var sourceType by remember { mutableStateOf(SourceType.M3U) }
@@ -438,6 +442,7 @@ private fun AddSourceDialog(
     var password by remember { mutableStateOf("") }
     var headers by remember { mutableStateOf("") }
     var maxStreams by remember { mutableStateOf("0") }
+    var xtreamOutput by remember { mutableStateOf(XtreamOutput.TS) }
     // Land focus on the first field so D-pad / keyboard can type immediately.
     LaunchedEffect(Unit) { nameFocus.requestFocus() }
 
@@ -484,6 +489,7 @@ private fun AddSourceDialog(
                 if (sourceType == SourceType.XTREAM) {
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 OutlinedTextField(
                     value = headers,
@@ -509,7 +515,7 @@ private fun AddSourceDialog(
                     val h = headers.takeIf { it.isNotBlank() }
                     val max = maxStreams.toIntOrNull() ?: 0
                     if (sourceType == SourceType.M3U) onAddM3u(name.trim(), url.trim(), h, max)
-                    else onAddXtream(name.trim(), url.trim(), username.trim(), password, h, max)
+                    else onAddXtream(name.trim(), url.trim(), username.trim(), password, h, max, xtreamOutput)
                 },
                 enabled = canSubmit,
             ) { Text("Add") }
@@ -518,6 +524,26 @@ private fun AddSourceDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@Composable
+private fun XtreamOutputSelector(selected: XtreamOutput, onSelected: (XtreamOutput) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            "Stream format",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            XtreamOutput.entries.forEach { output ->
+                FilterChip(
+                    selected = selected == output,
+                    onClick = { onSelected(output) },
+                    label = { Text(output.ext.uppercase()) },
+                )
+            }
+        }
+    }
 }
 
 private fun formatRelativeTime(timestampMs: Long): String {
@@ -543,6 +569,7 @@ private fun EditSourceDialog(
     var headers by remember { mutableStateOf(source.headers ?: "") }
     var maxStreams by remember { mutableStateOf(source.maxConcurrentStreams.toString()) }
     var epgUrl by remember { mutableStateOf(source.epgUrl ?: "") }
+    var xtreamOutput by remember { mutableStateOf(source.xtreamOutput) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -554,6 +581,7 @@ private fun EditSourceDialog(
                 if (source.type == SourceType.XTREAM) {
                     OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 if (source.type == SourceType.M3U) {
                     OutlinedTextField(
@@ -594,6 +622,7 @@ private fun EditSourceDialog(
                         headers = headers.takeIf { it.isNotBlank() },
                         maxConcurrentStreams = maxStreams.toIntOrNull() ?: 0,
                         epgUrl = epgUrl.takeIf { it.isNotBlank() && source.type == SourceType.M3U },
+                        xtreamOutput = xtreamOutput,
                     )
                 )
             }) { Text("Save") }

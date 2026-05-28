@@ -8,6 +8,7 @@ import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Secret
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
+import dev.goor.tv.data.model.XtreamOutput
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import io.ktor.http.Url
@@ -69,7 +70,7 @@ class SettingsViewModel(
         }
     }
 
-    fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
+    fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0, xtreamOutput: XtreamOutput = XtreamOutput.TS) {
         viewModelScope.launch {
             if (!isValidSourceUrl(url)) {
                 _snackbarMessage.value = "Enter a valid http:// or https:// URL"
@@ -89,6 +90,7 @@ class SettingsViewModel(
                         password = password.takeIf { it.isNotBlank() }?.let(::Secret),
                         headers = headers?.takeIf { it.isNotBlank() },
                         maxConcurrentStreams = maxConcurrentStreams,
+                        xtreamOutput = xtreamOutput,
                     ),
                 )
             } catch (_: SQLiteConstraintException) {

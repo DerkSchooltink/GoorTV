@@ -6,6 +6,12 @@ import androidx.room.PrimaryKey
 
 enum class SourceType { M3U, XTREAM, MANUAL }
 
+/**
+ * Container/extension for Xtream live stream URLs (`/live/user/pass/<id>.<ext>`).
+ * Providers vary: some serve MPEG-TS, others HLS. Persisted by enum name (Room).
+ */
+enum class XtreamOutput(val ext: String) { TS("ts"), M3U8("m3u8") }
+
 @Entity(
     tableName = "sources",
     // Rejects duplicate (type, url) at the DB layer — the UI also pre-checks and
@@ -21,6 +27,8 @@ data class Source(
     // Xtream credentials — encrypted at rest via SecretConverter (A3.1, Path B).
     val username: Secret? = null,
     val password: Secret? = null,
+    // Container for Xtream live URLs. Ignored for M3U/MANUAL.
+    val xtreamOutput: XtreamOutput = XtreamOutput.TS,
     // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
     val includedGroups: String? = "",
     val lastSyncedAt: Long? = null,

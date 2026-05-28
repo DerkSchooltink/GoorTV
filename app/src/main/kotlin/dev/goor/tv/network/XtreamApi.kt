@@ -45,7 +45,7 @@ class XtreamApi(private val httpClient: HttpClient) {
             Channel(
                 sourceId = source.id,
                 name = it.name,
-                url = "$base/live/$uPath/$pPath/${it.streamId}.ts",
+                url = "$base/live/$uPath/$pPath/${it.streamId}.${source.xtreamOutput.ext}",
                 group = it.category,
                 logoUrl = it.icon,
                 tvgChannelId = it.epgChannelId?.takeIf { id -> id.isNotBlank() },
