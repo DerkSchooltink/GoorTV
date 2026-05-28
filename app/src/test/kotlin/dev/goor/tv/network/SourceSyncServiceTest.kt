@@ -14,6 +14,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.engine.mock.respondOk
 import java.io.IOException
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
@@ -266,6 +267,24 @@ http://stream.example.com/foo.ts
 
         assertEquals(2, started.get())
         coVerify(exactly = 2) { channelDao.replaceForSourcePreservingUserData(1L, any()) }
+    }
+
+    @Test
+    fun `sync(M3U) rejects a playlist whose declared size exceeds the cap`() = runTest {
+        val engine = MockEngine {
+            respond(
+                content = ByteReadChannel(SAMPLE_M3U),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentLength, (60L * 1024 * 1024).toString()),
+            )
+        }
+        val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/big.m3u")
+
+        val error = runCatching { service(engine).sync(source) }.exceptionOrNull()
+
+        assertTrue("oversize playlist must fail the sync", error is IllegalStateException)
+        // Crucially: a rejected playlist must not wipe the source's channels.
+        coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
     }
 
     private fun okEngine(body: String): MockEngine = MockEngine {

@@ -7,9 +7,13 @@ import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
 import io.ktor.client.HttpClient
-import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.core.readText
+import io.ktor.utils.io.exhausted
+import io.ktor.utils.io.readRemaining
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -86,7 +90,21 @@ class SourceSyncService(
                 if (!response.status.isSuccess()) {
                     error("M3U HTTP ${response.status.value} for '${source.name}'")
                 }
-                val content: String = response.body()
+                // Bound the download so a huge or hostile playlist can't OOM a
+                // low-RAM TV box. Skip early when the server declares an
+                // over-cap length, otherwise read at most MAX_PLAYLIST_BYTES and
+                // fail if the stream isn't exhausted by then.
+                response.contentLength()?.let { declared ->
+                    if (declared > MAX_PLAYLIST_BYTES) {
+                        error("M3U too large ($declared bytes, max $MAX_PLAYLIST_BYTES) for '${source.name}'")
+                    }
+                }
+                val channel = response.bodyAsChannel()
+                val packet = channel.readRemaining(MAX_PLAYLIST_BYTES)
+                if (!channel.exhausted()) {
+                    error("M3U exceeds $MAX_PLAYLIST_BYTES bytes for '${source.name}'")
+                }
+                val content = packet.readText()
                 val parsed = M3uParser.parse(source.id, content)
                 fetched = parsed.channels
                 discoveredEpgUrl = parsed.urlTvg
@@ -111,6 +129,7 @@ class SourceSyncService(
     companion object {
         private const val TAG = "SourceSync"
         private const val MAX_ATTEMPTS = 3
+        private const val MAX_PLAYLIST_BYTES = 50L * 1024 * 1024  // 50 MB
         private const val INITIAL_BACKOFF_MS = 30_000L
         private const val MAX_BACKOFF_MS = 5L * 60L * 1000L  // 5 min
         private const val DEFAULT_THROTTLE_MS = 60L * 60L * 1000L  // 1 hour

@@ -39,6 +39,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,6 +61,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 private const val CONTROLS_AUTO_HIDE_MS = 4_000L
+private const val STREAM_LIMIT_NOTICE_MS = 3_000L
 
 private enum class AspectRatioMode(val label: String) {
     FIT("Fit"),
@@ -102,7 +104,13 @@ fun PlayerScreen(
     val context = LocalContext.current
 
     LaunchedEffect(stopped) {
-        if (stopped) onBack()
+        if (stopped) {
+            // Show the limit notice briefly before popping, so the user
+            // understands why the channel didn't open instead of being bounced
+            // back to Home with no explanation.
+            delay(STREAM_LIMIT_NOTICE_MS)
+            onBack()
+        }
     }
 
     val isBuffering by playerEngine.isBuffering
@@ -132,16 +140,19 @@ fun PlayerScreen(
 
     BackHandler { onBack() }
 
-    // Land focus on the back button once composition completes so the user can
-    // press D-pad back/right immediately without first navigating into the
-    // overlay tree. LaunchedEffect runs after the focus tree is built — the
-    // earlier try/catch around IllegalStateException is no longer needed.
-    LaunchedEffect(Unit) { backFocusRequester.requestFocus() }
-
     LaunchedEffect(showControls) {
         if (showControls) {
             delay(CONTROLS_AUTO_HIDE_MS)
             showControls = false
+        } else {
+            // Controls hidden — the footer (aspect/cast buttons) leaves
+            // composition, taking any focus on it with it and stranding the
+            // D-pad on dead video. Hand focus back to the always-present back
+            // button. This also fires on initial composition (showControls
+            // starts false), giving the user a landing target right away.
+            // LaunchedEffect runs after the focus tree is built, so no try/catch
+            // around IllegalStateException is needed.
+            backFocusRequester.requestFocus()
         }
     }
 
@@ -265,6 +276,47 @@ fun PlayerScreen(
                 nowAndNext = nowAndNext,
                 nowMs = nowMs,
                 modifier = Modifier.align(Alignment.TopCenter),
+            )
+        }
+
+        // Stream refused by the concurrency limit — cover everything with an
+        // explanatory notice; the LaunchedEffect above pops back after a beat.
+        if (stopped) {
+            StreamLimitOverlay()
+        }
+    }
+}
+
+@Composable
+private fun StreamLimitOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = Color.White,
+            )
+            Text(
+                "Stream limit reached",
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                "This provider's maximum number of simultaneous streams is " +
+                    "already in use. Close another stream and try again.",
+                color = Color.White.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
             )
         }
     }

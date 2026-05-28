@@ -59,18 +59,22 @@ class PlayerViewModel(
 
     init {
         viewModelScope.launch {
-            val ch = channelDao.getById(channelId)
+            val ch = channelDao.getById(channelId) ?: return@launch
+            val source = sourceDao.getById(ch.sourceId)
+            // Reserve a concurrency slot before touching playback state. If the
+            // source is at capacity, register() refuses this stream and fires
+            // onForceStop synchronously, so _stopped flips here — we bail out
+            // without recording a watch or emitting the channel, and the UI
+            // shows the limit notice instead of briefly starting playback.
+            unregisterStream = concurrencyTracker.register(
+                sourceId = ch.sourceId,
+                maxConcurrent = source?.maxConcurrentStreams ?: 0,
+                onForceStop = { _stopped.value = true },
+            )
+            if (_stopped.value) return@launch
+            channelDao.updateLastWatched(channelId, System.currentTimeMillis())
+            _headers.value = source?.headersMap() ?: emptyMap()
             _channel.value = ch
-            if (ch != null) {
-                channelDao.updateLastWatched(channelId, System.currentTimeMillis())
-                val source = sourceDao.getById(ch.sourceId)
-                _headers.value = source?.headersMap() ?: emptyMap()
-                unregisterStream = concurrencyTracker.register(
-                    sourceId = ch.sourceId,
-                    maxConcurrent = source?.maxConcurrentStreams ?: 0,
-                    onForceStop = { _stopped.value = true },
-                )
-            }
         }
     }
 
