@@ -120,9 +120,23 @@ fun HomeScreen(
     // requires a long downward trek to get back to where the user was.
     val addChannelFabFocus = remember { FocusRequester() }
 
+    // Land D-pad focus on the first channel row once the list loads, so a remote
+    // has somewhere to go on entry instead of nothing being focused. One-shot +
+    // runCatching-guarded: if the node isn't placed yet we fall back to today's
+    // no-initial-focus behaviour rather than crashing.
+    val firstChannelFocus = remember { FocusRequester() }
+    var initialFocusDone by remember { mutableStateOf(false) }
+
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
             snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
+        }
+    }
+
+    LaunchedEffect(pagingItems.itemCount) {
+        if (!initialFocusDone && pagingItems.itemCount > 0) {
+            initialFocusDone = true
+            runCatching { firstChannelFocus.requestFocus() }
         }
     }
 
@@ -181,6 +195,7 @@ fun HomeScreen(
                     onHideChannel = onHideChannel,
                     onClearRecent = vm::clearRecentlyWatched,
                     onSettingsClick = onSettingsClick,
+                    firstChannelFocus = firstChannelFocus,
                 )
             }
         }
@@ -368,6 +383,7 @@ private fun HomeContent(
     onHideChannel: (Long) -> Unit,
     onClearRecent: () -> Unit,
     onSettingsClick: () -> Unit,
+    firstChannelFocus: FocusRequester,
 ) {
     when {
         sources.isEmpty() -> EmptySourcesState(
@@ -391,6 +407,9 @@ private fun HomeContent(
                 .focusRestorer()
                 .testTag("channel_list"),
         ) {
+            // The first paging row may be a (non-focusable) group header in
+            // BY_GROUP sort; if so the first focusable channel is at index 1.
+            val firstChannelIndex = if (pagingItems.peek(0) is ChannelListItem.Header) 1 else 0
             if (recentlyWatched.isNotEmpty() && isDefaultView) {
                 item(key = "recent_header") {
                     Row(
@@ -466,6 +485,7 @@ private fun HomeContent(
                             onFavoriteToggle = onFavoriteToggle,
                             onEdit = onEditChannel,
                             onHide = onHideChannel,
+                            focusRequester = firstChannelFocus.takeIf { index == firstChannelIndex },
                         )
                     }
                     null -> {}
@@ -511,6 +531,7 @@ private fun ChannelItem(
     onFavoriteToggle: (Long) -> Unit,
     onEdit: (Channel) -> Unit,
     onHide: (Long) -> Unit,
+    focusRequester: FocusRequester? = null,
 ) {
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -547,6 +568,7 @@ private fun ChannelItem(
                     drawRect(color = primaryColor, size = size.copy(width = 4.dp.toPx()))
                 }
             }
+            .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .combinedClickable(
                 onClick = { onClick(channel.id) },

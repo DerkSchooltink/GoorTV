@@ -10,7 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -188,6 +190,15 @@ private fun GuideGrid(
             scrollState.scrollTo(target)
         }
 
+        // Land D-pad focus on the first channel header once the grid appears, so
+        // a remote has somewhere to go instead of nothing being focused. One-shot
+        // and runCatching-guarded: if the node isn't placed yet we simply fall
+        // back to today's no-initial-focus behaviour rather than crashing.
+        val firstRowFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            if (rows.isNotEmpty()) runCatching { firstRowFocus.requestFocus() }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Time-axis header
             Row(modifier = Modifier.height(TIME_HEADER_HEIGHT)) {
@@ -204,9 +215,13 @@ private fun GuideGrid(
             // Channel rows
             Box(modifier = Modifier.weight(1f)) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(rows, key = { "${it.channel.sourceId}_${it.channel.id}" }) { row ->
+                    itemsIndexed(rows, key = { _, r -> "${r.channel.sourceId}_${r.channel.id}" }) { index, row ->
                         Row(modifier = Modifier.height(ROW_HEIGHT)) {
-                            ChannelHeaderCell(channel = row.channel, onClick = { onWatchProgramme(row.channel.id) })
+                            ChannelHeaderCell(
+                                channel = row.channel,
+                                onClick = { onWatchProgramme(row.channel.id) },
+                                modifier = if (index == 0) Modifier.focusRequester(firstRowFocus) else Modifier,
+                            )
                             Box(
                                 modifier = Modifier
                                     .horizontalScroll(scrollState)
@@ -263,9 +278,9 @@ private fun TimeHeader(
 }
 
 @Composable
-private fun ChannelHeaderCell(channel: Channel, onClick: () -> Unit) {
+private fun ChannelHeaderCell(channel: Channel, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .width(CHANNEL_COL_WIDTH)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surface)
