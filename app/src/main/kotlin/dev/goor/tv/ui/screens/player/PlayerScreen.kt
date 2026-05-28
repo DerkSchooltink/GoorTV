@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
@@ -62,6 +63,15 @@ import org.koin.core.parameter.parametersOf
 
 private const val CONTROLS_AUTO_HIDE_MS = 4_000L
 private const val STREAM_LIMIT_NOTICE_MS = 3_000L
+// A stream that connects then stalls indefinitely never fires onPlayerError, so
+// the buffering spinner would otherwise spin forever. Treat a buffer this long
+// as a failure and surface the error overlay with a Retry.
+private const val BUFFER_WATCHDOG_MS = 25_000L
+// Brief pause before the one automatic retry, so a transient blip self-heals
+// without the user ever seeing an error.
+private const val AUTO_RETRY_DELAY_MS = 1_500L
+// How long the "Cast failed, playing locally" notice stays up after fallback.
+private const val CAST_NOTICE_MS = 5_000L
 
 private enum class AspectRatioMode(val label: String) {
     FIT("Fit"),
@@ -70,9 +80,6 @@ private enum class AspectRatioMode(val label: String) {
     RATIO_16_9("16:9"),
     RATIO_4_3("4:3"),
 }
-
-private val AspectRatioMode.next: AspectRatioMode
-    get() = AspectRatioMode.entries[(ordinal + 1) % AspectRatioMode.entries.size]
 
 /** Saves the enum ordinal — `autoSaver()` doesn't know how to serialize enums. */
 private val AspectRatioModeSaver: Saver<AspectRatioMode, Int> = Saver(
@@ -118,6 +125,14 @@ fun PlayerScreen(
     val hasError = engineError != null
     val errorMessage = engineError
     var castError by remember { mutableStateOf<String?>(null) }
+    // Set once we've given up on casting this channel and resumed local playback,
+    // so the (auto-clearing) cast notice doesn't let the casting overlay re-cover
+    // the local video.
+    var castFellBack by remember { mutableStateOf(false) }
+    // Per-channel playback recovery state — reset when the channel changes.
+    var stalled by remember(channel?.id) { mutableStateOf(false) }
+    var autoRetried by remember(channel?.id) { mutableStateOf(false) }
+    var retrying by remember(channel?.id) { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(false) }
     // User-selected aspect ratio persists across config changes (rotation,
     // dark-mode toggle, etc.). Stored as ordinal because Saver can't reflect
@@ -133,12 +148,57 @@ fun PlayerScreen(
     // Stable callbacks for the overlay sub-composables — without `remember`,
     // these fresh-lambda each composition and force the (skippable) overlays
     // to recompose on every parent frame.
-    val onAspectClick = remember { { aspectRatioMode = aspectRatioMode.next } }
+    val onAspectSelected = remember { { mode: AspectRatioMode -> aspectRatioMode = mode } }
     val onRetry = remember(channel?.id, headers) {
-        { channel?.let { ch -> playerEngine.prepare(ch.url, headers) } ?: Unit }
+        {
+            // Manual retry clears both recovery flags so the watchdog + auto-retry
+            // get a fresh budget for the new attempt.
+            autoRetried = false
+            stalled = false
+            channel?.let { ch -> playerEngine.prepare(ch.url, headers) } ?: Unit
+        }
     }
 
+    // "Effectively playing locally" — either not casting, or we fell back to local
+    // after a cast load failure. Gates the local spinner / error overlay.
+    val showingLocal = !isCasting || castFellBack
+    val showErrorOverlay = showingLocal && (stalled || (hasError && autoRetried && !retrying))
+    val overlayMessage = if (stalled && !hasError) "Stream isn’t responding" else errorMessage
+    val showSpinner = channel == null || (isBuffering && !hasError && showingLocal && !stalled)
+
     BackHandler { onBack() }
+
+    // Buffering watchdog: a stream that connects then stalls forever never fires
+    // onPlayerError, so surface the error overlay once buffering outlasts the
+    // watchdog. Re-keys (and resets) whenever buffering / error / cast state flips.
+    LaunchedEffect(isBuffering, hasError, showingLocal, channel?.id) {
+        stalled = false
+        if (isBuffering && !hasError && showingLocal) {
+            delay(BUFFER_WATCHDOG_MS)
+            stalled = true
+        }
+    }
+
+    // Auto-retry once on error before bothering the user. prepare() clears the
+    // error; if it fails again, autoRetried is already set so the overlay shows.
+    LaunchedEffect(hasError, showingLocal, channel?.id) {
+        if (hasError && showingLocal && !autoRetried) {
+            autoRetried = true
+            retrying = true
+            delay(AUTO_RETRY_DELAY_MS)
+            channel?.let { playerEngine.prepare(it.url, headers) }
+            retrying = false
+        }
+    }
+
+    // Cast notice auto-dismisses; castFellBack keeps the casting overlay from
+    // re-covering the now-local video once it clears.
+    LaunchedEffect(castError) {
+        if (castError != null) {
+            delay(CAST_NOTICE_MS)
+            castError = null
+        }
+    }
 
     LaunchedEffect(showControls) {
         if (showControls) {
@@ -159,12 +219,19 @@ fun PlayerScreen(
     channel?.let { ch ->
         LaunchedEffect(ch.url, headers, castSession) {
             castError = null
+            castFellBack = false
             val session = castSession
             if (session != null) {
                 // Cast path — pause local, hand off to receiver.
                 playerEngine.pause()
                 runCatching { loadOnCastSession(session, ch) }
-                    .onFailure { castError = "Cast failed: ${it.message ?: it::class.simpleName}" }
+                    .onFailure {
+                        // Don't strand the user on a dead casting screen — resume
+                        // local playback and show a brief notice.
+                        castError = "Cast failed — playing here instead"
+                        castFellBack = true
+                        playerEngine.prepare(ch.url, headers)
+                    }
             } else {
                 playerEngine.prepare(ch.url, headers)
             }
@@ -218,34 +285,48 @@ fun PlayerScreen(
         }
 
         // Loading / buffering overlay
-        if (channel == null || (isBuffering && !hasError && !isCasting)) {
+        if (showSpinner) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = Color.White,
             )
         }
 
-        if (isCasting) {
+        if (isCasting && !castFellBack) {
             CastingOverlay(
                 channelName = channel?.name,
                 deviceName = castSession?.castDevice?.friendlyName,
-                castError = castError,
             )
         }
 
-        if (hasError && !isCasting) {
+        if (showErrorOverlay) {
             PlaybackErrorOverlay(
-                message = errorMessage,
+                message = overlayMessage,
                 onRetry = onRetry,
             )
         }
 
+        // Transient notice after a cast load failure / local fallback.
+        castError?.let { msg ->
+            Text(
+                msg,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 8.dp, start = 56.dp, end = 16.dp)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+
         PlayerControlsFooter(
-            visible = showControls && !hasError,
-            aspectLabel = aspectRatioMode.label,
+            visible = showControls && !showErrorOverlay,
+            aspectMode = aspectRatioMode,
+            onAspectSelected = onAspectSelected,
             aspectFocus = aspectFocus,
             castFocus = castFocus,
-            onAspectClick = onAspectClick,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
@@ -271,7 +352,7 @@ fun PlayerScreen(
 
         channel?.let { ch ->
             ChannelInfoOverlay(
-                visible = showControls && !hasError,
+                visible = showControls && !showErrorOverlay,
                 channel = ch,
                 nowAndNext = nowAndNext,
                 nowMs = nowMs,
@@ -326,7 +407,6 @@ private fun StreamLimitOverlay() {
 private fun CastingOverlay(
     channelName: String?,
     deviceName: String?,
-    castError: String?,
 ) {
     Box(
         modifier = Modifier
@@ -335,24 +415,14 @@ private fun CastingOverlay(
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            if (castError != null) {
-                Text("Cast failed", color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("Casting", color = Color.White, style = MaterialTheme.typography.titleLarge)
+            if (deviceName != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    castError,
+                    "to $deviceName",
                     color = Color.White.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodyMedium,
                 )
-            } else {
-                Text("Casting", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                if (deviceName != null) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "to $deviceName",
-                        color = Color.White.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
             }
             if (channelName != null) {
                 Spacer(Modifier.height(12.dp))
@@ -396,10 +466,10 @@ private fun PlaybackErrorOverlay(
 @Composable
 private fun PlayerControlsFooter(
     visible: Boolean,
-    aspectLabel: String,
+    aspectMode: AspectRatioMode,
+    onAspectSelected: (AspectRatioMode) -> Unit,
     aspectFocus: MutableState<Boolean>,
     castFocus: MutableState<Boolean>,
-    onAspectClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -417,17 +487,36 @@ private fun PlayerControlsFooter(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
-                onClick = onAspectClick,
-                modifier = Modifier
-                    .trackTvFocus(aspectFocus)
-                    .focusBorder(aspectFocus.value, CircleShape, Color.White),
-            ) {
-                Text(
-                    aspectLabel,
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelMedium,
-                )
+            Box {
+                var menuOpen by remember { mutableStateOf(false) }
+                TextButton(
+                    onClick = { menuOpen = true },
+                    modifier = Modifier
+                        .trackTvFocus(aspectFocus)
+                        .focusBorder(aspectFocus.value, CircleShape, Color.White),
+                ) {
+                    Text(
+                        "Aspect: ${aspectMode.label}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                // A popup of all modes — the user can see and pick directly
+                // instead of blind-cycling a single toggle.
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    AspectRatioMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(mode.label) },
+                            onClick = {
+                                onAspectSelected(mode)
+                                menuOpen = false
+                            },
+                            leadingIcon = if (mode == aspectMode) {
+                                { Icon(Icons.Default.Check, contentDescription = null) }
+                            } else null,
+                        )
+                    }
+                }
             }
             // Skip the Cast button on devices without Google Play Services —
             // CastButtonFactory.setUpMediaRouteButton internally calls
