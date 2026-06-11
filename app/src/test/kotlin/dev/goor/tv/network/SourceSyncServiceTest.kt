@@ -179,11 +179,54 @@ class SourceSyncServiceTest {
         // replaceForSourcePreservingUserData wiped the source's channels.
         val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p", lastSyncedAt = null)
         every { sourceDao.getAll() } returns flowOf(listOf(source))
-        val engine = MockEngine { respondError(HttpStatusCode.InternalServerError) }
+        val attempt = AtomicInteger(0)
+        val engine = MockEngine {
+            attempt.incrementAndGet()
+            respondError(HttpStatusCode.InternalServerError)
+        }
 
         val errors = service(engine).syncAll()
 
         assertEquals(1, errors.size)
+        // 5xx is transient — the full retry budget is spent before giving up.
+        assertEquals(3, attempt.get())  // MAX_ATTEMPTS = 3
+        coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
+    }
+
+    @Test
+    fun `sync(M3U) retries HTTP 503 the full MAX_ATTEMPTS`() = runTest {
+        val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p", lastSyncedAt = null)
+        every { sourceDao.getAll() } returns flowOf(listOf(source))
+        val attempt = AtomicInteger(0)
+        val engine = MockEngine {
+            attempt.incrementAndGet()
+            respondError(HttpStatusCode.ServiceUnavailable)
+        }
+
+        val errors = service(engine).syncAll()
+
+        assertEquals(1, errors.size)
+        assertEquals(3, attempt.get())  // MAX_ATTEMPTS = 3
+        assertTrue(errors[0] is SyncException.Http)
+    }
+
+    @Test
+    fun `sync(M3U) fails fast on HTTP 404 without retrying`() = runTest {
+        // A client error (bad URL / bad credentials) can't be fixed by waiting —
+        // retrying just burns the backoff budget. Exactly one fetch attempt.
+        val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p", lastSyncedAt = null)
+        every { sourceDao.getAll() } returns flowOf(listOf(source))
+        val attempt = AtomicInteger(0)
+        val engine = MockEngine {
+            attempt.incrementAndGet()
+            respondError(HttpStatusCode.NotFound)
+        }
+
+        val errors = service(engine).syncAll()
+
+        assertEquals(1, errors.size)
+        assertEquals(1, attempt.get())
+        assertTrue(errors[0] is SyncException.Http)
         coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
     }
 
@@ -271,18 +314,22 @@ http://stream.example.com/foo.ts
 
     @Test
     fun `sync(M3U) rejects a playlist whose declared size exceeds the cap`() = runTest {
+        // Body and Content-Length must agree (Ktor validates the response length
+        // itself and would otherwise fail first with its own IllegalStateException),
+        // so ship a real over-cap payload: MAX_PLAYLIST_BYTES + 1.
+        val oversize = ByteArray(50 * 1024 * 1024 + 1)
         val engine = MockEngine {
             respond(
-                content = ByteReadChannel(SAMPLE_M3U),
+                content = ByteReadChannel(oversize),
                 status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentLength, (60L * 1024 * 1024).toString()),
+                headers = headersOf(HttpHeaders.ContentLength, oversize.size.toString()),
             )
         }
         val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/big.m3u")
 
         val error = runCatching { service(engine).sync(source) }.exceptionOrNull()
 
-        assertTrue("oversize playlist must fail the sync", error is IllegalStateException)
+        assertTrue("oversize playlist must fail the sync, got: $error", error is SyncException.TooLarge)
         // Crucially: a rejected playlist must not wipe the source's channels.
         coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
     }
