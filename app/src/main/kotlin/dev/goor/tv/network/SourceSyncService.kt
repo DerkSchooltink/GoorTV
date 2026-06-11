@@ -42,20 +42,21 @@ class SourceSyncService(
     /**
      * Syncs all non-manual sources whose [Source.lastSyncedAt] is older than
      * [throttleMs]. Each failed source is retried with exponential backoff up to
-     * [MAX_ATTEMPTS] before being reported. Returns one [Throwable] per source
+     * [MAX_ATTEMPTS] before being reported. Returns one [SyncFailure] per source
      * that ultimately failed.
      *
      * Manual refresh from settings should pass `throttleMs = 0L` to bypass the
      * skip filter.
      */
-    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
+    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<SyncFailure> {
         val now = System.currentTimeMillis()
         return sourceDao.getAll().first()
             .filter { it.type != SourceType.MANUAL }
             .filter { (it.lastSyncedAt ?: 0L) + throttleMs <= now }
             .mapNotNull { source ->
-                syncWithRetry(source)?.also {
-                    Log.e(TAG, "Sync gave up on '${source.name}' after $MAX_ATTEMPTS attempts: ${it.message}")
+                syncWithRetry(source)?.let {
+                    Log.e(TAG, "Sync gave up on '${source.name}': ${it.message}")
+                    SyncFailure(source.name, it)
                 }
             }
     }

@@ -41,6 +41,10 @@
     <string name="home_sort_by_group">By group</string>
     <string name="home_sort_by_name">By name A–Z</string>
     <string name="home_sort_by_last_watched">By last watched</string>
+    <string name="home_sync_error_auth">%1$s: sign-in failed — check username and password</string>
+    <string name="home_sync_error_http">%1$s: server returned HTTP %2$d</string>
+    <string name="home_sync_error_too_large">%1$s: playlist is too large</string>
+    <string name="home_sync_error_generic">%1$s: %2$s</string>
     <string name="home_error_add_channel">Couldn\'t add channel</string>
     <string name="home_error_update_channel">Couldn\'t update channel</string>
     <string name="home_error_delete_channel">Couldn\'t delete channel</string>
@@ -78,8 +82,8 @@
     <string name="player_aspect_fit">Fit</string>
     <string name="player_aspect_fill">Fill</string>
     <string name="player_aspect_zoom">Zoom</string>
-    <string name="player_aspect_16_9">16:9</string>
-    <string name="player_aspect_4_3">4:3</string>
+    <string name="player_aspect_16_9" translatable="false">16:9</string>
+    <string name="player_aspect_4_3" translatable="false">4:3</string>
     <string name="player_aspect_label">Aspect: %1$s</string>
     <string name="player_stream_not_responding">Stream isn’t responding</string>
     <string name="player_cast_failed_fallback">Cast failed — playing here instead</string>

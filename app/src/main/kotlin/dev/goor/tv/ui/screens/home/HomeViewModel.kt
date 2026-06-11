@@ -20,6 +20,7 @@ import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
+import dev.goor.tv.network.SyncFailure
 import dev.goor.tv.util.TimeProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -46,8 +47,8 @@ class HomeViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
-    /** Sync failure messages from the network layer; null entries mean "unknown error". */
-    private val _syncErrors = MutableStateFlow<List<String?>>(emptyList())
+    /** Per-source sync failures from the network layer; the UI localizes them. */
+    private val _syncErrors = MutableStateFlow<List<SyncFailure>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
 
     /** One-shot message resource for a failed user action (favourite toggle, hide, etc.). */
@@ -133,7 +134,7 @@ class HomeViewModel(
     fun sync() {
         viewModelScope.launch {
             _isSyncing.value = true
-            _syncErrors.value = syncService.syncAll(throttleMs = 0L).map { it.message }
+            _syncErrors.value = syncService.syncAll(throttleMs = 0L)
             _isSyncing.value = false
         }
     }
