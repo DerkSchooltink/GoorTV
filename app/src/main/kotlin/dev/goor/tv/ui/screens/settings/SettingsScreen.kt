@@ -194,7 +194,8 @@ fun SettingsScreen(
                     )
                     Icon(
                         Icons.AutoMirrored.Filled.OpenInNew,
-                        contentDescription = null,
+                        // Conveys "leaves the app", which the row's text does not.
+                        contentDescription = stringResource(R.string.settings_opens_in_browser),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
