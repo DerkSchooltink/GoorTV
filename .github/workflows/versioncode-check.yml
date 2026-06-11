@@ -1,0 +1,61 @@
+name: versionCode check
+
+# Guards the release versioning invariant (versionCode 10 was accidentally
+# reused for both v1.4.1 and v1.4.2 once):
+#  - versionCode must never decrease relative to the PR base
+#  - when versionName changes, versionCode must be strictly greater than both
+#    the base branch's versionCode and the highest existing v* release tag's
+#    (release tags can be ahead of main, so base alone is not enough)
+
+on:
+  pull_request:
+    paths:
+      - 'app/build.gradle.kts'
+
+jobs:
+  versioncode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate versionCode monotonicity
+        run: |
+          set -euo pipefail
+
+          extract() { # $1 = file contents on stdin, $2 = field
+            grep -E "^\s*$1\s*=" | head -1 | sed -E "s/[^0-9a-zA-Z\"\.]*$1 = //" | tr -d '"'
+          }
+
+          pr_code=$(extract versionCode < app/build.gradle.kts)
+          pr_name=$(extract versionName < app/build.gradle.kts)
+
+          base="origin/${GITHUB_BASE_REF}"
+          base_code=$(git show "$base:app/build.gradle.kts" | extract versionCode)
+          base_name=$(git show "$base:app/build.gradle.kts" | extract versionName)
+
+          max_tag_code=0
+          for tag in $(git tag -l 'v*'); do
+            tag_code=$(git show "$tag:app/build.gradle.kts" 2>/dev/null | extract versionCode || echo 0)
+            [ "$tag_code" -gt "$max_tag_code" ] && max_tag_code=$tag_code
+          done
+
+          echo "PR: versionCode=$pr_code versionName=$pr_name"
+          echo "Base ($base): versionCode=$base_code versionName=$base_name"
+          echo "Highest released versionCode (v* tags): $max_tag_code"
+
+          if [ "$pr_code" -lt "$base_code" ]; then
+            echo "::error::versionCode decreased ($base_code -> $pr_code)"
+            exit 1
+          fi
+
+          if [ "$pr_name" != "$base_name" ]; then
+            if [ "$pr_code" -le "$base_code" ] || [ "$pr_code" -le "$max_tag_code" ]; then
+              echo "::error::versionName changed ($base_name -> $pr_name) but versionCode ($pr_code) is not greater than base ($base_code) and the highest released tag ($max_tag_code)"
+              exit 1
+            fi
+          fi
+
+          echo "versionCode check passed"
