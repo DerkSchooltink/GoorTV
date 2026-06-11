@@ -142,7 +142,13 @@ GitHub Actions builds the signed APK and attaches it to the release automaticall
 
 ---
 
-> **Note on cleartext traffic**: the app allows plain HTTP streams (`usesCleartextTraffic="true"`) because many streaming sources do not use HTTPS. No user credentials are transmitted over HTTP — provider passwords are used only for Xtream Codes API calls to the user's own source.
+## Privacy
+
+GoorTV collects no personal data — no analytics, no tracking, no ads. Sources, favorites, and watch history stay on your device, and Xtream credentials are encrypted at rest with the Android Keystore. The only data that leaves your device is requests to the source URLs you configure and anonymous crash reports.
+
+Read the full [Privacy Policy](https://derkschooltink.github.io/GoorTV/privacy/) ([source](docs/privacy.md)).
+
+> **Note on cleartext traffic**: the app allows plain HTTP streams (`usesCleartextTraffic="true"`) because many streaming sources do not use HTTPS. Be aware that the Xtream Codes protocol embeds your username and password in API and stream URLs — if your provider only serves HTTP, those credentials travel in cleartext, and when casting they are sent to the Cast device as part of the stream URL. Prefer HTTPS providers and only cast to devices you trust.
 
 ---
 
