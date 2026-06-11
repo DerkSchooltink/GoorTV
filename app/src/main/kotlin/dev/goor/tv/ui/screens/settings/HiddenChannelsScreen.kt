@@ -10,9 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 import org.koin.androidx.compose.koinViewModel
 
@@ -27,10 +29,13 @@ fun HiddenChannelsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Hidden channels") },
+                title = { Text(stringResource(R.string.hidden_channels_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                        )
                     }
                 },
             )
@@ -42,7 +47,7 @@ fun HiddenChannelsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    "No hidden channels",
+                    stringResource(R.string.hidden_channels_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -86,7 +91,7 @@ private fun HiddenChannelRow(channel: Channel, onUnhide: () -> Unit) {
         TextButton(onClick = onUnhide) {
             Icon(Icons.Default.Visibility, contentDescription = null)
             Spacer(Modifier.width(4.dp))
-            Text("Unhide")
+            Text(stringResource(R.string.hidden_channels_unhide))
         }
     }
 }

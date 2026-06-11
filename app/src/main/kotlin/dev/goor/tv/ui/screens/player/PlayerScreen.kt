@@ -41,11 +41,14 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.annotation.StringRes
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.ui.util.SystemBarsController
@@ -74,12 +77,12 @@ private const val AUTO_RETRY_DELAY_MS = 1_500L
 // How long the "Cast failed, playing locally" notice stays up after fallback.
 private const val CAST_NOTICE_MS = 5_000L
 
-private enum class AspectRatioMode(val label: String) {
-    FIT("Fit"),
-    FILL("Fill"),
-    ZOOM("Zoom"),
-    RATIO_16_9("16:9"),
-    RATIO_4_3("4:3"),
+private enum class AspectRatioMode(@StringRes val labelRes: Int) {
+    FIT(R.string.player_aspect_fit),
+    FILL(R.string.player_aspect_fill),
+    ZOOM(R.string.player_aspect_zoom),
+    RATIO_16_9(R.string.player_aspect_16_9),
+    RATIO_4_3(R.string.player_aspect_4_3),
 }
 
 /** Saves the enum ordinal — `autoSaver()` doesn't know how to serialize enums. */
@@ -164,7 +167,8 @@ fun PlayerScreen(
     // after a cast load failure. Gates the local spinner / error overlay.
     val showingLocal = !isCasting || castFellBack
     val showErrorOverlay = showingLocal && (stalled || (hasError && autoRetried && !retrying))
-    val overlayMessage = if (stalled && !hasError) "Stream isn’t responding" else errorMessage
+    val overlayMessage =
+        if (stalled && !hasError) stringResource(R.string.player_stream_not_responding) else errorMessage
     val showSpinner = channel == null || (isBuffering && !hasError && showingLocal && !stalled)
 
     BackHandler { onBack() }
@@ -217,6 +221,7 @@ fun PlayerScreen(
         }
     }
 
+    val castFailedMessage = stringResource(R.string.player_cast_failed_fallback)
     channel?.let { ch ->
         LaunchedEffect(ch.url, headers, castSession) {
             castError = null
@@ -229,7 +234,7 @@ fun PlayerScreen(
                     .onFailure {
                         // Don't strand the user on a dead casting screen — resume
                         // local playback and show a brief notice.
-                        castError = "Cast failed — playing here instead"
+                        castError = castFailedMessage
                         castFellBack = true
                         playerEngine.prepare(ch.url, headers)
                     }
@@ -346,7 +351,7 @@ fun PlayerScreen(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = stringResource(R.string.common_back),
                 tint = Color.White,
             )
         }
@@ -389,13 +394,12 @@ private fun StreamLimitOverlay() {
                 tint = Color.White,
             )
             Text(
-                "Stream limit reached",
+                stringResource(R.string.player_stream_limit_title),
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                "This provider's maximum number of simultaneous streams is " +
-                    "already in use. Close another stream and try again.",
+                stringResource(R.string.player_stream_limit_body),
                 color = Color.White.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
@@ -416,11 +420,15 @@ private fun CastingOverlay(
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Casting", color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text(
+                stringResource(R.string.player_casting),
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+            )
             if (deviceName != null) {
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "to $deviceName",
+                    stringResource(R.string.player_casting_to, deviceName),
                     color = Color.White.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -455,11 +463,11 @@ private fun PlaybackErrorOverlay(
                 tint = Color.White,
             )
             Text(
-                message ?: "Playback failed",
+                message ?: stringResource(R.string.player_playback_failed),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge,
             )
-            Button(onClick = onRetry) { Text("Retry") }
+            Button(onClick = onRetry) { Text(stringResource(R.string.player_retry)) }
         }
     }
 }
@@ -497,7 +505,7 @@ private fun PlayerControlsFooter(
                         .focusBorder(aspectFocus.value, CircleShape, Color.White),
                 ) {
                     Text(
-                        "Aspect: ${aspectMode.label}",
+                        stringResource(R.string.player_aspect_label, stringResource(aspectMode.labelRes)),
                         color = Color.White,
                         style = MaterialTheme.typography.labelMedium,
                     )
@@ -507,7 +515,7 @@ private fun PlayerControlsFooter(
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     AspectRatioMode.entries.forEach { mode ->
                         DropdownMenuItem(
-                            text = { Text(mode.label) },
+                            text = { Text(stringResource(mode.labelRes)) },
                             onClick = {
                                 onAspectSelected(mode)
                                 menuOpen = false
@@ -613,7 +621,7 @@ private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
     Column(modifier = Modifier.padding(top = 2.dp)) {
         now?.let { p ->
             Text(
-                "${formatHm(p.startMs)}–${formatHm(p.endMs)}  ${p.title}",
+                stringResource(R.string.player_now_programme, formatHm(p.startMs), formatHm(p.endMs), p.title),
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
@@ -634,7 +642,7 @@ private fun ProgrammeOverlay(now: Programme?, next: Programme?, nowMs: Long) {
         }
         next?.let { p ->
             Text(
-                "Next  ${formatHm(p.startMs)}  ${p.title}",
+                stringResource(R.string.player_next_programme, formatHm(p.startMs), p.title),
                 color = Color.White.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,

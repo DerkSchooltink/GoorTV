@@ -1,8 +1,10 @@
 package dev.goor.tv.ui.screens.settings
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.database.sqlite.SQLiteConstraintException
+import dev.goor.tv.R
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Secret
@@ -19,6 +21,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/**
+ * A user-visible snackbar message as a string resource plus its format
+ * arguments, resolved via `stringResource` in the composable.
+ */
+data class SnackbarMessage(@StringRes val resId: Int, val args: List<Any> = emptyList())
 
 class SettingsViewModel(
     private val sourceDao: SourceDao,
@@ -41,7 +49,7 @@ class SettingsViewModel(
     private val _epgSyncingIds = MutableStateFlow<Set<Long>>(emptySet())
     val epgSyncingIds = _epgSyncingIds.asStateFlow()
 
-    private val _snackbarMessage = MutableStateFlow<String?>(null)
+    private val _snackbarMessage = MutableStateFlow<SnackbarMessage?>(null)
     val snackbarMessage = _snackbarMessage.asStateFlow()
 
     fun clearSnackbar() { _snackbarMessage.value = null }
@@ -49,11 +57,11 @@ class SettingsViewModel(
     fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
             if (!isValidSourceUrl(url)) {
-                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_invalid_url)
                 return@launch
             }
             if (sourceDao.findByTypeAndUrl(SourceType.M3U.name, url) != null) {
-                _snackbarMessage.value = "An M3U source with that URL already exists"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_m3u_exists)
                 return@launch
             }
             // Pre-check is racy against the unique (type, url) index — catch the race here
@@ -61,7 +69,7 @@ class SettingsViewModel(
             val id = try {
                 sourceDao.insert(Source(name = name, type = SourceType.M3U, url = url, headers = headers?.takeIf { it.isNotBlank() }, maxConcurrentStreams = maxConcurrentStreams))
             } catch (_: SQLiteConstraintException) {
-                _snackbarMessage.value = "An M3U source with that URL already exists"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_m3u_exists)
                 return@launch
             }
             val src = sourceDao.getById(id) ?: return@launch
@@ -73,11 +81,11 @@ class SettingsViewModel(
     fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0, xtreamOutput: XtreamOutput = XtreamOutput.TS) {
         viewModelScope.launch {
             if (!isValidSourceUrl(url)) {
-                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_invalid_url)
                 return@launch
             }
             if (sourceDao.findByTypeAndUrl(SourceType.XTREAM.name, url) != null) {
-                _snackbarMessage.value = "An Xtream source with that URL already exists"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_xtream_exists)
                 return@launch
             }
             val id = try {
@@ -94,7 +102,7 @@ class SettingsViewModel(
                     ),
                 )
             } catch (_: SQLiteConstraintException) {
-                _snackbarMessage.value = "An Xtream source with that URL already exists"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_xtream_exists)
                 return@launch
             }
             val src = sourceDao.getById(id) ?: return@launch
@@ -106,7 +114,7 @@ class SettingsViewModel(
     fun updateSource(source: Source) {
         viewModelScope.launch {
             if (!isValidSourceUrl(source.url)) {
-                _snackbarMessage.value = "Enter a valid http:// or https:// URL"
+                _snackbarMessage.value = SnackbarMessage(R.string.settings_error_invalid_url)
                 return@launch
             }
             sourceDao.update(source)
@@ -142,7 +150,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             _syncingIds.update { it + source.id }
             runCatching { syncService.sync(source) }
-                .onFailure { _snackbarMessage.value = "Failed to sync \"${source.name}\": ${it.message}" }
+                .onFailure {
+                    _snackbarMessage.value = SnackbarMessage(
+                        R.string.settings_error_sync_failed,
+                        listOf(source.name, it.message.toString()),
+                    )
+                }
             _syncingIds.update { it - source.id }
         }
     }
@@ -151,7 +164,12 @@ class SettingsViewModel(
         viewModelScope.launch {
             _epgSyncingIds.update { it + source.id }
             runCatching { epgSyncService.sync(source) }
-                .onFailure { _snackbarMessage.value = "Failed to sync EPG for \"${source.name}\": ${it.message}" }
+                .onFailure {
+                    _snackbarMessage.value = SnackbarMessage(
+                        R.string.settings_error_epg_sync_failed,
+                        listOf(source.name, it.message.toString()),
+                    )
+                }
             _epgSyncingIds.update { it - source.id }
         }
     }

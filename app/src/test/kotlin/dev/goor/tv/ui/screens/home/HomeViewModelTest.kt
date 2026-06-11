@@ -1,6 +1,7 @@
 package dev.goor.tv.ui.screens.home
 
 import androidx.paging.PagingSource
+import dev.goor.tv.R
 import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
@@ -120,7 +121,7 @@ class HomeViewModelTest {
         vm.toggleFavorite(42L)
         advanceUntilIdle()
 
-        assertEquals("Couldn't update favourite", vm.actionError.value)
+        assertEquals(R.string.home_error_update_favourite, vm.actionError.value)
     }
 
     @Test

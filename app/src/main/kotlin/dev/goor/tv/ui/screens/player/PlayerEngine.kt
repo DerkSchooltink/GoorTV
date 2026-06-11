@@ -18,6 +18,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import dev.goor.tv.R
 
 /**
  * Side-effect seam for the playback engine. Production wraps Media3's [ExoPlayer]
@@ -61,7 +62,7 @@ private class ExoPlayerEngine(private val context: Context) : PlayerEngine {
             isBuffering.value = state == Player.STATE_BUFFERING
         }
         override fun onPlayerError(error: PlaybackException) {
-            errorMessage.value = error.message ?: "Playback failed"
+            errorMessage.value = error.message ?: context.getString(R.string.player_playback_failed)
             isBuffering.value = false
         }
     }

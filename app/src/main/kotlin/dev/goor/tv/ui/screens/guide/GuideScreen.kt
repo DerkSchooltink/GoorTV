@@ -40,11 +40,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.ui.util.focusBorder
@@ -91,10 +93,13 @@ fun GuideScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Guide") },
+                title = { Text(stringResource(R.string.guide_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                        )
                     }
                 },
             )
@@ -111,7 +116,7 @@ fun GuideScreen(
         transition.Crossfade(contentKey = { it::class }) { s ->
             when (s) {
                 is GuideState.Loading -> CenteredSpinner(
-                    label = "Waiting for EPG…",
+                    label = stringResource(R.string.guide_waiting_for_epg),
                     modifier = Modifier.padding(padding),
                 )
                 is GuideState.Empty -> EmptyState(
@@ -382,7 +387,7 @@ private fun ProgrammeBlock(
             color = fg,
         )
         Text(
-            "${formatHm(programme.startMs)}–${formatHm(programme.endMs)}",
+            stringResource(R.string.guide_time_range, formatHm(programme.startMs), formatHm(programme.endMs)),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.labelSmall,
@@ -445,27 +450,27 @@ private fun EmptyState(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             when (reason) {
                 GuideEmptyReason.NoSources -> EmptyMessage(
-                    title = "No EPG configured",
-                    body = "Configure a source with EPG support — Xtream credentials or an M3U with an EPG URL — to populate the guide.",
-                    action = "Open Settings" to onGoToSettings,
+                    title = stringResource(R.string.guide_empty_no_sources_title),
+                    body = stringResource(R.string.guide_empty_no_sources_body),
+                    action = stringResource(R.string.guide_open_settings) to onGoToSettings,
                 )
                 GuideEmptyReason.Fetching -> EmptyMessage(
-                    title = "Fetching guide…",
-                    body = "The first sync can take a few minutes.",
+                    title = stringResource(R.string.guide_empty_fetching_title),
+                    body = stringResource(R.string.guide_empty_fetching_body),
                     showSpinner = true,
                 )
                 GuideEmptyReason.NoTvgIds -> EmptyMessage(
-                    title = "No channels match the guide",
-                    body = "The EPG was fetched, but your channels don't carry a tvg-id attribute to match programmes to. Check your playlist provider.",
+                    title = stringResource(R.string.guide_empty_no_tvg_ids_title),
+                    body = stringResource(R.string.guide_empty_no_tvg_ids_body),
                 )
                 GuideEmptyReason.NoProgrammes -> EmptyMessage(
-                    title = "Guide is empty",
-                    body = "Your channels are configured but no programmes were found. The EPG feed may not cover them.",
+                    title = stringResource(R.string.guide_empty_no_programmes_title),
+                    body = stringResource(R.string.guide_empty_no_programmes_body),
                 )
                 is GuideEmptyReason.EpgError -> EmptyMessage(
-                    title = "EPG sync failed",
-                    body = "“${reason.sourceName}”: ${reason.message}",
-                    action = "Open Settings" to onGoToSettings,
+                    title = stringResource(R.string.guide_empty_epg_error_title),
+                    body = stringResource(R.string.guide_empty_epg_error_body, reason.sourceName, reason.message),
+                    action = stringResource(R.string.guide_open_settings) to onGoToSettings,
                 )
             }
         }

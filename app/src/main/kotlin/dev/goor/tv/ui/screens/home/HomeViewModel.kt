@@ -1,6 +1,7 @@
 package dev.goor.tv.ui.screens.home
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -8,6 +9,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import androidx.paging.insertSeparators
 import androidx.paging.map
+import dev.goor.tv.R
 import dev.goor.tv.data.ManualSourceManager
 import dev.goor.tv.data.SearchHistoryRepository
 import dev.goor.tv.data.db.dao.ChannelDao
@@ -44,25 +46,26 @@ class HomeViewModel(
     private val _isSyncing = MutableStateFlow(false)
     val isSyncing = _isSyncing.asStateFlow()
 
-    private val _syncErrors = MutableStateFlow<List<String>>(emptyList())
+    /** Sync failure messages from the network layer; null entries mean "unknown error". */
+    private val _syncErrors = MutableStateFlow<List<String?>>(emptyList())
     val syncErrors = _syncErrors.asStateFlow()
 
-    /** One-shot message for a failed user action (favourite toggle, hide, etc.). */
-    private val _actionError = MutableStateFlow<String?>(null)
-    val actionError = _actionError.asStateFlow()
+    /** One-shot message resource for a failed user action (favourite toggle, hide, etc.). */
+    private val _actionError = MutableStateFlow<Int?>(null)
+    val actionError: StateFlow<Int?> = _actionError.asStateFlow()
 
     fun clearActionError() { _actionError.value = null }
 
     /**
-     * Runs a Room write off the UI, surfacing [failureMessage] if it throws.
+     * Runs a Room write off the UI, surfacing [failureMessageRes] if it throws.
      * Previously these were fire-and-forget `launch {}` blocks that swallowed
      * write failures (disk full, corruption, constraint) with no feedback.
      */
-    private fun launchWrite(failureMessage: String, block: suspend () -> Unit) {
+    private fun launchWrite(@StringRes failureMessageRes: Int, block: suspend () -> Unit) {
         viewModelScope.launch {
             runCatching { block() }.onFailure {
-                Log.e(TAG, "$failureMessage: ${it.message}", it)
-                _actionError.value = failureMessage
+                Log.e(TAG, "Write failed: ${it.message}", it)
+                _actionError.value = failureMessageRes
             }
         }
     }
@@ -118,19 +121,19 @@ class HomeViewModel(
     }.cachedIn(viewModelScope)
 
     fun addCustomChannel(name: String, url: String, logoUrl: String?, group: String?) =
-        launchWrite("Couldn't add channel") { manualSource.addChannel(name, url, logoUrl, group) }
+        launchWrite(R.string.home_error_add_channel) { manualSource.addChannel(name, url, logoUrl, group) }
 
     fun updateCustomChannel(channel: Channel) =
-        launchWrite("Couldn't update channel") { manualSource.updateChannel(channel) }
+        launchWrite(R.string.home_error_update_channel) { manualSource.updateChannel(channel) }
 
     fun deleteCustomChannel(channel: Channel) =
-        launchWrite("Couldn't delete channel") { manualSource.deleteChannel(channel) }
+        launchWrite(R.string.home_error_delete_channel) { manualSource.deleteChannel(channel) }
 
     /** User-initiated refresh — bypasses the throttle that the background coordinator respects. */
     fun sync() {
         viewModelScope.launch {
             _isSyncing.value = true
-            _syncErrors.value = syncService.syncAll(throttleMs = 0L).map { it.message ?: "Unknown error" }
+            _syncErrors.value = syncService.syncAll(throttleMs = 0L).map { it.message }
             _isSyncing.value = false
         }
     }
@@ -140,16 +143,16 @@ class HomeViewModel(
     fun toggleFavoritesOnly() { _showFavoritesOnly.value = !_showFavoritesOnly.value }
 
     fun toggleFavorite(channelId: Long) =
-        launchWrite("Couldn't update favourite") { channelDao.toggleFavorite(channelId) }
+        launchWrite(R.string.home_error_update_favourite) { channelDao.toggleFavorite(channelId) }
 
     fun hideChannel(channelId: Long) =
-        launchWrite("Couldn't hide channel") { channelDao.setHidden(channelId, true) }
+        launchWrite(R.string.home_error_hide_channel) { channelDao.setHidden(channelId, true) }
 
     fun clearRecentlyWatched() =
-        launchWrite("Couldn't clear recently watched") { channelDao.clearRecentlyWatched() }
+        launchWrite(R.string.home_error_clear_recently_watched) { channelDao.clearRecentlyWatched() }
 
     fun setSortOrder(order: SortOrder) =
-        launchWrite("Couldn't change sort order") { prefsRepository.setSortOrder(order) }
+        launchWrite(R.string.home_error_change_sort_order) { prefsRepository.setSortOrder(order) }
 
     private companion object {
         const val TAG = "HomeViewModel"
