@@ -5,7 +5,7 @@ permalink: /privacy/
 
 # GoorTV Privacy Policy
 
-**Effective date:** 2026-05-24
+**Effective date:** 2026-06-11
 **Contact:** goortv@proton.me
 
 GoorTV is a media player for Android TV and Android phones. It plays
@@ -41,10 +41,13 @@ what choices you have.
 | User preferences (sort order, included groups, ToS acceptance) | Local DataStore preferences | Uninstall |
 | Search history (max 5 most-recent queries) | Local SharedPreferences | Uninstall |
 
-Xtream credentials are stored as plain text in the database. Android
-sandboxing keeps them inaccessible to other apps on a non-rooted
-device, and `android:allowBackup="false"` keeps them out of system
-backups.
+Xtream credentials are encrypted at rest with a key held in the
+Android Keystore (AES-GCM); the key never leaves your device. Android
+sandboxing keeps the database inaccessible to other apps on a
+non-rooted device, and `android:allowBackup="false"` keeps it out of
+system backups. Because the encryption key cannot be copied off the
+device, credentials cannot be recovered on a different device — you
+re-enter them if you ever move to new hardware.
 
 ### Sent over the network as a direct consequence of using the app
 
@@ -55,6 +58,14 @@ backups.
 | Custom HTTP headers (if you set any) | Whatever target host requires them | Same — used only on requests you initiated |
 | Channel logo URL | Whatever CDN your M3U references | Required to display channel artwork |
 | Stream media URL | Google's default Cast Media Receiver (when you cast) | Required to start playback on the Cast device |
+
+Two consequences of the Xtream Codes protocol are worth spelling out:
+the protocol embeds your username and password directly in API and
+stream URLs. That means (a) if your provider only serves plain HTTP,
+your credentials travel over the network unencrypted, and (b) when you
+cast an Xtream stream, the URL — credentials included — is sent to the
+Cast device so it can fetch the stream. Prefer providers that support
+HTTPS, and only cast to devices you trust.
 
 These are **your** destinations — you chose them by adding the source.
 The app does not contact any other servers on its own except for
