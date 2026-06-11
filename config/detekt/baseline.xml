@@ -43,7 +43,6 @@
     <ID>NestedBlockDepth:M3uParser.kt$M3uParser$fun parse(sourceId: Long, content: String): M3uParseResult</ID>
     <ID>NestedBlockDepth:XmltvParser.kt$XmltvParser$private fun readProgramme(parser: XmlPullParser): ParsedProgramme?</ID>
     <ID>NestedBlockDepth:XmltvParser.kt$XmltvParser$suspend fun parse( input: InputStream, onChannel: suspend (ParsedChannel) -&gt; Unit = {}, onProgramme: suspend (ParsedProgramme) -&gt; Unit, )</ID>
-    <ID>SwallowedException:XmltvParser.kt$XmltvParser$e: StringIndexOutOfBoundsException</ID>
     <ID>TooGenericExceptionCaught:EpgSyncService.kt$EpgSyncService$e: Exception</ID>
     <ID>TooGenericExceptionCaught:SourceSyncService.kt$SourceSyncService$e: Exception</ID>
     <ID>TooGenericExceptionCaught:XmltvParser.kt$XmltvParser$e: Exception</ID>
