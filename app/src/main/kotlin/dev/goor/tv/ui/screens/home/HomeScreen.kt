@@ -58,6 +58,8 @@ import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
+import dev.goor.tv.network.SyncException
+import dev.goor.tv.network.SyncFailure
 import dev.goor.tv.ui.util.focusBorder
 import dev.goor.tv.ui.util.rememberTvFocus
 import dev.goor.tv.ui.util.trackTvFocus
@@ -130,10 +132,10 @@ fun HomeScreen(
     val firstChannelFocus = remember { FocusRequester() }
     var initialFocusDone by remember { mutableStateOf(false) }
 
-    val unknownError = stringResource(R.string.common_unknown_error)
-    LaunchedEffect(syncErrors) {
-        if (syncErrors.isNotEmpty()) {
-            snackbarHostState.showSnackbar(syncErrors.joinToString("\n") { it ?: unknownError })
+    val syncErrorTexts = syncErrors.map { syncFailureText(it) }
+    LaunchedEffect(syncErrorTexts) {
+        if (syncErrorTexts.isNotEmpty()) {
+            snackbarHostState.showSnackbar(syncErrorTexts.joinToString("\n"))
         }
     }
 
@@ -780,4 +782,22 @@ private fun EmptyChannelsState(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(16.dp))
         Text(stringResource(R.string.home_no_channels_match), style = MaterialTheme.typography.titleMedium)
     }
+}
+
+/**
+ * Localized snackbar line for one source's sync failure. Typed failures get a
+ * friendly message; anything else falls back to "<source>: <exception message>".
+ */
+@Composable
+private fun syncFailureText(failure: SyncFailure): String = when (val e = failure.error) {
+    is SyncException.Http -> when (e.statusCode) {
+        401, 403 -> stringResource(R.string.home_sync_error_auth, failure.sourceName)
+        else -> stringResource(R.string.home_sync_error_http, failure.sourceName, e.statusCode)
+    }
+    is SyncException.TooLarge -> stringResource(R.string.home_sync_error_too_large, failure.sourceName)
+    else -> stringResource(
+        R.string.home_sync_error_generic,
+        failure.sourceName,
+        e.message ?: stringResource(R.string.common_unknown_error),
+    )
 }

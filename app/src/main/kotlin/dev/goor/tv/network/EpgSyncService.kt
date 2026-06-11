@@ -36,16 +36,17 @@ class EpgSyncService(
     /**
      * Syncs EPG for all eligible sources, skipping any whose [Source.lastEpgSyncedAt] is
      * younger than [throttleMs]. Each failed source is retried with exponential backoff
-     * up to [MAX_ATTEMPTS]. Returns one [Throwable] per source that ultimately failed.
+     * up to [MAX_ATTEMPTS]. Returns one [SyncFailure] per source that ultimately failed.
      */
-    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<Throwable> {
+    suspend fun syncAll(throttleMs: Long = DEFAULT_THROTTLE_MS): List<SyncFailure> {
         val now = System.currentTimeMillis()
         return sourceDao.getAll().first()
             .filter { it.isEpgEligible() }
             .filter { (it.lastEpgSyncedAt ?: 0L) + throttleMs <= now }
             .mapNotNull { source ->
-                syncWithRetry(source)?.also {
-                    Log.e(TAG, "EPG sync gave up on '${source.name}' after $MAX_ATTEMPTS attempts: ${it.message}")
+                syncWithRetry(source)?.let {
+                    Log.e(TAG, "EPG sync gave up on '${source.name}': ${it.message}")
+                    SyncFailure(source.name, it)
                 }
             }
     }

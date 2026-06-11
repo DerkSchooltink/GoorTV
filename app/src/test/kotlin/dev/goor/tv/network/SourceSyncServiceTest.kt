@@ -207,7 +207,7 @@ class SourceSyncServiceTest {
 
         assertEquals(1, errors.size)
         assertEquals(3, attempt.get())  // MAX_ATTEMPTS = 3
-        assertTrue(errors[0] is SyncException.Http)
+        assertTrue(errors[0].error is SyncException.Http)
     }
 
     @Test
@@ -226,7 +226,7 @@ class SourceSyncServiceTest {
 
         assertEquals(1, errors.size)
         assertEquals(1, attempt.get())
-        assertTrue(errors[0] is SyncException.Http)
+        assertTrue(errors[0].error is SyncException.Http)
         coVerify(exactly = 0) { channelDao.replaceForSourcePreservingUserData(any(), any()) }
     }
 

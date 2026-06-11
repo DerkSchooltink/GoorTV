@@ -32,3 +32,10 @@ internal fun Throwable.isRetriableSyncError(): Boolean = when (this) {
     is SerializationException -> false
     else -> true
 }
+
+/**
+ * One source's terminal sync failure, as returned by the `syncAll` methods.
+ * Carries the source name and the typed error separately so the UI can build a
+ * localized message instead of showing raw exception text.
+ */
+data class SyncFailure(val sourceName: String, val error: Throwable)

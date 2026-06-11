@@ -179,7 +179,7 @@ class EpgSyncServiceTest {
 
         assertEquals(1, errors.size)
         assertEquals(1, attempt.get())
-        assert(errors[0] is SyncException.Http)
+        assert(errors[0].error is SyncException.Http)
         // The permanent failure is still surfaced on the source row.
         coVerify { sourceDao.setEpgError(eq(7L), any()) }
     }
