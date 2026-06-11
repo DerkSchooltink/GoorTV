@@ -38,7 +38,10 @@ class XtreamApi(private val httpClient: HttpClient) {
             source.headersMap().forEach { (k, v) -> header(k, v) }
         }
         if (!response.status.isSuccess()) {
-            error("Xtream API returned ${response.status.value} for source ${source.name}")
+            throw SyncException.Http(
+                response.status.value,
+                "Xtream API returned ${response.status.value} for source ${source.name}",
+            )
         }
         val remote: List<XtreamChannel> = response.body()
         return remote.map {

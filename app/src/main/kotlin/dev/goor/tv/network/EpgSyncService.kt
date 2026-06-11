@@ -59,6 +59,10 @@ class EpgSyncService(
             } catch (e: Exception) {
                 lastErr = e
                 Log.w(TAG, "EPG sync attempt ${attempt + 1}/$MAX_ATTEMPTS failed for '${source.name}': ${e.message}")
+                if (!e.isRetriableSyncError()) {
+                    Log.w(TAG, "Permanent failure for '${source.name}', not retrying: ${e.message}")
+                    return e
+                }
                 if (attempt < MAX_ATTEMPTS - 1) delay(backoffMs(attempt))
             }
         }
@@ -74,7 +78,10 @@ class EpgSyncService(
                 source.headersMap().forEach { (k, v) -> header(k, v) }
             }
             if (!response.status.isSuccess()) {
-                error("EPG HTTP ${response.status.value} for '${source.name}'")
+                throw SyncException.Http(
+                    response.status.value,
+                    "EPG HTTP ${response.status.value} for '${source.name}'",
+                )
             }
             val input = response.bodyAsChannel().toInputStream().maybeGunzip()
             input.use { processXmltv(source.id, it) }

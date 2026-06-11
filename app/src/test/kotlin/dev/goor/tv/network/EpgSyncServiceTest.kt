@@ -20,6 +20,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.util.concurrent.atomic.AtomicInteger
 
 class EpgSyncServiceTest {
 
@@ -31,11 +32,13 @@ class EpgSyncServiceTest {
     // which expects the HTTP layer; use a real client with MockEngine so we
     // avoid mockk-proxying io.ktor.HttpClient (which can blow up mockk's
     // bytecode cache on large test suites).
-    private fun service() = EpgSyncService(
+    private fun service(
+        engine: MockEngine = MockEngine { respondError(HttpStatusCode.InternalServerError) },
+    ) = EpgSyncService(
         sourceDao = sourceDao,
         programmeDao = programmeDao,
         channelDao = channelDao,
-        httpClient = defaultHttpClient(MockEngine { respondError(HttpStatusCode.InternalServerError) }),
+        httpClient = defaultHttpClient(engine),
     )
 
     @Test
@@ -155,6 +158,51 @@ class EpgSyncServiceTest {
         service().processXmltv(1L, ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
 
         coVerify(exactly = 0) { channelDao.applyTvgChannelIdAssignments(any()) }
+    }
+
+    @Test
+    fun `EPG HTTP 404 fails fast after exactly one fetch attempt`() = runTest {
+        val src = testSource(
+            id = 7L,
+            type = SourceType.M3U,
+            epgUrl = "http://example.com/epg.xml",
+            lastEpgSyncedAt = null,
+        )
+        coEvery { sourceDao.getAll() } returns flowOf(listOf(src))
+        val attempt = AtomicInteger(0)
+        val engine = MockEngine {
+            attempt.incrementAndGet()
+            respondError(HttpStatusCode.NotFound)
+        }
+
+        val errors = service(engine).syncAll()
+
+        assertEquals(1, errors.size)
+        assertEquals(1, attempt.get())
+        assert(errors[0] is SyncException.Http)
+        // The permanent failure is still surfaced on the source row.
+        coVerify { sourceDao.setEpgError(eq(7L), any()) }
+    }
+
+    @Test
+    fun `EPG HTTP 5xx is retried the full MAX_ATTEMPTS`() = runTest {
+        val src = testSource(
+            id = 8L,
+            type = SourceType.M3U,
+            epgUrl = "http://example.com/epg.xml",
+            lastEpgSyncedAt = null,
+        )
+        coEvery { sourceDao.getAll() } returns flowOf(listOf(src))
+        val attempt = AtomicInteger(0)
+        val engine = MockEngine {
+            attempt.incrementAndGet()
+            respondError(HttpStatusCode.InternalServerError)
+        }
+
+        val errors = service(engine).syncAll()
+
+        assertEquals(1, errors.size)
+        assertEquals(3, attempt.get())  // MAX_ATTEMPTS = 3
     }
 
     @Test

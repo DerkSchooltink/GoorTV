@@ -8,6 +8,7 @@ import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.headersMap
 import io.ktor.client.HttpClient
 import io.ktor.client.request.*
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
@@ -68,6 +69,10 @@ class SourceSyncService(
             } catch (e: Exception) {
                 lastErr = e
                 Log.w(TAG, "Sync attempt ${attempt + 1}/$MAX_ATTEMPTS failed for '${source.name}': ${e.message}")
+                if (!e.isRetriableSyncError()) {
+                    Log.w(TAG, "Permanent failure for '${source.name}', not retrying: ${e.message}")
+                    return e
+                }
                 if (attempt < MAX_ATTEMPTS - 1) delay(backoffMs(attempt))
             }
         }
@@ -88,23 +93,12 @@ class SourceSyncService(
                 // to them). Throwing lets `syncWithRetry` retry, then surface the
                 // failure to the user.
                 if (!response.status.isSuccess()) {
-                    error("M3U HTTP ${response.status.value} for '${source.name}'")
+                    throw SyncException.Http(
+                        response.status.value,
+                        "M3U HTTP ${response.status.value} for '${source.name}'",
+                    )
                 }
-                // Bound the download so a huge or hostile playlist can't OOM a
-                // low-RAM TV box. Skip early when the server declares an
-                // over-cap length, otherwise read at most MAX_PLAYLIST_BYTES and
-                // fail if the stream isn't exhausted by then.
-                response.contentLength()?.let { declared ->
-                    if (declared > MAX_PLAYLIST_BYTES) {
-                        error("M3U too large ($declared bytes, max $MAX_PLAYLIST_BYTES) for '${source.name}'")
-                    }
-                }
-                val channel = response.bodyAsChannel()
-                val packet = channel.readRemaining(MAX_PLAYLIST_BYTES)
-                if (!channel.exhausted()) {
-                    error("M3U exceeds $MAX_PLAYLIST_BYTES bytes for '${source.name}'")
-                }
-                val content = packet.readText()
+                val content = readBoundedBody(response, source)
                 val parsed = M3uParser.parse(source.id, content)
                 fetched = parsed.channels
                 discoveredEpgUrl = parsed.urlTvg
@@ -124,6 +118,28 @@ class SourceSyncService(
         if (source.type == SourceType.M3U && source.epgUrl.isNullOrBlank() && !discoveredEpgUrl.isNullOrBlank()) {
             sourceDao.updateEpgUrl(source.id, discoveredEpgUrl)
         }
+    }
+
+    /**
+     * Reads the playlist body, bounding the download so a huge or hostile playlist
+     * can't OOM a low-RAM TV box. Fails early when the server declares an over-cap
+     * length, otherwise reads at most [MAX_PLAYLIST_BYTES] and fails if the stream
+     * isn't exhausted by then.
+     */
+    private suspend fun readBoundedBody(response: HttpResponse, source: Source): String {
+        response.contentLength()?.let { declared ->
+            if (declared > MAX_PLAYLIST_BYTES) {
+                throw SyncException.TooLarge(
+                    "M3U too large ($declared bytes, max $MAX_PLAYLIST_BYTES) for '${source.name}'",
+                )
+            }
+        }
+        val channel = response.bodyAsChannel()
+        val packet = channel.readRemaining(MAX_PLAYLIST_BYTES)
+        if (!channel.exhausted()) {
+            throw SyncException.TooLarge("M3U exceeds $MAX_PLAYLIST_BYTES bytes for '${source.name}'")
+        }
+        return packet.readText()
     }
 
     companion object {
