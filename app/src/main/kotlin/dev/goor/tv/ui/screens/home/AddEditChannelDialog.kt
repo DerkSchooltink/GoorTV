@@ -6,7 +6,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,44 +41,52 @@ fun AddEditChannelDialog(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete Channel") },
-            text = { Text("Delete \"${channel?.name}\"?") },
+            title = { Text(stringResource(R.string.add_channel_delete_title)) },
+            text = { Text(stringResource(R.string.add_channel_delete_confirm, channel?.name.toString())) },
             confirmButton = {
-                TextButton(onClick = { onDelete?.invoke() }) { Text("Delete") }
+                TextButton(onClick = { onDelete?.invoke() }) { Text(stringResource(R.string.common_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (channel == null) "Add Channel" else "Edit Channel") },
+        title = {
+            Text(
+                stringResource(
+                    if (channel == null) R.string.add_channel_title else R.string.add_channel_edit_title
+                )
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.common_name)) },
                     modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Stream URL") },
+                    label = { Text(stringResource(R.string.add_channel_stream_url)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = url.isNotBlank() && !urlValid,
                     supportingText = {
-                        if (url.isNotBlank() && !urlValid) Text("Must start with http:// or https://")
+                        if (url.isNotBlank() && !urlValid) {
+                            Text(stringResource(R.string.common_url_must_start_with_http))
+                        }
                     },
                 )
                 OutlinedTextField(
                     value = logoUrl,
                     onValueChange = { logoUrl = it },
-                    label = { Text("Logo URL (optional)") },
+                    label = { Text(stringResource(R.string.add_channel_logo_url)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                 )
@@ -87,7 +97,7 @@ fun AddEditChannelDialog(
                     OutlinedTextField(
                         value = group,
                         onValueChange = { group = it; groupExpanded = true },
-                        label = { Text("Group (optional)") },
+                        label = { Text(stringResource(R.string.add_channel_group)) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                         singleLine = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupExpanded) },
@@ -121,14 +131,14 @@ fun AddEditChannelDialog(
                     )
                 },
                 enabled = name.isNotBlank() && urlValid,
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
             Row {
                 if (onDelete != null) {
-                    TextButton(onClick = { showDeleteConfirm = true }) { Text("Delete") }
+                    TextButton(onClick = { showDeleteConfirm = true }) { Text(stringResource(R.string.common_delete)) }
                 }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
             }
         },
     )

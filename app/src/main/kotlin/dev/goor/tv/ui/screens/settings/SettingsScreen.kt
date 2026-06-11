@@ -19,11 +19,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.style.TextOverflow
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Source
 import dev.goor.tv.data.model.SourceType
 import dev.goor.tv.data.model.Secret
@@ -61,9 +64,10 @@ fun SettingsScreen(
     val firstSourceFocus = remember { FocusRequester() }
     var initialFocusDone by remember { mutableStateOf(false) }
 
+    val snackbarText = snackbarMessage?.let { resolveSnackbarMessage(it) }
     LaunchedEffect(snackbarMessage) {
-        snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
+        if (snackbarText != null) {
+            snackbarHostState.showSnackbar(snackbarText)
             vm.clearSnackbar()
         }
     }
@@ -78,10 +82,13 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Sources") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                        )
                     }
                 },
                 actions = {
@@ -94,7 +101,7 @@ fun SettingsScreen(
                         enabled = !syncing,
                         modifier = Modifier.focusRequester(addSourceFocus),
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add source")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.settings_add_source))
                     }
                 }
             )
@@ -146,7 +153,7 @@ fun SettingsScreen(
                         )
                         Spacer(Modifier.width(16.dp))
                         Text(
-                            "Hidden channels ($hiddenCount)",
+                            stringResource(R.string.settings_hidden_channels_entry, hiddenCount),
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.bodyLarge,
                         )
@@ -181,7 +188,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.width(16.dp))
                     Text(
-                        "Privacy policy",
+                        stringResource(R.string.settings_privacy_policy),
                         modifier = Modifier.weight(1f),
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -235,6 +242,27 @@ fun SettingsScreen(
     }
 }
 
+@Suppress("SpreadOperator")
+@Composable
+private fun resolveSnackbarMessage(message: SnackbarMessage): String =
+    stringResource(message.resId, *message.args.toTypedArray())
+
+/** Single-line text field with a resource label — keeps the dialog call sites compact. */
+@Composable
+private fun SingleLineField(
+    value: String,
+    @androidx.annotation.StringRes labelRes: Int,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(stringResource(labelRes)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
 @Composable
 private fun SourceItem(
     source: Source,
@@ -255,20 +283,31 @@ private fun SourceItem(
         supportingContent = {
             Column {
                 Text(when {
-                    source.includedGroups == null -> "${source.type.name} · all groups"
-                    source.includedGroups.isBlank() -> "${source.type.name} · no groups selected"
-                    else -> "${source.type.name} · $groupCount group${if (groupCount == 1) "" else "s"}"
+                    source.includedGroups == null ->
+                        stringResource(R.string.settings_source_all_groups, source.type.name)
+                    source.includedGroups.isBlank() ->
+                        stringResource(R.string.settings_source_no_groups_selected, source.type.name)
+                    else -> pluralStringResource(
+                        R.plurals.settings_source_group_count,
+                        groupCount ?: 0,
+                        source.type.name,
+                        groupCount ?: 0,
+                    )
                 })
                 Text(
-                    text = source.lastSyncedAt?.let { "Last synced ${formatRelativeTime(it)}" } ?: "Never synced",
+                    text = source.lastSyncedAt
+                        ?.let { stringResource(R.string.settings_last_synced, formatRelativeTime(it)) }
+                        ?: stringResource(R.string.settings_never_synced),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (epgEligible) {
                     val epgLine = when {
-                        !source.epgLastError.isNullOrBlank() -> "EPG error: ${source.epgLastError}"
-                        source.lastEpgSyncedAt != null -> "EPG synced ${formatRelativeTime(source.lastEpgSyncedAt)}"
-                        else -> "EPG never synced"
+                        !source.epgLastError.isNullOrBlank() ->
+                            stringResource(R.string.settings_epg_error, source.epgLastError)
+                        source.lastEpgSyncedAt != null ->
+                            stringResource(R.string.settings_epg_synced, formatRelativeTime(source.lastEpgSyncedAt))
+                        else -> stringResource(R.string.settings_epg_never_synced)
                     }
                     val epgColor = if (!source.epgLastError.isNullOrBlank())
                         MaterialTheme.colorScheme.error
@@ -291,7 +330,10 @@ private fun SourceItem(
                     Spacer(Modifier.width(12.dp))
                 } else {
                     IconButton(onClick = onSync) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Sync channels")
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.settings_sync_channels),
+                        )
                     }
                 }
                 if (epgEligible) {
@@ -300,18 +342,21 @@ private fun SourceItem(
                         Spacer(Modifier.width(12.dp))
                     } else {
                         IconButton(onClick = onEpgSync, enabled = !isSyncing) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "Sync EPG")
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                contentDescription = stringResource(R.string.settings_sync_epg),
+                            )
                         }
                     }
                 }
                 IconButton(onClick = onGroups, enabled = !isSyncing) {
-                    Icon(Icons.Default.Tune, contentDescription = "Configure groups")
+                    Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.settings_configure_groups))
                 }
                 IconButton(onClick = onEdit, enabled = !isSyncing) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.settings_edit))
                 }
                 IconButton(onClick = onDelete, enabled = !isSyncing) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.common_delete))
                 }
             }
         }
@@ -347,19 +392,19 @@ private fun GroupsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Groups — ${source.name}") },
+        title = { Text(stringResource(R.string.settings_groups_title, source.name)) },
         text = {
             Column {
                 OutlinedTextField(
                     value = search,
                     onValueChange = { search = it },
-                    label = { Text("Filter groups") },
+                    label = { Text(stringResource(R.string.settings_filter_groups)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         if (search.isNotEmpty()) {
                             IconButton(onClick = { search = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.settings_clear))
                             }
                         }
                     },
@@ -370,19 +415,21 @@ private fun GroupsDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     TextButton(onClick = { selected = (selected + visible).toMutableSet() }) {
-                        Text(if (search.isBlank()) "All" else "Select matching")
+                        if (search.isBlank()) Text(stringResource(R.string.settings_select_all))
+                        else Text(stringResource(R.string.settings_select_matching))
                     }
                     TextButton(onClick = {
                         selected = if (search.isBlank()) mutableSetOf()
                                    else (selected - visible.toSet()).toMutableSet()
                     }) {
-                        Text(if (search.isBlank()) "None" else "Deselect matching")
+                        if (search.isBlank()) Text(stringResource(R.string.settings_select_none))
+                        else Text(stringResource(R.string.settings_deselect_matching))
                     }
                 }
                 HorizontalDivider()
                 if (availableGroups.isEmpty()) {
                     Text(
-                        "No groups found. Sync the source first.",
+                        stringResource(R.string.settings_no_groups_found),
                         modifier = Modifier.padding(vertical = 16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -417,10 +464,10 @@ private fun GroupsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+            TextButton(onClick = { onConfirm(selected) }) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -456,7 +503,7 @@ private fun AddSourceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Source") },
+        title = { Text(stringResource(R.string.settings_add_source_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -471,38 +518,40 @@ private fun AddSourceDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.common_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
                 )
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("URL") },
+                    label = { Text(stringResource(R.string.settings_url)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     isError = url.isNotBlank() && !urlValid,
                     supportingText = {
-                        if (url.isNotBlank() && !urlValid) Text("Must start with http:// or https://")
+                        if (url.isNotBlank() && !urlValid) {
+                            Text(stringResource(R.string.common_url_must_start_with_http))
+                        }
                     },
                 )
                 if (sourceType == SourceType.XTREAM) {
-                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    SingleLineField(username, R.string.settings_username) { username = it }
+                    SingleLineField(password, R.string.settings_password) { password = it }
                     XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 OutlinedTextField(
                     value = headers,
                     onValueChange = { headers = it },
-                    label = { Text("HTTP Headers (optional)") },
-                    placeholder = { Text("User-Agent: MyApp\nX-Token: secret") },
+                    label = { Text(stringResource(R.string.settings_http_headers)) },
+                    placeholder = { Text(stringResource(R.string.settings_http_headers_placeholder)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = maxStreams,
                     onValueChange = { if (it.all(Char::isDigit)) maxStreams = it },
-                    label = { Text("Max concurrent streams (0 = unlimited)") },
+                    label = { Text(stringResource(R.string.settings_max_concurrent_streams)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -518,10 +567,10 @@ private fun AddSourceDialog(
                     else onAddXtream(name.trim(), url.trim(), username.trim(), password, h, max, xtreamOutput)
                 },
                 enabled = canSubmit,
-            ) { Text("Add") }
+            ) { Text(stringResource(R.string.settings_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }
@@ -530,7 +579,7 @@ private fun AddSourceDialog(
 private fun XtreamOutputSelector(selected: XtreamOutput, onSelected: (XtreamOutput) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            "Stream format",
+            stringResource(R.string.settings_stream_format),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -546,13 +595,14 @@ private fun XtreamOutputSelector(selected: XtreamOutput, onSelected: (XtreamOutp
     }
 }
 
+@Composable
 private fun formatRelativeTime(timestampMs: Long): String {
     val delta = System.currentTimeMillis() - timestampMs
     return when {
-        delta < 60_000L -> "just now"
-        delta < 3_600_000L -> "${delta / 60_000}m ago"
-        delta < 86_400_000L -> "${delta / 3_600_000}h ago"
-        else -> "${delta / 86_400_000}d ago"
+        delta < 60_000L -> stringResource(R.string.settings_just_now)
+        delta < 3_600_000L -> stringResource(R.string.settings_minutes_ago, delta / 60_000)
+        delta < 86_400_000L -> stringResource(R.string.settings_hours_ago, delta / 3_600_000)
+        else -> stringResource(R.string.settings_days_ago, delta / 86_400_000)
     }
 }
 
@@ -573,22 +623,22 @@ private fun EditSourceDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Source") },
+        title = { Text(stringResource(R.string.settings_edit_source_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = url, onValueChange = { url = it }, label = { Text("URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                SingleLineField(name, R.string.common_name) { name = it }
+                SingleLineField(url, R.string.settings_url) { url = it }
                 if (source.type == SourceType.XTREAM) {
-                    OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("Username") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    SingleLineField(username, R.string.settings_username) { username = it }
+                    SingleLineField(password, R.string.settings_password) { password = it }
                     XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 if (source.type == SourceType.M3U) {
                     OutlinedTextField(
                         value = epgUrl,
                         onValueChange = { epgUrl = it },
-                        label = { Text("EPG URL (optional)") },
-                        placeholder = { Text("Auto-detected from playlist if blank") },
+                        label = { Text(stringResource(R.string.settings_epg_url)) },
+                        placeholder = { Text(stringResource(R.string.settings_epg_url_placeholder)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -596,15 +646,15 @@ private fun EditSourceDialog(
                 OutlinedTextField(
                     value = headers,
                     onValueChange = { headers = it },
-                    label = { Text("HTTP Headers (optional)") },
-                    placeholder = { Text("User-Agent: MyApp\nX-Token: secret") },
+                    label = { Text(stringResource(R.string.settings_http_headers)) },
+                    placeholder = { Text(stringResource(R.string.settings_http_headers_placeholder)) },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = maxStreams,
                     onValueChange = { if (it.all(Char::isDigit)) maxStreams = it },
-                    label = { Text("Max concurrent streams (0 = unlimited)") },
+                    label = { Text(stringResource(R.string.settings_max_concurrent_streams)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
@@ -625,10 +675,10 @@ private fun EditSourceDialog(
                         xtreamOutput = xtreamOutput,
                     )
                 )
-            }) { Text("Save") }
+            }) { Text(stringResource(R.string.common_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
         }
     )
 }

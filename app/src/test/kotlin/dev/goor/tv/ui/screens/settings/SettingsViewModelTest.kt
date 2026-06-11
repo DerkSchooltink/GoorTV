@@ -1,5 +1,6 @@
 package dev.goor.tv.ui.screens.settings
 
+import dev.goor.tv.R
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.network.EpgSyncService
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -69,8 +71,9 @@ class SettingsViewModelTest {
 
         val msg = vm.snackbarMessage.value
         assertNotNull(msg)
-        assertTrue(msg!!.contains("Bad Source"))
-        assertTrue(msg.contains("connection refused"))
+        assertEquals(R.string.settings_error_sync_failed, msg!!.resId)
+        assertTrue(msg.args.contains("Bad Source"))
+        assertTrue(msg.args.any { it.toString().contains("connection refused") })
     }
 
     @Test
@@ -117,7 +120,7 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertNotNull(vm.snackbarMessage.value)
-        assertTrue(vm.snackbarMessage.value!!.contains("valid"))
+        assertEquals(R.string.settings_error_invalid_url, vm.snackbarMessage.value!!.resId)
         coVerify(exactly = 0) { sourceDao.insert(any()) }
     }
 
@@ -187,8 +190,9 @@ class SettingsViewModelTest {
 
         val msg = vm.snackbarMessage.value
         assertNotNull(msg)
-        assertTrue(msg!!.contains("Bad EPG"))
-        assertTrue(msg.contains("404"))
+        assertEquals(R.string.settings_error_epg_sync_failed, msg!!.resId)
+        assertTrue(msg.args.contains("Bad EPG"))
+        assertTrue(msg.args.any { it.toString().contains("404") })
         assertFalse(source.id in vm.epgSyncingIds.value)
     }
 

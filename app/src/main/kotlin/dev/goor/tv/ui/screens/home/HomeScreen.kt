@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
+import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
 import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
@@ -128,15 +130,17 @@ fun HomeScreen(
     val firstChannelFocus = remember { FocusRequester() }
     var initialFocusDone by remember { mutableStateOf(false) }
 
+    val unknownError = stringResource(R.string.common_unknown_error)
     LaunchedEffect(syncErrors) {
         if (syncErrors.isNotEmpty()) {
-            snackbarHostState.showSnackbar(syncErrors.joinToString("\n"))
+            snackbarHostState.showSnackbar(syncErrors.joinToString("\n") { it ?: unknownError })
         }
     }
 
+    val actionErrorText = actionError?.let { stringResource(it) }
     LaunchedEffect(actionError) {
-        actionError?.let {
-            snackbarHostState.showSnackbar(it)
+        if (actionErrorText != null) {
+            snackbarHostState.showSnackbar(actionErrorText)
             vm.clearActionError()
         }
     }
@@ -256,7 +260,7 @@ private fun HomeTopBar(
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     TopAppBar(
-        title = { Text("GoorTV") },
+        title = { Text(stringResource(R.string.app_name)) },
         actions = {
             if (isSyncing) {
                 CircularProgressIndicator(
@@ -268,13 +272,18 @@ private fun HomeTopBar(
             IconButton(onClick = onToggleFavoritesOnly) {
                 Icon(
                     if (showFavoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = if (showFavoritesOnly) "Show all" else "Favourites",
+                    contentDescription = stringResource(
+                        if (showFavoritesOnly) R.string.home_show_all else R.string.home_favourites
+                    ),
                     tint = if (showFavoritesOnly) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                 )
             }
             Box {
                 IconButton(onClick = { showSortMenu = true }) {
-                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort channels")
+                    Icon(
+                        Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = stringResource(R.string.home_sort_channels),
+                    )
                 }
                 DropdownMenu(
                     expanded = showSortMenu,
@@ -282,7 +291,7 @@ private fun HomeTopBar(
                 ) {
                     SortOrder.entries.forEach { order ->
                         DropdownMenuItem(
-                            text = { Text(order.displayName) },
+                            text = { Text(stringResource(order.displayNameRes)) },
                             onClick = {
                                 onSortSelected(order)
                                 showSortMenu = false
@@ -297,14 +306,16 @@ private fun HomeTopBar(
             IconButton(onClick = onToggleSearch) {
                 Icon(
                     if (searchActive) Icons.Default.Close else Icons.Default.Search,
-                    contentDescription = if (searchActive) "Close search" else "Search",
+                    contentDescription = stringResource(
+                        if (searchActive) R.string.home_close_search else R.string.home_search
+                    ),
                 )
             }
             IconButton(onClick = onGuideClick) {
-                Icon(Icons.Default.CalendarMonth, contentDescription = "Guide")
+                Icon(Icons.Default.CalendarMonth, contentDescription = stringResource(R.string.home_guide))
             }
             IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.home_settings))
             }
         }
     )
@@ -323,14 +334,14 @@ private fun HomeFabStack(
     ) {
         AnimatedVisibility(visible = showScrollToTop) {
             SmallFloatingActionButton(onClick = onScrollToTop) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Scroll to top")
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.home_scroll_to_top))
             }
         }
         FloatingActionButton(
             onClick = onAddChannel,
             modifier = Modifier.focusRequester(addChannelFocus),
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add channel")
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.home_add_channel))
         }
     }
 }
@@ -345,7 +356,7 @@ private fun SearchBar(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Search channels…") },
+        placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         modifier = Modifier
             .fillMaxWidth()
@@ -425,7 +436,7 @@ private fun HomeContent(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Recently Watched",
+                            stringResource(R.string.home_recently_watched),
                             modifier = Modifier.weight(1f).padding(vertical = 8.dp),
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -433,7 +444,7 @@ private fun HomeContent(
                         IconButton(onClick = onClearRecent) {
                             Icon(
                                 Icons.Default.Clear,
-                                contentDescription = "Clear recently watched",
+                                contentDescription = stringResource(R.string.home_clear_recently_watched),
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -625,7 +636,7 @@ private fun ChannelItem(
             IconButton(onClick = { onEdit(channel) }) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Edit channel",
+                    contentDescription = stringResource(R.string.home_edit_channel),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -633,7 +644,9 @@ private fun ChannelItem(
         IconButton(onClick = { onFavoriteToggle(channel.id) }) {
             Icon(
                 if (channel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                contentDescription = if (channel.isFavorite) "Remove favorite" else "Add favorite",
+                contentDescription = stringResource(
+                    if (channel.isFavorite) R.string.home_remove_favorite else R.string.home_add_favorite
+                ),
                 tint = if (channel.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -643,7 +656,7 @@ private fun ChannelItem(
             onDismissRequest = { menuExpanded = false },
         ) {
             DropdownMenuItem(
-                text = { Text("Hide channel") },
+                text = { Text(stringResource(R.string.home_hide_channel)) },
                 leadingIcon = { Icon(Icons.Default.VisibilityOff, contentDescription = null) },
                 onClick = {
                     menuExpanded = false
@@ -738,9 +751,9 @@ private fun EmptySourcesState(onSettingsClick: () -> Unit, modifier: Modifier = 
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
-        Text("No sources added", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.home_no_sources_added), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
-        Button(onClick = onSettingsClick) { Text("Add a source") }
+        Button(onClick = onSettingsClick) { Text(stringResource(R.string.home_add_a_source)) }
     }
 }
 
@@ -758,6 +771,6 @@ private fun EmptyChannelsState(modifier: Modifier = Modifier) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
-        Text("No channels match", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.home_no_channels_match), style = MaterialTheme.typography.titleMedium)
     }
 }

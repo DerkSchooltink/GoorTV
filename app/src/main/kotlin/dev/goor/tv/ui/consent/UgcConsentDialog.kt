@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import dev.goor.tv.R
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.flow.flowOf
 import org.koin.compose.koinInject
@@ -27,25 +29,13 @@ fun UgcConsentGate(prefs: UserPreferencesRepository = koinInject()) {
     AlertDialog(
         modifier = androidx.compose.ui.Modifier.testTag("ugc_consent_dialog"),
         onDismissRequest = {},
-        title = { Text("Before you start") },
-        text = {
-            Text(
-                "GoorTV is a media player. It does not include or curate any " +
-                    "content — you supply your own M3U playlists, EPG, and " +
-                    "streams.\n\n" +
-                    "By continuing you confirm that:\n" +
-                    "• you have the right to access the sources you add\n" +
-                    "• you will not use GoorTV to stream content you are not " +
-                    "authorized to view\n" +
-                    "• you can report or remove any source from Settings at " +
-                    "any time."
-            )
-        },
+        title = { Text(stringResource(R.string.consent_title)) },
+        text = { Text(stringResource(R.string.consent_body)) },
         confirmButton = {
             TextButton(
                 modifier = androidx.compose.ui.Modifier.testTag("ugc_consent_accept"),
                 onClick = { scope.launch { prefs.setTosAccepted(true) } },
-            ) { Text("I agree") }
+            ) { Text(stringResource(R.string.consent_agree)) }
         },
     )
 }
