@@ -2,6 +2,8 @@
 
 A free, open source video streaming player for Android and Android TV. Supports M3U playlists and Xtream Codes compatible sources.
 
+[![CI](https://github.com/DerkSchooltink/GoorTV/actions/workflows/ci.yml/badge.svg)](https://github.com/DerkSchooltink/GoorTV/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/DerkSchooltink/GoorTV)](https://github.com/DerkSchooltink/GoorTV/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -72,7 +74,9 @@ Download the latest `app-release.apk` from the [Releases](https://github.com/Der
 
 - Android Studio Hedgehog or newer
 - JDK 17
+- Android SDK with API 37 (compileSdk) — install via Android Studio's SDK Manager; `local.properties` pointing at it is generated automatically on first open
 - [Task](https://taskfile.dev) (`brew install go-task`)
+- A device or emulator (Android 8.0+ / API 26) for `task test:ui` and Maestro flows — unit tests run on the JVM without one
 
 ### Build & run
 
