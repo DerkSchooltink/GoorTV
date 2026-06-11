@@ -1,9 +1,11 @@
 package dev.goor.tv.data
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -29,7 +31,11 @@ class SearchHistoryRepository(context: Context) {
         val json = prefs.getString(KEY_QUERIES, null) ?: return emptyList()
         return try {
             Json.decodeFromString(json)
-        } catch (_: Exception) {
+        } catch (e: SerializationException) {
+            Log.w("SearchHistory", "Discarding corrupt search history: ${e.message}")
+            emptyList()
+        } catch (e: IllegalArgumentException) {
+            Log.w("SearchHistory", "Discarding corrupt search history: ${e.message}")
             emptyList()
         }
     }

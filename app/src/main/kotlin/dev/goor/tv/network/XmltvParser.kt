@@ -89,7 +89,12 @@ object XmltvParser {
     private fun drainElement(parser: XmlPullParser) {
         var depth = 1
         while (depth > 0) {
-            val event = try { parser.next() } catch (_: Exception) { return }
+            val event = try {
+                parser.next()
+            } catch (e: Exception) {
+                Log.w("XmltvParser", "Parser error while draining malformed element: ${e.message}")
+                return
+            }
             when (event) {
                 XmlPullParser.START_TAG -> depth++
                 XmlPullParser.END_TAG -> depth--
@@ -198,8 +203,12 @@ object XmltvParser {
 
             return utcEpochMs(year, month, day, hour, minute, second) - tzOffsetMinutes * 60_000L
         } catch (e: NumberFormatException) {
+            // Expected for dirty EPG data — malformed literals are the documented null case.
             return null
         } catch (e: StringIndexOutOfBoundsException) {
+            // Every substring above is bounds-guarded, so this firing means a parser bug,
+            // not bad input — log it instead of silently treating it as malformed data.
+            Log.w("XmltvParser", "Unexpected bounds error parsing time literal: ${e.message}")
             return null
         }
     }
