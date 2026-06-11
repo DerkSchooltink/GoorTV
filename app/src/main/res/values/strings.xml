@@ -11,6 +11,7 @@
     <string name="common_name">Name</string>
     <string name="common_url_must_start_with_http">Must start with http:// or https://</string>
     <string name="common_unknown_error">Unknown error</string>
+    <string name="common_selected">Selected</string>
 
     <!-- Consent (first-run UGC consent dialog) -->
     <string name="consent_title">Before you start</string>
@@ -96,6 +97,7 @@
     <string name="settings_add_source">Add source</string>
     <string name="settings_hidden_channels_entry">Hidden channels (%1$d)</string>
     <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_opens_in_browser">Opens in browser</string>
     <string name="settings_source_all_groups">%1$s · all groups</string>
     <string name="settings_source_no_groups_selected">%1$s · no groups selected</string>
     <string name="settings_last_synced">Last synced %1$s</string>

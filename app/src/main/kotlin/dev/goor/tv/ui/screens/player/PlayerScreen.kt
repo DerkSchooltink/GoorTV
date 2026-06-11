@@ -521,7 +521,14 @@ private fun PlayerControlsFooter(
                                 menuOpen = false
                             },
                             leadingIcon = if (mode == aspectMode) {
-                                { Icon(Icons.Default.Check, contentDescription = null) }
+                                // The checkmark is the only thing conveying which mode is
+                                // active, so it needs a description for screen readers.
+                                {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = stringResource(R.string.common_selected),
+                                    )
+                                }
                             } else null,
                         )
                     }
