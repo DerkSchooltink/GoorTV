@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*'
+  # Rebuild an existing tag and attach (or refresh) its release assets. Needed
+  # because auto-tag.yml creates tags with GITHUB_TOKEN, which never triggers
+  # this workflow's tag-push event.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and attach assets to (e.g. v1.6.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write  # create releases and upload APK + AAB assets
@@ -14,6 +23,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - uses: actions/setup-java@v5
         with:
@@ -46,6 +57,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
