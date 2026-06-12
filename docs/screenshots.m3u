@@ -1,4 +1,4 @@
-#EXTM3U
+#EXTM3U url-tvg="https://derkschooltink.github.io/GoorTV/screenshots-epg.xml"
 # Fixture playlist for Play Store screenshots + Maestro end-to-end flows.
 # All streams are public-domain test catalogues. Channel names are deliberately
 # generic and contain no broadcaster references, in line with the BYOC

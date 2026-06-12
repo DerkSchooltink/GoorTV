@@ -1,0 +1,104 @@
+# Play Store screenshot capture flow — drives a fresh install through the
+# documented setup (README.md in this dir) and screenshots the six listing
+# surfaces. Run it per device profile from the directory where the PNGs
+# should land:
+#
+#   python3 docs/screenshots/generate-epg.py /tmp/fixture/screenshots-epg.xml
+#   (serve a fixture copy whose url-tvg points at the fresh EPG, then)
+#   cd docs/screenshots/phone && \
+#     maestro --device <serial> test ../capture-flow.yaml \
+#       -e M3U_URL=http://10.0.2.2:8000/screenshots.m3u
+#
+# Lives outside .maestro/ on purpose: it needs network (fixture M3U + demo
+# streams) and must not run as part of `task maestro` / CI.
+# M3U_URL is required and must be passed via -e (an in-flow env default would
+# silently override the CLI flag — maestro gives flow env precedence):
+#   maestro test -e M3U_URL=http://10.0.2.2:8000/screenshots.m3u capture-flow.yaml
+appId: dev.goor.tv
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+# First-run UGC consent gate
+- tapOn:
+    text: "I agree"
+    optional: true
+- waitForAnimationToEnd
+# Empty-state CTA → Settings → add the fixture source. Field input races
+# the IME on cold emulators, so each inputText is asserted and the whole
+# dialog interaction retries from scratch on failure.
+- tapOn: "Add a source"
+- assertVisible: "Sources"
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          text: "Cancel"
+          optional: true
+      - tapOn: "Add source"
+      - assertVisible: "Add Source"
+      - tapOn: "Name"
+      - waitForAnimationToEnd
+      - inputText: "Demo Channels"
+      - assertVisible: "Demo Channels"
+      - tapOn: "URL"
+      - waitForAnimationToEnd
+      - inputText: ${M3U_URL}
+      - hideKeyboard
+- tapOn: "Add"
+# First sync runs on add; new sources default to "no groups selected"
+- extendedWaitUntil:
+    visible: "Configure groups"
+    timeout: 45000
+- tapOn: "Configure groups"
+- extendedWaitUntil:
+    visible: "All"
+    timeout: 45000
+- tapOn: "All"
+- tapOn: "Save"
+- waitForAnimationToEnd
+# Relaunch (no clearState) so AppSyncCoordinator runs the EPG sync for the
+# newly added source — deterministic regardless of per-source menu layout
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "Demo News"
+    timeout: 45000
+- waitForAnimationToEnd
+- takeScreenshot: 01-home
+# Guide — wait for a programme title so the grid is provably populated
+- tapOn: "Guide"
+- extendedWaitUntil:
+    visible: "Weather Update"
+    timeout: 60000
+- waitForAnimationToEnd
+- takeScreenshot: 06-guide
+- back
+# Search focused
+- tapOn: "Search"
+- waitForAnimationToEnd
+- takeScreenshot: 04-search
+- tapOn: "Close search"
+# UGC moderation menu (long-press)
+- longPressOn: "Public Weather Feed"
+- extendedWaitUntil:
+    visible: "Hide channel"
+    timeout: 10000
+- takeScreenshot: 05-hide-menu
+- back
+# Settings with the configured source
+- tapOn: "Settings"
+- extendedWaitUntil:
+    visible: "Sources"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: 03-settings
+- back
+# Player — overlay shows the channel name on entry and auto-hides after 4 s;
+# waiting for it to disappear doubles as waiting for playback to start
+- tapOn: "Demo News"
+- extendedWaitUntil:
+    notVisible: "Demo News"
+    timeout: 20000
+- waitForAnimationToEnd
+- takeScreenshot: 02-player
