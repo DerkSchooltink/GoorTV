@@ -61,15 +61,18 @@ appId: dev.goor.tv
 # newly added source — deterministic regardless of per-source menu layout
 - stopApp
 - launchApp
+# First grouped row everywhere (Documentaries sorts first) — TV viewports
+# fit only ~4 rows, so don't wait on channels further down the list
 - extendedWaitUntil:
-    visible: "Demo News"
+    visible: "Open Documentary"
     timeout: 45000
 - waitForAnimationToEnd
 - takeScreenshot: 01-home
-# Guide — wait for a programme title so the grid is provably populated
+# Guide — wait for a programme title on the first row so the grid is
+# provably populated (demo.docs cycles these three titles)
 - tapOn: "Guide"
 - extendedWaitUntil:
-    visible: "Weather Update"
+    visible: "Ocean Wonders|Mountain Worlds|City Stories"
     timeout: 60000
 - waitForAnimationToEnd
 - takeScreenshot: 06-guide
@@ -79,7 +82,11 @@ appId: dev.goor.tv
 - waitForAnimationToEnd
 - takeScreenshot: 04-search
 - tapOn: "Close search"
-# UGC moderation menu (long-press)
+# UGC moderation menu (long-press); below the fold on TV → scroll to it
+- scrollUntilVisible:
+    element:
+      text: "Public Weather Feed"
+    direction: DOWN
 - longPressOn: "Public Weather Feed"
 - extendedWaitUntil:
     visible: "Hide channel"
@@ -94,8 +101,13 @@ appId: dev.goor.tv
 - waitForAnimationToEnd
 - takeScreenshot: 03-settings
 - back
-# Player — overlay shows the channel name on entry and auto-hides after 4 s;
-# waiting for it to disappear doubles as waiting for playback to start
+# Player — Demo News streams Big Buck Bunny (the canonical shot). Overlay
+# shows the channel name on entry and auto-hides after 4 s; waiting for it
+# to disappear doubles as waiting for playback to start
+- scrollUntilVisible:
+    element:
+      text: "Demo News"
+    direction: DOWN
 - tapOn: "Demo News"
 - extendedWaitUntil:
     notVisible: "Demo News"
