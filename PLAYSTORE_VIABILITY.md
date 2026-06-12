@@ -11,7 +11,7 @@ Living document. Last updated 2026-05-23. Phase 0 + 1 + 2 + 3 audits done;
 | 1 — Positioning | ✅ audited | Listing copy drafted, assets needed |
 | 2 — Technical compliance | ✅ audited | 2 blockers (AAB upload, Crashlytics); 5 medium items |
 | 3 — Privacy + Data Safety | ✅ audited | Inventory complete; UGC consent + privacy policy still needed |
-| 4 — Pre-launch testing | ⏳ pending | Blocked on developer account + closed-testing recruit |
+| 4 — Pre-launch testing | 🔄 in progress | Developer account created 2026-06-12; closed-testing recruit pending |
 | 5 — Submission | ⏳ pending | Blocked on Phases 1–4 |
 | 6 — Post-launch | ⏳ pending | Need Crashlytics + `noCast` flavor |
 
@@ -269,7 +269,12 @@ Findings from a code-side audit on 2026-05-23 (branch `main` @ `b58477e`).
 ### Action items
 
 - [x] **A2.1** Switch `release.yml` from `assembleRelease` → `bundleRelease`, upload `.aab` not `.apk`. *(Done — workflow now builds both; APK kept for GitHub-Releases sideload, AAB added for Play.)*
-- [ ] **A2.2** Enroll in Play App Signing, generate a new upload key, rotate `KEYSTORE_BASE64` secret if needed, document the procedure for re-issuing the key if compromised.
+- [ ] **A2.2** Enroll in Play App Signing. *Decided 2026-06-12: export the
+  existing release key (PEPK) as the app signing key instead of letting Google
+  generate one — Play installs then carry the same signature as the
+  GitHub-Releases APK, so the two channels can cross-update (supersedes the
+  A6.2 caveat). CI keeps signing with the same keystore; no secret rotation
+  needed. Optional hardening later: register a separate upload key.*
 - [x] **A2.3** Add Firebase Crashlytics (or Sentry — pick one). This is the single biggest gap. *(Done — Sentry SaaS (EU region). Init in `App.initSentry()` is a no-op without `SENTRY_DSN` baked into BuildConfig at build time, and skipped for debug builds. PII off, no replays, no perf traces. R8 mapping upload runs via `sentry-cli` in CI — Sentry Gradle plugin 5.8.0 doesn't support AGP 9 yet; reintroduce the plugin when 5.9.x ships.)*
 - [x] **A2.4** Verify all 4 ABIs ship in the AAB (`bundletool` after a release build). *Done 2026-05-25 — `bundleRelease` AAB contains `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` (4 `.so` each). Note: `x86` is dead weight for real devices (emulator-only); could drop it via an `abiFilters`/split to trim, but per-device splits make it moot (see A2.5).*
 - [x] **A2.5** Measure AAB install size; act if >30 MB. *Done 2026-05-25 — per-device download ~4.1–4.3 MB (max 4.28 MB across all ABI×density configs). Far under the 30 MB budget; R8 + per-device splits keep Cast SDK cost negligible.*
@@ -369,12 +374,13 @@ requirement for new individual accounts.
      pipeline and verify Play App Signing works end-to-end before involving
      anyone else.
    - Action: invite yourself + 1 trusted tester. Push a build.
-2. **Closed testing track** (≤ 20 testers minimum, **14 days wall**)
-   - Google policy effective Nov 2023: new individual accounts must run a
-     closed test with ≥ 20 testers for ≥ 14 days before being eligible to
-     promote to production. **You cannot skip this.**
-   - Action: recruit 20+ testers in advance via the GitHub repo, IPTV
-     subreddits, NL Android communities. Plan for the recruit cost.
+2. **Closed testing track** (≥ 12 testers minimum, **14 days wall**)
+   - Google policy effective Nov 2023 (revised Dec 2024: 20 → 12 testers):
+     new individual accounts must run a closed test with ≥ 12 testers
+     opted-in continuously for ≥ 14 days before being eligible to promote
+     to production. **You cannot skip this.**
+   - Action: recruit 15+ testers (buffer for dropouts — opt-outs reset the
+     count) via the GitHub repo, IPTV subreddits, NL Android communities.
 3. **Pre-launch report** (automatic, 1 hour to review)
    - Play Console runs the AAB on Firebase Test Lab on a handful of real
      devices automatically. Returns crash reports, accessibility issues,
@@ -394,9 +400,10 @@ requirement for new individual accounts.
 
 ### Action items
 
-- [ ] **A4.1** Create Google Play developer account ($25 one-time). Individual
-  vs organization decision needed.
-- [ ] **A4.2** Recruit ≥ 20 closed testers. Set up a testing-channel signup
+- [x] **A4.1** Create Google Play developer account ($25 one-time). *Done
+  2026-06-12 — individual account, app created in Play Console.*
+- [ ] **A4.2** Recruit ≥ 12 closed testers (15+ recommended; requirement
+  revised down from 20 in Dec 2024). Set up a testing-channel signup
   (Google Group or "join the beta" GitHub readme link).
 - [ ] **A4.3** Run Pre-launch Report after first upload; triage findings.
 - [ ] **A4.4** Acquire a Chromecast with Google TV (or other Android TV
@@ -492,7 +499,9 @@ apps in busy periods).
   functional; documented in `README.md`. Caveat: the Play build is re-signed by
   Play App Signing while the GitHub APK uses our own release key, so the two
   install channels can't cross-update (uninstall required to switch) — inherent,
-  documented for users.
+  documented for users. *Update 2026-06-12: no longer true — A2.2 decision is to
+  enroll Play App Signing with the existing release key, so both channels share
+  one signature and cross-update fine.*
 - [ ] **A6.3** Subscribe the maintainer's Play Console email to policy
   updates.
 - [ ] **A6.4** Schedule a quarterly /loop reminder to re-verify Phase 0
@@ -531,7 +540,8 @@ prerequisite chain so you can pick up where this leaves off.
 - [x] **A3.2** Write + host the privacy policy.
 - [ ] **A3.3** Fill the Data Safety form per the inventory table.
 - [x] **A3.4** UGC consent dialog on first launch (Play UGC policy).
-- [ ] **A4.1** Create Play developer account, complete identity verification.
+- [x] **A4.1** Create Play developer account. *Done 2026-06-12; verify
+  identity-verification status in Console (A5.1).*
 - [ ] **A5.1** Account verification done before Phase 4 closed-testing.
 
 ### High value — visibly improves listing-acceptance odds
@@ -545,12 +555,13 @@ prerequisite chain so you can pick up where this leaves off.
   (1280×720). *Done — docs/store-assets/. Shipped with the amber redesign.*
 - [x] **A3.1** Decide Xtream credential storage path (plaintext vs Keystore). *Shipped Path B — Keystore AES/GCM encryption.*
 - [x] **A3.5** Per-channel hide / per-source remove for UGC moderation. *(Done — `hidden` column added to Channel (v11→v12), long-press / Menu key context menu on Home, "Hidden channels (N)" entry in Settings with Unhide. Source-level remove already existed.)*
-- [ ] **A4.2** Recruit ≥ 20 closed testers, set up signup flow.
+- [ ] **A4.2** Recruit ≥ 12 closed testers (15+ recommended), set up signup flow.
 
 ### Medium — improves quality but not gating
 
 - [x] **A1.1** Trademark check for "GoorTV". *Done 2026-05-25 — clear.*
-- [ ] **A2.2** Enroll Play App Signing; rotate keys if needed.
+- [ ] **A2.2** Enroll Play App Signing with the existing release key (PEPK
+  export — see Phase 2 item for the 2026-06-12 decision).
 - [x] **A2.4** Verify all 4 ABIs in the AAB. *Done — all 4 present.*
 - [x] **A2.5** Measure AAB install size. *Done — ~4.3 MB/device, well under budget.*
 - [x] **A2.6** Add `network_security_config.xml`.

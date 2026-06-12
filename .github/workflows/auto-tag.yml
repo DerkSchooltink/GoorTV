@@ -77,18 +77,25 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
         run: printf '%s' "$KEYSTORE_B64" | base64 -d > app/release.jks
 
-      - name: Build release APK
-        run: ./gradlew :app:assembleRelease
+      # Same artifact set and env as release.yml: APK for sideload, AAB for
+      # Play Console; Sentry secrets so auto-tagged builds report crashes and
+      # upload R8 mappings (absent on forks → Sentry stays a no-op).
+      - name: Build release APK + AAB
+        run: ./gradlew :app:assembleRelease :app:bundleRelease
         env:
           SIGNING_STORE_FILE: release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Create tag and GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ needs.detect-version-bump.outputs.version }}
           name: v${{ needs.detect-version-bump.outputs.version }}
-          files: app/build/outputs/apk/release/app-release.apk
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
           generate_release_notes: true
