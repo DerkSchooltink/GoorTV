@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tv generator-info-name="GoorTV screenshot fixture">
+  <channel id="demo.news"><display-name>Demo News</display-name></channel>
+  <channel id="demo.weather"><display-name>Public Weather Feed</display-name></channel>
+  <channel id="demo.sports"><display-name>Demo Sports</display-name></channel>
+  <channel id="demo.sports2"><display-name>Test Pattern Sports</display-name></channel>
+  <channel id="demo.movies"><display-name>Public Domain Movie</display-name></channel>
+  <channel id="demo.movies2"><display-name>Open Cinema</display-name></channel>
+  <channel id="demo.music"><display-name>Demo Music Channel</display-name></channel>
+  <channel id="demo.kids"><display-name>Demo Kids</display-name></channel>
+  <channel id="demo.docs"><display-name>Open Documentary</display-name></channel>
+  <programme start="20260612030000 +0000" stop="20260612040000 +0000" channel="demo.news"><title>Morning Headlines</title><desc>A round-up of demo headlines to start the day.</desc></programme>
+  <programme start="20260612040000 +0000" stop="20260612060000 +0000" channel="demo.news"><title>Newsroom Live</title><desc>Rolling demo coverage from the fixture newsroom.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612070000 +0000" channel="demo.news"><title>World Report</title><desc>Demo correspondents report from nowhere in particular.</desc></programme>
+  <programme start="20260612070000 +0000" stop="20260612080000 +0000" channel="demo.news"><title>Evening Bulletin</title><desc>The day's demo events, summarised.</desc></programme>
+  <programme start="20260612080000 +0000" stop="20260612090000 +0000" channel="demo.news"><title>Morning Headlines</title><desc>A round-up of demo headlines to start the day.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612110000 +0000" channel="demo.news"><title>Newsroom Live</title><desc>Rolling demo coverage from the fixture newsroom.</desc></programme>
+  <programme start="20260612110000 +0000" stop="20260612120000 +0000" channel="demo.news"><title>World Report</title><desc>Demo correspondents report from nowhere in particular.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612130000 +0000" channel="demo.news"><title>Evening Bulletin</title><desc>The day's demo events, summarised.</desc></programme>
+  <programme start="20260612130000 +0000" stop="20260612140000 +0000" channel="demo.news"><title>Morning Headlines</title><desc>A round-up of demo headlines to start the day.</desc></programme>
+  <programme start="20260612140000 +0000" stop="20260612160000 +0000" channel="demo.news"><title>Newsroom Live</title><desc>Rolling demo coverage from the fixture newsroom.</desc></programme>
+  <programme start="20260612160000 +0000" stop="20260612170000 +0000" channel="demo.news"><title>World Report</title><desc>Demo correspondents report from nowhere in particular.</desc></programme>
+  <programme start="20260612170000 +0000" stop="20260612180000 +0000" channel="demo.news"><title>Evening Bulletin</title><desc>The day's demo events, summarised.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612190000 +0000" channel="demo.news"><title>Morning Headlines</title><desc>A round-up of demo headlines to start the day.</desc></programme>
+  <programme start="20260612190000 +0000" stop="20260612210000 +0000" channel="demo.news"><title>Newsroom Live</title><desc>Rolling demo coverage from the fixture newsroom.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260612220000 +0000" channel="demo.news"><title>World Report</title><desc>Demo correspondents report from nowhere in particular.</desc></programme>
+  <programme start="20260612220000 +0000" stop="20260612230000 +0000" channel="demo.news"><title>Evening Bulletin</title><desc>The day's demo events, summarised.</desc></programme>
+  <programme start="20260612230000 +0000" stop="20260613000000 +0000" channel="demo.news"><title>Morning Headlines</title><desc>A round-up of demo headlines to start the day.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613020000 +0000" channel="demo.news"><title>Newsroom Live</title><desc>Rolling demo coverage from the fixture newsroom.</desc></programme>
+  <programme start="20260613020000 +0000" stop="20260613030000 +0000" channel="demo.news"><title>World Report</title><desc>Demo correspondents report from nowhere in particular.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612040000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612040000 +0000" stop="20260612050000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612050000 +0000" stop="20260612060000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612070000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612070000 +0000" stop="20260612080000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612080000 +0000" stop="20260612090000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612100000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612100000 +0000" stop="20260612110000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612110000 +0000" stop="20260612120000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612130000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612130000 +0000" stop="20260612140000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612140000 +0000" stop="20260612150000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612160000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612160000 +0000" stop="20260612170000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612170000 +0000" stop="20260612180000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612190000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612190000 +0000" stop="20260612200000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612200000 +0000" stop="20260612210000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260612220000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612220000 +0000" stop="20260612230000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612230000 +0000" stop="20260613000000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613010000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260613010000 +0000" stop="20260613020000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260613020000 +0000" stop="20260613030000 +0000" channel="demo.weather"><title>Weather Update</title><desc>Always sunny in the fixture. Updated hourly.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612040000 +0000" channel="demo.sports"><title>Matchday Preview</title><desc>Build-up to a match that will never kick off.</desc></programme>
+  <programme start="20260612040000 +0000" stop="20260612063000 +0000" channel="demo.sports"><title>Live: Stadium Cam</title><desc>Uninterrupted views of an empty demo stadium.</desc></programme>
+  <programme start="20260612063000 +0000" stop="20260612080000 +0000" channel="demo.sports"><title>Sports Tonight</title><desc>Highlights of the day's demo fixtures.</desc></programme>
+  <programme start="20260612080000 +0000" stop="20260612090000 +0000" channel="demo.sports"><title>Matchday Preview</title><desc>Build-up to a match that will never kick off.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612113000 +0000" channel="demo.sports"><title>Live: Stadium Cam</title><desc>Uninterrupted views of an empty demo stadium.</desc></programme>
+  <programme start="20260612113000 +0000" stop="20260612130000 +0000" channel="demo.sports"><title>Sports Tonight</title><desc>Highlights of the day's demo fixtures.</desc></programme>
+  <programme start="20260612130000 +0000" stop="20260612140000 +0000" channel="demo.sports"><title>Matchday Preview</title><desc>Build-up to a match that will never kick off.</desc></programme>
+  <programme start="20260612140000 +0000" stop="20260612163000 +0000" channel="demo.sports"><title>Live: Stadium Cam</title><desc>Uninterrupted views of an empty demo stadium.</desc></programme>
+  <programme start="20260612163000 +0000" stop="20260612180000 +0000" channel="demo.sports"><title>Sports Tonight</title><desc>Highlights of the day's demo fixtures.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612190000 +0000" channel="demo.sports"><title>Matchday Preview</title><desc>Build-up to a match that will never kick off.</desc></programme>
+  <programme start="20260612190000 +0000" stop="20260612213000 +0000" channel="demo.sports"><title>Live: Stadium Cam</title><desc>Uninterrupted views of an empty demo stadium.</desc></programme>
+  <programme start="20260612213000 +0000" stop="20260612230000 +0000" channel="demo.sports"><title>Sports Tonight</title><desc>Highlights of the day's demo fixtures.</desc></programme>
+  <programme start="20260612230000 +0000" stop="20260613000000 +0000" channel="demo.sports"><title>Matchday Preview</title><desc>Build-up to a match that will never kick off.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613023000 +0000" channel="demo.sports"><title>Live: Stadium Cam</title><desc>Uninterrupted views of an empty demo stadium.</desc></programme>
+  <programme start="20260613023000 +0000" stop="20260613040000 +0000" channel="demo.sports"><title>Sports Tonight</title><desc>Highlights of the day's demo fixtures.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612060000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612090000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612120000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612150000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612180000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612210000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260613000000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613030000 +0000" channel="demo.sports2"><title>Test Pattern Marathon</title><desc>Colour bars, but make it competitive.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612043000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612043000 +0000" stop="20260612060000 +0000" channel="demo.movies"><title>Sintel</title><desc>A girl searches for her dragon. Blender Foundation, 2010.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612073000 +0000" channel="demo.movies"><title>Tears of Steel</title><desc>Robots and regret in old Amsterdam. Blender Foundation, 2012.</desc></programme>
+  <programme start="20260612073000 +0000" stop="20260612090000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612103000 +0000" channel="demo.movies"><title>Sintel</title><desc>A girl searches for her dragon. Blender Foundation, 2010.</desc></programme>
+  <programme start="20260612103000 +0000" stop="20260612120000 +0000" channel="demo.movies"><title>Tears of Steel</title><desc>Robots and regret in old Amsterdam. Blender Foundation, 2012.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612133000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612133000 +0000" stop="20260612150000 +0000" channel="demo.movies"><title>Sintel</title><desc>A girl searches for her dragon. Blender Foundation, 2010.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612163000 +0000" channel="demo.movies"><title>Tears of Steel</title><desc>Robots and regret in old Amsterdam. Blender Foundation, 2012.</desc></programme>
+  <programme start="20260612163000 +0000" stop="20260612180000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612193000 +0000" channel="demo.movies"><title>Sintel</title><desc>A girl searches for her dragon. Blender Foundation, 2010.</desc></programme>
+  <programme start="20260612193000 +0000" stop="20260612210000 +0000" channel="demo.movies"><title>Tears of Steel</title><desc>Robots and regret in old Amsterdam. Blender Foundation, 2012.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260612223000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612223000 +0000" stop="20260613000000 +0000" channel="demo.movies"><title>Sintel</title><desc>A girl searches for her dragon. Blender Foundation, 2010.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613013000 +0000" channel="demo.movies"><title>Tears of Steel</title><desc>Robots and regret in old Amsterdam. Blender Foundation, 2012.</desc></programme>
+  <programme start="20260613013000 +0000" stop="20260613030000 +0000" channel="demo.movies"><title>Big Buck Bunny</title><desc>A giant rabbit takes gentle revenge. Blender Foundation, 2008.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612043000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612043000 +0000" stop="20260612060000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612073000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612073000 +0000" stop="20260612090000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612103000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612103000 +0000" stop="20260612120000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612133000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612133000 +0000" stop="20260612150000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612163000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612163000 +0000" stop="20260612180000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612193000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612193000 +0000" stop="20260612210000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260612223000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260612223000 +0000" stop="20260613000000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613013000 +0000" channel="demo.movies2"><title>Elephants Dream</title><desc>Two characters explore a strange machine. Blender Foundation, 2006.</desc></programme>
+  <programme start="20260613013000 +0000" stop="20260613030000 +0000" channel="demo.movies2"><title>Cosmos Laundromat</title><desc>A sheep gets a second chance. Blender Foundation, 2015.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612050000 +0000" channel="demo.music"><title>Morning Mix</title><desc>Easy listening for fixture mornings.</desc></programme>
+  <programme start="20260612050000 +0000" stop="20260612070000 +0000" channel="demo.music"><title>Afternoon Sessions</title><desc>Live-in-the-studio demo performances.</desc></programme>
+  <programme start="20260612070000 +0000" stop="20260612100000 +0000" channel="demo.music"><title>Late Night Loops</title><desc>Ambient loops until the small hours.</desc></programme>
+  <programme start="20260612100000 +0000" stop="20260612120000 +0000" channel="demo.music"><title>Morning Mix</title><desc>Easy listening for fixture mornings.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612140000 +0000" channel="demo.music"><title>Afternoon Sessions</title><desc>Live-in-the-studio demo performances.</desc></programme>
+  <programme start="20260612140000 +0000" stop="20260612170000 +0000" channel="demo.music"><title>Late Night Loops</title><desc>Ambient loops until the small hours.</desc></programme>
+  <programme start="20260612170000 +0000" stop="20260612190000 +0000" channel="demo.music"><title>Morning Mix</title><desc>Easy listening for fixture mornings.</desc></programme>
+  <programme start="20260612190000 +0000" stop="20260612210000 +0000" channel="demo.music"><title>Afternoon Sessions</title><desc>Live-in-the-studio demo performances.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260613000000 +0000" channel="demo.music"><title>Late Night Loops</title><desc>Ambient loops until the small hours.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613020000 +0000" channel="demo.music"><title>Morning Mix</title><desc>Easy listening for fixture mornings.</desc></programme>
+  <programme start="20260613020000 +0000" stop="20260613040000 +0000" channel="demo.music"><title>Afternoon Sessions</title><desc>Live-in-the-studio demo performances.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612043000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612043000 +0000" stop="20260612053000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612053000 +0000" stop="20260612063000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612063000 +0000" stop="20260612080000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612080000 +0000" stop="20260612090000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612100000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612100000 +0000" stop="20260612113000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612113000 +0000" stop="20260612123000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612123000 +0000" stop="20260612133000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612133000 +0000" stop="20260612150000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612160000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612160000 +0000" stop="20260612170000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612170000 +0000" stop="20260612183000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612183000 +0000" stop="20260612193000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612193000 +0000" stop="20260612203000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612203000 +0000" stop="20260612220000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260612220000 +0000" stop="20260612230000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260612230000 +0000" stop="20260613000000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613013000 +0000" channel="demo.kids"><title>Cartoon Block</title><desc>Back-to-back demo cartoons.</desc></programme>
+  <programme start="20260613013000 +0000" stop="20260613023000 +0000" channel="demo.kids"><title>Story Time</title><desc>A narrator reads public-domain tales.</desc></programme>
+  <programme start="20260613023000 +0000" stop="20260613033000 +0000" channel="demo.kids"><title>Puzzle Hour</title><desc>Interactive-ish puzzles for patient children.</desc></programme>
+  <programme start="20260612030000 +0000" stop="20260612043000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+  <programme start="20260612043000 +0000" stop="20260612060000 +0000" channel="demo.docs"><title>Mountain Worlds</title><desc>Peaks, valleys, and royalty-free vistas.</desc></programme>
+  <programme start="20260612060000 +0000" stop="20260612073000 +0000" channel="demo.docs"><title>City Stories</title><desc>A wander through an unnamed demo city.</desc></programme>
+  <programme start="20260612073000 +0000" stop="20260612090000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+  <programme start="20260612090000 +0000" stop="20260612103000 +0000" channel="demo.docs"><title>Mountain Worlds</title><desc>Peaks, valleys, and royalty-free vistas.</desc></programme>
+  <programme start="20260612103000 +0000" stop="20260612120000 +0000" channel="demo.docs"><title>City Stories</title><desc>A wander through an unnamed demo city.</desc></programme>
+  <programme start="20260612120000 +0000" stop="20260612133000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+  <programme start="20260612133000 +0000" stop="20260612150000 +0000" channel="demo.docs"><title>Mountain Worlds</title><desc>Peaks, valleys, and royalty-free vistas.</desc></programme>
+  <programme start="20260612150000 +0000" stop="20260612163000 +0000" channel="demo.docs"><title>City Stories</title><desc>A wander through an unnamed demo city.</desc></programme>
+  <programme start="20260612163000 +0000" stop="20260612180000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+  <programme start="20260612180000 +0000" stop="20260612193000 +0000" channel="demo.docs"><title>Mountain Worlds</title><desc>Peaks, valleys, and royalty-free vistas.</desc></programme>
+  <programme start="20260612193000 +0000" stop="20260612210000 +0000" channel="demo.docs"><title>City Stories</title><desc>A wander through an unnamed demo city.</desc></programme>
+  <programme start="20260612210000 +0000" stop="20260612223000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+  <programme start="20260612223000 +0000" stop="20260613000000 +0000" channel="demo.docs"><title>Mountain Worlds</title><desc>Peaks, valleys, and royalty-free vistas.</desc></programme>
+  <programme start="20260613000000 +0000" stop="20260613013000 +0000" channel="demo.docs"><title>City Stories</title><desc>A wander through an unnamed demo city.</desc></programme>
+  <programme start="20260613013000 +0000" stop="20260613030000 +0000" channel="demo.docs"><title>Ocean Wonders</title><desc>Demo footage of very calm water.</desc></programme>
+</tv>
