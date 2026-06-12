@@ -24,3 +24,4 @@ IMPROVEMENTS.md
 
 # Private project notes (e.g. trademark clearance analysis) — never commit
 private/
+.DS_Store
