@@ -16,6 +16,7 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       - uses: actions/checkout@v6
@@ -28,6 +29,10 @@ jobs:
       - uses: github/codeql-action/init@v4
         with:
           languages: java-kotlin
-          build-mode: none
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Compile for CodeQL
+        run: ./gradlew :app:compileDebugKotlin
 
       - uses: github/codeql-action/analyze@v4
