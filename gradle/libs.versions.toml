@@ -16,7 +16,7 @@ paging = "3.5.0"
 # plugin note). Keeps the macrobench libs + baselineprofile plugin aligned.
 benchmark = "1.5.0-alpha06"
 uiautomator = "2.3.0"
-ktor = "3.5.0"
+ktor = "3.5.1"
 koin = "4.2.2"
 koin-compose = "4.2.2"
 coil = "3.5.0"
