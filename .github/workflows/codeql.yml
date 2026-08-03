@@ -30,7 +30,7 @@ jobs:
         with:
           languages: java-kotlin
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@v6.2.0
 
       - name: Compile for CodeQL
         run: ./gradlew :app:compileDebugKotlin
