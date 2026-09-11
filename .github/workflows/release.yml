@@ -54,6 +54,19 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      # Same Play upload as auto-tag.yml — see the comment there. Re-running a
+      # tag whose versionCode Play already has fails here; that is expected.
+      - name: Upload AAB to Play internal track
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.goor.tv
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          track: internal
+          status: completed
+
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:

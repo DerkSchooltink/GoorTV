@@ -12,6 +12,7 @@ changelog:
       - skip-changelog
     authors:
       - dependabot
+      - dependabot[bot]
 
   categories:
     - title: ✨ Features
