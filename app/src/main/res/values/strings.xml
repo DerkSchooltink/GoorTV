@@ -142,6 +142,7 @@
     <string name="settings_error_xtream_exists">An Xtream source with that URL already exists</string>
     <string name="settings_error_sync_failed">Failed to sync \"%1$s\": %2$s</string>
     <string name="settings_error_epg_sync_failed">Failed to sync EPG for \"%1$s\": %2$s</string>
+    <string name="settings_local_network_denied">Local network access denied — sources on your home network will time out. Allow it in Android app settings.</string>
 
     <!-- Settings: plural source-group count -->
     <plurals name="settings_source_group_count">
