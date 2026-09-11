@@ -20,6 +20,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # The secrets context is not allowed in a step-level `if`; resolve it
+      # here once so the Play step can gate on it.
+      HAS_PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -57,7 +61,7 @@ jobs:
       # Same Play upload as auto-tag.yml — see the comment there. Re-running a
       # tag whose versionCode Play already has fails here; that is expected.
       - name: Upload AAB to Play internal track
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        if: env.HAS_PLAY_SA == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
