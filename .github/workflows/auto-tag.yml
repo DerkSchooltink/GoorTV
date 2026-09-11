@@ -90,6 +90,22 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      # Push the same AAB to the Play internal track. Inert until the
+      # PLAY_SERVICE_ACCOUNT_JSON secret exists (a Google Cloud service account
+      # with release access in Play Console). Internal track only: promotion to
+      # production stays a manual step in Play Console. The R8 mapping goes
+      # along so Play's crash reports are de-obfuscated too.
+      - name: Upload AAB to Play internal track
+        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.goor.tv
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
+          track: internal
+          status: completed
+
       - name: Create tag and GitHub release
         uses: softprops/action-gh-release@v3
         with:

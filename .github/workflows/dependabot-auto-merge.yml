@@ -1,0 +1,35 @@
+name: Dependabot auto-merge
+
+# Enables GitHub auto-merge on Dependabot PRs for patch and minor bumps.
+# Nothing merges here directly: auto-merge waits for the branch ruleset
+# (required checks build / analyze / dependency-review) and merges only once
+# they pass. Major bumps stay manual — they usually need a look at the
+# changelog, and for AGP/Kotlin often a code change too.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch and minor updates
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"
+
+      - name: Skip major updates
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: echo "Major bump (${{ steps.meta.outputs.dependency-names }}); leaving for manual review."
