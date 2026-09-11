@@ -1,5 +1,10 @@
 package dev.goor.tv.ui.screens.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -64,6 +69,26 @@ fun SettingsScreen(
     val firstSourceFocus = remember { FocusRequester() }
     var initialFocusDone by remember { mutableStateOf(false) }
 
+    // Android 17+ blocks LAN traffic until the user grants local network
+    // access. Ask the moment they go to add a source — that is when a home
+    // IPTV server URL is about to be typed — and open the dialog either way:
+    // internet-hosted sources work without it. A denial gets a one-line hint
+    // so the inevitable "connection timeout" is not a mystery.
+    val context = LocalContext.current
+    val localNetworkLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (!granted) vm.onLocalNetworkDenied()
+        showAddDialog = true
+    }
+    val openAddDialog: () -> Unit = {
+        if (needsLocalNetworkPermission(context)) {
+            localNetworkLauncher.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        } else {
+            showAddDialog = true
+        }
+    }
+
     val snackbarText = snackbarMessage?.let { resolveSnackbarMessage(it) }
     LaunchedEffect(snackbarMessage) {
         if (snackbarText != null) {
@@ -97,7 +122,7 @@ fun SettingsScreen(
                         Spacer(Modifier.width(4.dp))
                     }
                     IconButton(
-                        onClick = { showAddDialog = true },
+                        onClick = openAddDialog,
                         enabled = !syncing,
                         modifier = Modifier.focusRequester(addSourceFocus),
                     ) {
@@ -247,6 +272,19 @@ fun SettingsScreen(
 @Composable
 private fun resolveSnackbarMessage(message: SnackbarMessage): String =
     stringResource(message.resId, *message.args.toTypedArray())
+
+/**
+ * True when the OS enforces [Manifest.permission.ACCESS_LOCAL_NETWORK] (API 37+)
+ * and the user has not granted it yet. Older releases never gate LAN traffic,
+ * so there is nothing to ask for there.
+ */
+private fun needsLocalNetworkPermission(context: android.content.Context): Boolean =
+    Build.VERSION.SDK_INT >= LOCAL_NETWORK_PERMISSION_SDK &&
+        context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) !=
+        PackageManager.PERMISSION_GRANTED
+
+/** Android 17. No `Build.VERSION_CODES` constant is used so the file compiles against older SDKs too. */
+private const val LOCAL_NETWORK_PERMISSION_SDK = 37
 
 /** Single-line text field with a resource label — keeps the dialog call sites compact. */
 @Composable

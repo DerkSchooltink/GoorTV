@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Android 17 (API 37) gates every connection to a LAN address behind
+         this runtime permission. Without it the OS silently drops the
+         packets, so a home IPTV server (Dispatcharr, Xteve, TVHeadend...)
+         looks like a connect timeout. Requested in SettingsScreen when the
+         user adds a source; ignored by the system on older releases. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 
     <!-- TV support: leanback not required so the APK still installs on phones -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

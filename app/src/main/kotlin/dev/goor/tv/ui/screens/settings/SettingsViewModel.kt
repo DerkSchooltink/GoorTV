@@ -54,6 +54,11 @@ class SettingsViewModel(
 
     fun clearSnackbar() { _snackbarMessage.value = null }
 
+    /** The user declined local network access (Android 17+); LAN-hosted sources will time out until granted. */
+    fun onLocalNetworkDenied() {
+        _snackbarMessage.value = SnackbarMessage(R.string.settings_local_network_denied)
+    }
+
     fun addM3uSource(name: String, url: String, headers: String? = null, maxConcurrentStreams: Int = 0) {
         viewModelScope.launch {
             if (!isValidSourceUrl(url)) {
