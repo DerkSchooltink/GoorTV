@@ -61,6 +61,10 @@ jobs:
     needs: detect-version-bump
     if: needs.detect-version-bump.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    env:
+      # The secrets context is not allowed in a step-level `if`; resolve it
+      # here once so the Play step can gate on it.
+      HAS_PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -96,7 +100,7 @@ jobs:
       # production stays a manual step in Play Console. The R8 mapping goes
       # along so Play's crash reports are de-obfuscated too.
       - name: Upload AAB to Play internal track
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        if: env.HAS_PLAY_SA == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
