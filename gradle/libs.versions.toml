@@ -8,7 +8,7 @@ targetSdk = "37"
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
 navigation-compose = "2.10.1"
-media3 = "1.11.0"
+media3 = "1.11.1"
 room = "2.8.5"
 paging = "3.5.1"
 # 1.5.0-alpha is the first benchmark/baseline-profile line that supports AGP 9.
