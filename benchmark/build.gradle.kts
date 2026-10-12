@@ -51,6 +51,12 @@ baselineProfile {
 }
 
 dependencies {
+    // androidx.benchmark 1.5.0 pulls wire-runtime 6.4.0 for trace parsing,
+    // which is vulnerable to CVE-2026-63126 (decoder crash on malformed
+    // input). Declaring the patched 6.4.x release makes Gradle's
+    // highest-version-wins pick it instead; drop once benchmark ships the fix.
+    implementation(libs.wire.runtime)
+
     implementation(libs.benchmark.junit4)
     implementation(libs.benchmark.macro.junit4)
     implementation(libs.androidx.test.ext.junit)

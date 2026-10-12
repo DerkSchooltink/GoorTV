@@ -15,6 +15,9 @@ paging = "3.5.1"
 # Revert to a stable release once one ships with AGP 9 support (cf. the Sentry
 # plugin note). Keeps the macrobench libs + baselineprofile plugin aligned.
 benchmark = "1.5.0"
+# androidx.benchmark 1.5.0 still pulls wire-runtime 6.4.0 (CVE-2026-63126).
+# :benchmark pins the patched 6.4.x line directly until benchmark bumps it.
+wire = "6.4.5"
 uiautomator = "2.4.0"
 ktor = "3.6.0"
 koin = "4.2.2"
@@ -92,6 +95,7 @@ espresso-core = { group = "androidx.test.espresso", name = "espresso-core", vers
 benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
 benchmark-junit4 = { group = "androidx.benchmark", name = "benchmark-junit4", version.ref = "benchmark" }
 uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
+wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
