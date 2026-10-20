@@ -84,23 +84,30 @@ class SettingsViewModel(
     }
 
     fun addXtreamSource(name: String, url: String, username: String, password: String, headers: String? = null, maxConcurrentStreams: Int = 0, xtreamOutput: XtreamOutput = XtreamOutput.TS) {
+        // Paste artifacts — a trailing space or newline — are invisible in the UI and
+        // produce a 401 that looks like a server fault. Normalise once, here, so no
+        // caller can persist them.
+        val cleanName = name.trim()
+        val cleanUrl = url.trim()
+        val cleanUsername = username.trim()
+        val cleanPassword = password.trim()
         viewModelScope.launch {
-            if (!isValidSourceUrl(url)) {
+            if (!isValidSourceUrl(cleanUrl)) {
                 _snackbarMessage.value = SnackbarMessage(R.string.settings_error_invalid_url)
                 return@launch
             }
-            if (sourceDao.findByTypeAndUrl(SourceType.XTREAM.name, url) != null) {
+            if (sourceDao.findByTypeAndUrl(SourceType.XTREAM.name, cleanUrl) != null) {
                 _snackbarMessage.value = SnackbarMessage(R.string.settings_error_xtream_exists)
                 return@launch
             }
             val id = try {
                 sourceDao.insert(
                     Source(
-                        name = name,
+                        name = cleanName,
                         type = SourceType.XTREAM,
-                        url = url,
-                        username = username.takeIf { it.isNotBlank() }?.let(::Secret),
-                        password = password.takeIf { it.isNotBlank() }?.let(::Secret),
+                        url = cleanUrl,
+                        username = cleanUsername.takeIf { it.isNotBlank() }?.let(::Secret),
+                        password = cleanPassword.takeIf { it.isNotBlank() }?.let(::Secret),
                         headers = headers?.takeIf { it.isNotBlank() },
                         maxConcurrentStreams = maxConcurrentStreams,
                         xtreamOutput = xtreamOutput,
@@ -117,12 +124,20 @@ class SettingsViewModel(
     }
 
     fun updateSource(source: Source) {
+        // Same guard as addXtreamSource: an edit must not be able to persist trailing
+        // whitespace in a credential either.
+        val normalized = source.copy(
+            name = source.name.trim(),
+            url = source.url.trim(),
+            username = source.username?.value?.trim()?.takeIf { it.isNotBlank() }?.let(::Secret),
+            password = source.password?.value?.trim()?.takeIf { it.isNotBlank() }?.let(::Secret),
+        )
         viewModelScope.launch {
-            if (!isValidSourceUrl(source.url)) {
+            if (!isValidSourceUrl(normalized.url)) {
                 _snackbarMessage.value = SnackbarMessage(R.string.settings_error_invalid_url)
                 return@launch
             }
-            sourceDao.update(source)
+            sourceDao.update(normalized)
         }
     }
 

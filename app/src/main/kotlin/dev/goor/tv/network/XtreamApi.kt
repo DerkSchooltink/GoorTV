@@ -28,8 +28,9 @@ class XtreamApi(private val httpClient: HttpClient) {
         val port = parsed.specifiedPort.takeIf { it > 0 } ?: parsed.protocol.defaultPort
         val base = if (port > 0) "${parsed.protocol.name}://${parsed.host}:$port"
                    else "${parsed.protocol.name}://${parsed.host}"
-        val u = source.username?.value.orEmpty()
-        val p = source.password?.value.orEmpty()
+        // Defensive: covers rows saved before the UI trimmed credentials.
+        val u = source.username?.value.orEmpty().trim()
+        val p = source.password?.value.orEmpty().trim()
         val uQ = u.encodeURLParameter()
         val pQ = p.encodeURLParameter()
         val uPath = u.encodeURLPath()
