@@ -53,6 +53,32 @@ class XtreamApiTest {
     }
 
     @Test
+    fun `trims pasted whitespace around credentials`() = runTest {
+        var requested: String? = null
+        val engine = MockEngine { request ->
+            requested = request.url.toString()
+            respond(
+                content = sampleJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }
+
+        XtreamApi(defaultHttpClient(engine)).fetchLiveChannels(
+            testSource(id = 1L, type = SourceType.XTREAM, url = "http://host:8080").copy(
+                username = Secret("user "),
+                password = Secret(" pass\r\n"),
+                xtreamOutput = XtreamOutput.TS,
+            ),
+        )
+
+        assertEquals(
+            "http://host:8080/player_api.php?username=user&password=pass&action=get_live_streams",
+            requested,
+        )
+    }
+
+    @Test
     fun `maps fields from the json payload`() = runTest {
         val channel = apiReturning(sampleJson).fetchLiveChannels(xtreamSource(XtreamOutput.TS)).single()
 

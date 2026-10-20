@@ -576,7 +576,7 @@ private fun AddSourceDialog(
                 )
                 if (sourceType == SourceType.XTREAM) {
                     SingleLineField(username, R.string.settings_username) { username = it }
-                    SingleLineField(password, R.string.settings_password) { password = it }
+                    SecretField(password, R.string.settings_password) { password = it }
                     XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 OutlinedTextField(
@@ -669,7 +669,7 @@ private fun EditSourceDialog(
                 SingleLineField(url, R.string.settings_url) { url = it }
                 if (source.type == SourceType.XTREAM) {
                     SingleLineField(username, R.string.settings_username) { username = it }
-                    SingleLineField(password, R.string.settings_password) { password = it }
+                    SecretField(password, R.string.settings_password) { password = it }
                     XtreamOutputSelector(selected = xtreamOutput, onSelected = { xtreamOutput = it })
                 }
                 if (source.type == SourceType.M3U) {

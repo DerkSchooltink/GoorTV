@@ -154,4 +154,7 @@
     <string name="hidden_channels_title">Hidden channels</string>
     <string name="hidden_channels_empty">No hidden channels</string>
     <string name="hidden_channels_unhide">Unhide</string>
+    <!-- Credential fields -->
+    <string name="common_show">Show</string>
+    <string name="common_hide">Hide</string>
 </resources>
