@@ -160,9 +160,20 @@ class SettingsViewModel(
 
     fun getGroupsForSource(sourceId: Long) = channelDao.getGroupsForSource(sourceId)
 
-    fun updateIncludedGroups(sourceId: Long, groups: Set<String>) {
+    /**
+     * Persists a groups selection. `null` represents "all groups" and is used
+     * whenever [groups] covers [allGroups], so groups that appear in a later
+     * sync stay included instead of silently going missing. An empty selection
+     * is stored as `""` (hide every channel from this source).
+     */
+    fun updateIncludedGroups(sourceId: Long, groups: Set<String>, allGroups: Set<String>) {
         viewModelScope.launch {
-            sourceDao.updateIncludedGroups(sourceId, if (groups.isEmpty()) "" else groups.joinToString("|"))
+            val stored = when {
+                groups.isEmpty() -> ""
+                groups.containsAll(allGroups) -> null
+                else -> groups.joinToString("|")
+            }
+            sourceDao.updateIncludedGroups(sourceId, stored)
         }
     }
 

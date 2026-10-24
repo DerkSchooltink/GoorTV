@@ -3,6 +3,7 @@ package dev.goor.tv.ui.screens.settings
 import dev.goor.tv.R
 import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.SourceDao
+import dev.goor.tv.data.model.Source
 import dev.goor.tv.network.EpgSyncService
 import dev.goor.tv.network.SourceSyncService
 import dev.goor.tv.util.MainDispatcherRule
@@ -12,6 +13,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.Runs
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -143,6 +145,45 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         coVerify { sourceDao.insert(any()) }
+    }
+
+    @Test
+    fun `addM3uSource starts with every group active`() = runTest {
+        coEvery { sourceDao.findByTypeAndUrl(any(), any()) } returns null
+        val inserted = slot<Source>()
+        coEvery { sourceDao.insert(capture(inserted)) } returns 1L
+        coEvery { sourceDao.getById(1L) } returns null
+
+        makeVm().addM3uSource(name = "Good", url = "https://example.com/playlist.m3u")
+        advanceUntilIdle()
+
+        // null means "all groups", so channels are visible straight after the
+        // first sync instead of the user having to configure groups first.
+        assertNull(inserted.captured.includedGroups)
+    }
+
+    @Test
+    fun `updateIncludedGroups stores null when every available group is selected`() = runTest {
+        makeVm().updateIncludedGroups(1L, setOf("A", "B"), allGroups = setOf("A", "B"))
+        advanceUntilIdle()
+
+        coVerify { sourceDao.updateIncludedGroups(1L, null) }
+    }
+
+    @Test
+    fun `updateIncludedGroups stores a pipe list for a subset`() = runTest {
+        makeVm().updateIncludedGroups(1L, setOf("A"), allGroups = setOf("A", "B"))
+        advanceUntilIdle()
+
+        coVerify { sourceDao.updateIncludedGroups(1L, "A") }
+    }
+
+    @Test
+    fun `updateIncludedGroups stores an empty string when nothing is selected`() = runTest {
+        makeVm().updateIncludedGroups(1L, emptySet(), allGroups = setOf("A", "B"))
+        advanceUntilIdle()
+
+        coVerify { sourceDao.updateIncludedGroups(1L, "") }
     }
 
     @Test

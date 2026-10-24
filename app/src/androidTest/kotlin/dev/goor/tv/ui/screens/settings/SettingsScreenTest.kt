@@ -60,6 +60,39 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("My Playlist").assertDoesNotExist()
     }
 
+    @Test
+    fun emptyList_showsAddSourceCallToAction_andNoPrivacyEntry() {
+        every { sourceDao.getAll() } returns flowOf(emptyList())
+
+        composeTestRule.setContent {
+            GoorTVTheme { SettingsScreen(onBack = {}, vm = settingsVm()) }
+        }
+
+        composeTestRule.onNodeWithText("No sources yet").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add source").assertIsDisplayed()
+        // The privacy policy lives in the store listing and README, not the app.
+        composeTestRule.onNodeWithText("Privacy policy").assertDoesNotExist()
+    }
+
+    @Test
+    fun groupsDialog_startsWithEveryGroupCheckedWhenAllGroupsSelected() {
+        every { sourceDao.getAll() } returns flowOf(listOf(
+            Source(id = 1, name = "My Playlist", type = SourceType.M3U, url = "http://example.com"),
+        ))
+        every { channelDao.getGroupsForSource(1L) } returns flowOf(listOf("News", "Sports"))
+
+        composeTestRule.setContent {
+            GoorTVTheme { SettingsScreen(onBack = {}, vm = settingsVm()) }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Configure groups").performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodes(isToggleable()).fetchSemanticsNodes().size == 2
+        }
+        // includedGroups == null means "all groups", so every checkbox is on.
+        composeTestRule.onAllNodes(isToggleable()).assertAll(isOn())
+    }
+
     // ── Add source dialog ─────────────────────────────────────────────────────
 
     @Test

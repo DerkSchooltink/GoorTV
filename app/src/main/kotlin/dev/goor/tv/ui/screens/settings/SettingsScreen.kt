@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,8 +37,6 @@ import dev.goor.tv.data.model.Secret
 import dev.goor.tv.data.model.XtreamOutput
 import dev.goor.tv.data.model.isEpgEligible
 import org.koin.androidx.compose.koinViewModel
-
-private const val PRIVACY_POLICY_URL = "https://derkschooltink.github.io/GoorTV/privacy/"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +86,7 @@ fun SettingsScreen(
         }
     }
 
+
     val snackbarText = snackbarMessage?.let { resolveSnackbarMessage(it) }
     LaunchedEffect(snackbarMessage) {
         if (snackbarText != null) {
@@ -121,23 +119,44 @@ fun SettingsScreen(
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(4.dp))
                     }
-                    IconButton(
-                        onClick = openAddDialog,
-                        enabled = !syncing,
-                        modifier = Modifier.focusRequester(addSourceFocus),
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.settings_add_source))
+                    // The empty state owns the call to action when there are no
+                    // sources, so the top bar only carries this once a list exists.
+                    if (sources.isNotEmpty()) {
+                        TextButton(
+                            onClick = openAddDialog,
+                            enabled = !syncing,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .focusRequester(addSourceFocus),
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(stringResource(R.string.settings_add_source))
+                        }
                     }
                 }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
+        if (sources.isEmpty()) {
+            EmptySourcesState(
+                onAddSource = openAddDialog,
+                focusRequester = addSourceFocus,
+                modifier = Modifier.padding(padding),
+            )
+            return@Scaffold
+        }
+
         // focusRestorer() remembers which per-row button (Edit / Groups / Sync /
         // Delete) was last focused and restores it whenever focus re-enters the
         // column — typically after a dialog dismisses, but also on back-stack
-        // return. Complements the explicit FocusRequester on the global Add
-        // Source IconButton (which has its own restore in #42).
+        // return. Complements the explicit FocusRequester on the Add Source
+        // action in the top bar (which has its own restore in #42).
         LazyColumn(
             contentPadding = padding,
             modifier = Modifier.focusRestorer(),
@@ -190,41 +209,6 @@ fun SettingsScreen(
                     }
                 }
             }
-            item(key = "privacy_policy_entry") {
-                val context = LocalContext.current
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            context.startActivity(
-                                android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW,
-                                    android.net.Uri.parse(PRIVACY_POLICY_URL),
-                                ),
-                            )
-                        }
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Default.PrivacyTip,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(
-                        stringResource(R.string.settings_privacy_policy),
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Icon(
-                        Icons.AutoMirrored.Filled.OpenInNew,
-                        // Conveys "leaves the app", which the row's text does not.
-                        contentDescription = stringResource(R.string.settings_opens_in_browser),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
         }
     }
 
@@ -261,7 +245,7 @@ fun SettingsScreen(
             availableGroups = availableGroups,
             onDismiss = { groupsSource = null },
             onConfirm = { selected ->
-                vm.updateIncludedGroups(source.id, selected)
+                vm.updateIncludedGroups(source.id, selected, availableGroups.toSet())
                 groupsSource = null
             },
         )
@@ -414,12 +398,14 @@ private fun GroupsDialog(
     // doesn't leave the dialog showing stale checks. Earlier this was two
     // separate `remember`s — `initial` was keyed on `includedGroups` but
     // `selected` wasn't, so it kept the first value forever.
-    var selected by remember(source.includedGroups) {
-        val parsed = source.includedGroups
-            ?.split("|")
-            ?.filter { it.isNotBlank() }
-            ?.toMutableSet()
-            ?: mutableSetOf()
+    var selected by remember(source.includedGroups, availableGroups) {
+        val included = source.includedGroups
+        val parsed = if (included == null) {
+            // null means "all groups", so every available group starts checked.
+            availableGroups.toMutableSet()
+        } else {
+            included.split("|").filter { it.isNotBlank() }.toMutableSet()
+        }
         mutableStateOf(parsed)
     }
     var search by remember { mutableStateOf("") }

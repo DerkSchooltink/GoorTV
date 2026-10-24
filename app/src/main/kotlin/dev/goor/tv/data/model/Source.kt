@@ -29,8 +29,10 @@ data class Source(
     val password: Secret? = null,
     // Container for Xtream live URLs. Ignored for M3U/MANUAL.
     val xtreamOutput: XtreamOutput = XtreamOutput.TS,
-    // null = show all (legacy), "" = show nothing (default for new), "AU|US" = pipe-separated allow-list
-    val includedGroups: String? = "",
+    // null = all groups (default for a new source), "" = no groups (hidden),
+    // "AU|US" = pipe-separated allow-list. Persisting null for "all" means
+    // groups that appear in a later sync are included automatically.
+    val includedGroups: String? = null,
     val lastSyncedAt: Long? = null,
     // one "Name: Value" entry per line; null means no custom headers
     val headers: String? = null,
