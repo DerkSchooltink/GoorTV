@@ -19,8 +19,8 @@ android {
         applicationId = "dev.goor.tv"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
-        versionCode = 15
-        versionName = "1.6.3"
+        versionCode = 16
+        versionName = "1.7.0"
 
         // Sentry DSN is read from the env at build time. Empty value → Sentry
         // is not initialised at runtime (see App.onCreate), so local debug
