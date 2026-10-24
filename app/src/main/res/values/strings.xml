@@ -101,9 +101,9 @@
     <!-- Settings -->
     <string name="settings_title">Sources</string>
     <string name="settings_add_source">Add source</string>
+    <string name="settings_empty_title">No sources yet</string>
+    <string name="settings_empty_body">Add an M3U playlist or an Xtream account to start watching.</string>
     <string name="settings_hidden_channels_entry">Hidden channels (%1$d)</string>
-    <string name="settings_privacy_policy">Privacy policy</string>
-    <string name="settings_opens_in_browser">Opens in browser</string>
     <string name="settings_source_all_groups">%1$s · all groups</string>
     <string name="settings_source_no_groups_selected">%1$s · no groups selected</string>
     <string name="settings_last_synced">Last synced %1$s</string>
