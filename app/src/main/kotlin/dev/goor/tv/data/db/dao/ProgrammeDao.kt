@@ -36,15 +36,67 @@ interface ProgrammeDao {
     """)
     fun observeNowAndNext(sourceId: Long, tvgId: String, nowMs: Long): Flow<List<Programme>>
 
+    /**
+     * The programme airing at [nowMs] for every visible Home channel.
+     *
+     * When a channel has overlapping programmes the **latest-starting** one
+     * wins, matching the rule the paged search applies in [ChannelDao]. This
+     * keeps "what the row shows" and "what the search matched" identical.
+     *
+     * Driven from `channels` so the cost is per visible channel (one primary-key
+     * lookup each) rather than one scan of the whole `programmes` table.
+     */
     @Query("""
-        SELECT p.* FROM programmes p
-        WHERE p.startMs <= :nowMs AND p.endMs > :nowMs
+        SELECT DISTINCT p.* FROM channels c
+        JOIN programmes p
+          ON p.sourceId = c.sourceId AND p.tvgChannelId = c.tvgChannelId
+        WHERE c.hidden = 0
+          AND c.tvgChannelId IS NOT NULL AND c.tvgChannelId != ''
+          AND p.startMs <= :nowMs AND p.endMs > :nowMs
+          AND p.startMs = (
+            SELECT MAX(p2.startMs) FROM programmes p2
+            WHERE p2.sourceId = c.sourceId
+              AND p2.tvgChannelId = c.tvgChannelId
+              AND p2.startMs <= :nowMs AND p2.endMs > :nowMs
+          )
           AND EXISTS (
-            SELECT 1 FROM channels c
-            WHERE c.tvgChannelId = p.tvgChannelId AND c.sourceId = p.sourceId
+            SELECT 1 FROM sources s
+            WHERE s.id = c.sourceId
+              AND (s.includedGroups IS NULL
+                OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
           )
     """)
     fun observeAllNow(nowMs: Long): Flow<List<Programme>>
+
+    /**
+     * The next programme per visible Home channel for the now/next lines. Each
+     * row's `startMs` is the earliest start after [nowMs], so a channel in a
+     * schedule gap still reports the upcoming show.
+     *
+     * Driven from `channels` for the same reason as [observeAllNow]: the
+     * correlated MIN uses the `(sourceId, tvgChannelId, startMs)` primary key,
+     * and an unbounded scan of every programme is avoided.
+     */
+    @Query("""
+        SELECT DISTINCT p.* FROM channels c
+        JOIN programmes p
+          ON p.sourceId = c.sourceId AND p.tvgChannelId = c.tvgChannelId
+        WHERE c.hidden = 0
+          AND c.tvgChannelId IS NOT NULL AND c.tvgChannelId != ''
+          AND p.startMs = (
+            SELECT MIN(p2.startMs) FROM programmes p2
+            WHERE p2.sourceId = c.sourceId
+              AND p2.tvgChannelId = c.tvgChannelId
+              AND p2.startMs > :nowMs
+          )
+          AND EXISTS (
+            SELECT 1 FROM sources s
+            WHERE s.id = c.sourceId
+              AND (s.includedGroups IS NULL
+                OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
+          )
+    """)
+    fun observeAllNext(nowMs: Long): Flow<List<Programme>>
 
     @Query("""
         SELECT * FROM programmes

@@ -56,7 +56,6 @@ import coil3.request.crossfade
 import coil3.size.Size
 import dev.goor.tv.R
 import dev.goor.tv.data.model.Channel
-import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.network.SyncException
 import dev.goor.tv.network.SyncFailure
@@ -64,6 +63,7 @@ import dev.goor.tv.ui.util.focusBorder
 import dev.goor.tv.ui.util.rememberTvFocus
 import dev.goor.tv.ui.util.trackTvFocus
 import org.koin.androidx.compose.koinViewModel
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -85,7 +85,7 @@ fun HomeScreen(
     val sortOrder by vm.sortOrder.collectAsStateWithLifecycle()
     val manualSourceId by vm.manualSourceId.collectAsStateWithLifecycle()
     val groups by vm.groups.collectAsStateWithLifecycle()
-    val nowByChannel by vm.nowByChannel.collectAsStateWithLifecycle()
+    val nowNextByChannel by vm.nowNextByChannel.collectAsStateWithLifecycle()
     val nowMs by vm.nowMs.collectAsStateWithLifecycle()
 
     var searchActive by remember { mutableStateOf(false) }
@@ -200,7 +200,7 @@ fun HomeScreen(
                     recentlyWatched = recentlyWatched,
                     isDefaultView = isDefaultView,
                     manualSourceId = manualSourceId,
-                    nowByChannel = nowByChannel,
+                    nowNextByChannel = nowNextByChannel,
                     nowMs = nowMs,
                     listState = listState,
                     onChannelClick = onChannelClick,
@@ -394,6 +394,7 @@ private fun SearchBar(
     }
 }
 
+@Suppress("LongParameterList")
 @Composable
 private fun HomeContent(
     sources: List<dev.goor.tv.data.model.Source>,
@@ -402,7 +403,7 @@ private fun HomeContent(
     recentlyWatched: List<Channel>,
     isDefaultView: Boolean,
     manualSourceId: Long?,
-    nowByChannel: Map<Pair<Long, String>, Programme>,
+    nowNextByChannel: Map<Pair<Long, String>, ChannelNowNext>,
     nowMs: Long,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onChannelClick: (Long) -> Unit,
@@ -496,18 +497,18 @@ private fun HomeContent(
                     is ChannelListItem.Header -> stickyGroupHeader(item.title)
                     is ChannelListItem.Item -> {
                         // Cache the (sourceId, tvgChannelId) lookup key + result so
-                        // ChannelItem sees a stable `nowPlaying?` and skips on most
+                        // ChannelItem sees a stable `nowNext` and skips on most
                         // recompositions. Without this, the Pair was rebuilt per item
                         // per recomp and the row's body re-ran every minute tick.
                         val sourceId = item.channel.sourceId
                         val tvgId = item.channel.tvgChannelId
-                        val nowPlaying = remember(sourceId, tvgId, nowByChannel) {
-                            tvgId?.let { nowByChannel[sourceId to it] }
+                        val nowNext = remember(sourceId, tvgId, nowNextByChannel) {
+                            resolveNowNext(item.channel, nowNextByChannel)
                         }
                         ChannelItem(
                             channel = item.channel,
                             isCustom = manualSourceId != null && item.channel.sourceId == manualSourceId,
-                            nowPlaying = nowPlaying,
+                            nowNext = nowNext,
                             nowMs = nowMs,
                             onClick = onChannelClick,
                             onFavoriteToggle = onFavoriteToggle,
@@ -538,6 +539,23 @@ private fun stickyGroupHeader(title: String) {
 }
 
 /**
+ * Formats a programme boundary in the device's local timezone, respecting the
+ * locale and the user's 12/24-hour setting. `android.text.format.DateFormat`
+ * keeps that policy in one place instead of hard-coding an `HH:mm` pattern.
+ * Hoisted through `remember` so a minute tick recomposes the row's progress but
+ * not the formatter.
+ */
+@Composable
+private fun formatProgrammeTime(epochMs: Long): String {
+    val context = LocalContext.current
+    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+    val formatter = remember(context, is24Hour) {
+        android.text.format.DateFormat.getTimeFormat(context)
+    }
+    return remember(epochMs, formatter) { formatter.format(Date(epochMs)) }
+}
+
+/**
  * One channel row. Callbacks take primitive IDs (not 0-arg lambdas) so the
  * call site can pass stable references (`onChannelClick`, `vm::toggleFavorite`,
  * remembered `onEdit`) and ChannelItem actually participates in Compose
@@ -548,12 +566,13 @@ private fun stickyGroupHeader(title: String) {
  * `System.currentTimeMillis()` default looked like a convenience but
  * non-stable defaults defeat skipping for the entire function.
  */
+@Suppress("LongParameterList")
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChannelItem(
     channel: Channel,
     isCustom: Boolean,
-    nowPlaying: Programme?,
+    nowNext: ChannelNowNext,
     nowMs: Long,
     onClick: (Long) -> Unit,
     onFavoriteToggle: (Long) -> Unit,
@@ -614,23 +633,8 @@ private fun ChannelItem(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleMedium,
             )
-            if (nowPlaying != null) {
-                Text(
-                    nowPlaying.title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                val span = (nowPlaying.endMs - nowPlaying.startMs).coerceAtLeast(1L)
-                val progress = ((nowMs - nowPlaying.startMs).toFloat() / span).coerceIn(0f, 1f)
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(2.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    drawStopIndicator = {},
-                )
+            if (nowNext.hasProgrammes) {
+                ChannelProgrammeLines(nowNext = nowNext, nowMs = nowMs)
             } else if (channel.group != null) {
                 Text(
                     channel.group,
@@ -673,6 +677,47 @@ private fun ChannelItem(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun ChannelProgrammeLines(nowNext: ChannelNowNext, nowMs: Long) {
+    nowNext.now?.let { programme ->
+        Text(
+            stringResource(
+                R.string.home_now_programme,
+                formatProgrammeTime(programme.startMs),
+                formatProgrammeTime(programme.endMs),
+                programme.title,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val span = (programme.endMs - programme.startMs).coerceAtLeast(1L)
+        val progress = ((nowMs - programme.startMs).toFloat() / span).coerceIn(0f, 1f)
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp).height(2.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            drawStopIndicator = {},
+        )
+    }
+    nowNext.next?.let { programme ->
+        Text(
+            stringResource(
+                R.string.home_next_programme,
+                formatProgrammeTime(programme.startMs),
+                programme.title,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 

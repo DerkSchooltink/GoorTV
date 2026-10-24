@@ -25,17 +25,51 @@ interface ChannelDao {
     """)
     fun getVisibleWithTvgId(): Flow<List<Channel>>
 
+    /**
+     * Paged Home queries. `query` matches the channel name OR the title of a
+     * programme airing at `nowMs`; the first ORDER BY term ranks channel-name
+     * matches above programme-only matches.
+     *
+     * `query` must already be trimmed and escaped with [escapeLikePattern]
+     * (`LIKE … ESCAPE '\'`), so `%` and `_` are literals rather than wildcards.
+     * Matching is SQLite `LIKE`, i.e. ASCII-only case folding.
+     *
+     * When more than one programme overlaps `nowMs`, the latest-starting one
+     * wins — the same rule [ProgrammeDao.observeAllNow] applies — so a search
+     * hit always refers to the programme the row displays. Group headers are
+     * only injected by the UI when the query is empty, so the cross-group
+     * relevance ordering can't emit duplicate header keys.
+     */
     @Query("""
         SELECT c.* FROM channels c
         JOIN sources s ON c.sourceId = s.id
         WHERE c.hidden = 0
         AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
-        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (
+            :query = ''
+            OR c.name LIKE '%' || :query || '%' ESCAPE '\'
+            OR EXISTS (
+                SELECT 1 FROM programmes p
+                WHERE p.sourceId = c.sourceId
+                  AND p.tvgChannelId = c.tvgChannelId
+                  AND p.startMs <= :nowMs AND p.endMs > :nowMs
+                  AND p.startMs = (
+                      SELECT MAX(p2.startMs) FROM programmes p2
+                      WHERE p2.sourceId = c.sourceId
+                        AND p2.tvgChannelId = c.tvgChannelId
+                        AND p2.startMs <= :nowMs AND p2.endMs > :nowMs
+                  )
+                  AND p.title LIKE '%' || :query || '%' ESCAPE '\'
+            )
+        )
         AND (:favOnly = 0 OR c.isFavorite = 1)
-        ORDER BY c.`group`, c.name
+        ORDER BY
+            CASE WHEN :query != '' AND c.name LIKE '%' || :query || '%' ESCAPE '\' THEN 0 ELSE 1 END,
+            c.`group`,
+            c.name
     """)
-    fun getChannelsPaged(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+    fun getChannelsPaged(group: String?, query: String, favOnly: Boolean, nowMs: Long): PagingSource<Int, Channel>
 
     @Query("""
         SELECT c.* FROM channels c
@@ -43,11 +77,29 @@ interface ChannelDao {
         WHERE c.hidden = 0
         AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
-        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (
+            :query = ''
+            OR c.name LIKE '%' || :query || '%' ESCAPE '\'
+            OR EXISTS (
+                SELECT 1 FROM programmes p
+                WHERE p.sourceId = c.sourceId
+                  AND p.tvgChannelId = c.tvgChannelId
+                  AND p.startMs <= :nowMs AND p.endMs > :nowMs
+                  AND p.startMs = (
+                      SELECT MAX(p2.startMs) FROM programmes p2
+                      WHERE p2.sourceId = c.sourceId
+                        AND p2.tvgChannelId = c.tvgChannelId
+                        AND p2.startMs <= :nowMs AND p2.endMs > :nowMs
+                  )
+                  AND p.title LIKE '%' || :query || '%' ESCAPE '\'
+            )
+        )
         AND (:favOnly = 0 OR c.isFavorite = 1)
-        ORDER BY c.name COLLATE NOCASE ASC
+        ORDER BY
+            CASE WHEN :query != '' AND c.name LIKE '%' || :query || '%' ESCAPE '\' THEN 0 ELSE 1 END,
+            c.name COLLATE NOCASE ASC
     """)
-    fun getChannelsPagedByName(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+    fun getChannelsPagedByName(group: String?, query: String, favOnly: Boolean, nowMs: Long): PagingSource<Int, Channel>
 
     @Query("""
         SELECT c.* FROM channels c
@@ -55,11 +107,35 @@ interface ChannelDao {
         WHERE c.hidden = 0
         AND (s.includedGroups IS NULL OR (s.includedGroups != '' AND INSTR('|' || s.includedGroups || '|', '|' || c.`group` || '|') > 0))
         AND (:group IS NULL OR c.`group` = :group)
-        AND (:query = '' OR c.name LIKE '%' || :query || '%')
+        AND (
+            :query = ''
+            OR c.name LIKE '%' || :query || '%' ESCAPE '\'
+            OR EXISTS (
+                SELECT 1 FROM programmes p
+                WHERE p.sourceId = c.sourceId
+                  AND p.tvgChannelId = c.tvgChannelId
+                  AND p.startMs <= :nowMs AND p.endMs > :nowMs
+                  AND p.startMs = (
+                      SELECT MAX(p2.startMs) FROM programmes p2
+                      WHERE p2.sourceId = c.sourceId
+                        AND p2.tvgChannelId = c.tvgChannelId
+                        AND p2.startMs <= :nowMs AND p2.endMs > :nowMs
+                  )
+                  AND p.title LIKE '%' || :query || '%' ESCAPE '\'
+            )
+        )
         AND (:favOnly = 0 OR c.isFavorite = 1)
-        ORDER BY c.lastWatchedAt DESC, c.name COLLATE NOCASE ASC
+        ORDER BY
+            CASE WHEN :query != '' AND c.name LIKE '%' || :query || '%' ESCAPE '\' THEN 0 ELSE 1 END,
+            c.lastWatchedAt DESC,
+            c.name COLLATE NOCASE ASC
     """)
-    fun getChannelsPagedByLastWatched(group: String?, query: String, favOnly: Boolean): PagingSource<Int, Channel>
+    fun getChannelsPagedByLastWatched(
+        group: String?,
+        query: String,
+        favOnly: Boolean,
+        nowMs: Long,
+    ): PagingSource<Int, Channel>
 
     @Query("""
         SELECT DISTINCT `group` FROM channels
