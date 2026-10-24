@@ -73,17 +73,18 @@ class HomeScreenTest {
         every { channelDao.getGroups() } returns flowOf(emptyList())
         every { channelDao.getRecentlyWatched() } returns flowOf(emptyList())
         every { programmeDao.observeAllNow(any()) } returns flowOf(emptyList())
+        every { programmeDao.observeAllNext(any()) } returns flowOf(emptyList())
         // pagingData reads from one of these three depending on sortOrder; stub all
         // three so a sort change in a test doesn't accidentally hit an unstubbed path.
         // favOnly is the third arg — honour it so the favourites-filter test can
         // observe the list actually shrink.
-        every { channelDao.getChannelsPaged(any(), any(), any()) } answers {
+        every { channelDao.getChannelsPaged(any(), any(), any(), any()) } answers {
             FakeChannelPagingSource(channelsForFavOnly(thirdArg()))
         }
-        every { channelDao.getChannelsPagedByName(any(), any(), any()) } answers {
+        every { channelDao.getChannelsPagedByName(any(), any(), any(), any()) } answers {
             FakeChannelPagingSource(channelsForFavOnly(thirdArg()))
         }
-        every { channelDao.getChannelsPagedByLastWatched(any(), any(), any()) } answers {
+        every { channelDao.getChannelsPagedByLastWatched(any(), any(), any(), any()) } answers {
             FakeChannelPagingSource(channelsForFavOnly(thirdArg()))
         }
     }

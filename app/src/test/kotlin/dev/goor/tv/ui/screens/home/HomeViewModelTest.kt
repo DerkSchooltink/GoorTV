@@ -60,14 +60,15 @@ class HomeViewModelTest {
         coEvery { syncService.syncAll(any()) } returns emptyList()
         coEvery { epgSyncService.syncAll(any()) } returns emptyList()
         every { programmeDao.observeAllNow(any()) } returns flowOf(emptyList())
+        every { programmeDao.observeAllNext(any()) } returns flowOf(emptyList())
         every { sourceDao.getAll() } returns flowOf(listOf(testSource()))
         coEvery { sourceDao.getManualSource() } returns null
         coEvery { sourceDao.insert(any()) } returns 99L
         every { channelDao.getRecentlyWatched() } returns flowOf(emptyList())
         every { channelDao.getGroups() } returns flowOf(emptyList())
-        every { channelDao.getChannelsPaged(any(), any(), any()) } returns mockk(relaxed = true)
-        every { channelDao.getChannelsPagedByName(any(), any(), any()) } returns mockk(relaxed = true)
-        every { channelDao.getChannelsPagedByLastWatched(any(), any(), any()) } returns mockk(relaxed = true)
+        every { channelDao.getChannelsPaged(any(), any(), any(), any()) } returns mockk(relaxed = true)
+        every { channelDao.getChannelsPagedByName(any(), any(), any(), any()) } returns mockk(relaxed = true)
+        every { channelDao.getChannelsPagedByLastWatched(any(), any(), any(), any()) } returns mockk(relaxed = true)
         coEvery { channelDao.count() } returns 0
         coEvery { channelDao.insert(any()) } returns 1L
         coEvery { channelDao.update(any()) } just Runs
@@ -76,7 +77,17 @@ class HomeViewModelTest {
         every { prefsRepository.sortOrder } returns flowOf(SortOrder.BY_GROUP)
     }
 
-    private fun makeVm() = HomeViewModel(channelDao, sourceDao, syncService, searchHistoryRepo, prefsRepository, programmeDao, manualSource, FakeTimeProvider())
+    private fun makeVm(clock: FakeTimeProvider = FakeTimeProvider()) =
+        HomeViewModel(
+            channelDao,
+            sourceDao,
+            syncService,
+            searchHistoryRepo,
+            prefsRepository,
+            programmeDao,
+            manualSource,
+            clock,
+        )
 
     @Test
     fun `setSearchQuery updates searchQuery state`() = runTest {
@@ -211,19 +222,83 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `nowByChannel exposes programmes keyed by sourceId and tvgChannelId`() = runTest {
-        val p1 = testProgramme(sourceId = 1L, tvgChannelId = "a.tv", title = "Show A")
-        val p2 = testProgramme(sourceId = 1L, tvgChannelId = "b.tv", title = "Show B")
-        every { programmeDao.observeAllNow(any()) } returns flowOf(listOf(p1, p2))
+    fun `nowNextByChannel pairs the current and next programme per channel`() = runTest {
+        val now = testProgramme(
+            sourceId = 1L,
+            tvgChannelId = "a.tv",
+            startMs = 1_000L,
+            endMs = 2_000L,
+            title = "Now Show",
+        )
+        val next = testProgramme(
+            sourceId = 1L,
+            tvgChannelId = "a.tv",
+            startMs = 2_000L,
+            endMs = 3_000L,
+            title = "Next Show",
+        )
+        every { programmeDao.observeAllNow(any()) } returns flowOf(listOf(now))
+        every { programmeDao.observeAllNext(any()) } returns flowOf(listOf(next))
 
         val vm = makeVm()
-        backgroundScope.launch { vm.nowByChannel.collect {} }
-        runCurrent() // emit one tick, don't fast-forward through ticker delays
+        backgroundScope.launch { vm.nowNextByChannel.collect {} }
+        runCurrent()
 
-        val map = vm.nowByChannel.value
-        assertEquals(2, map.size)
-        assertEquals("Show A", map[1L to "a.tv"]?.title)
-        assertEquals("Show B", map[1L to "b.tv"]?.title)
+        val entry = vm.nowNextByChannel.value[1L to "a.tv"]
+        assertEquals("Now Show", entry?.now?.title)
+        assertEquals("Next Show", entry?.next?.title)
+    }
+
+    @Test
+    fun `nowNextByChannel includes a channel that only has a next programme`() = runTest {
+        val next = testProgramme(
+            sourceId = 2L,
+            tvgChannelId = "b.tv",
+            startMs = 5_000L,
+            endMs = 6_000L,
+            title = "Later",
+        )
+        every { programmeDao.observeAllNext(any()) } returns flowOf(listOf(next))
+
+        val vm = makeVm()
+        backgroundScope.launch { vm.nowNextByChannel.collect {} }
+        runCurrent()
+
+        val entry = vm.nowNextByChannel.value[2L to "b.tv"]
+        assertNull(entry?.now)
+        assertEquals("Later", entry?.next?.title)
+    }
+
+    @Test
+    fun `nowNextByChannel re-queries the current programme on each clock tick`() = runTest {
+        val clock = FakeTimeProvider(initial = 1_000L)
+        val first = testProgramme(
+            sourceId = 1L,
+            tvgChannelId = "a.tv",
+            startMs = 1_000L,
+            endMs = 2_000L,
+            title = "First",
+        )
+        val second = testProgramme(
+            sourceId = 1L,
+            tvgChannelId = "a.tv",
+            startMs = 61_000L,
+            endMs = 62_000L,
+            title = "Second",
+        )
+        every { programmeDao.observeAllNow(1_000L) } returns flowOf(listOf(first))
+        every { programmeDao.observeAllNow(61_000L) } returns flowOf(listOf(second))
+        every { programmeDao.observeAllNext(any()) } returns flowOf(emptyList())
+
+        val vm = makeVm(clock)
+        backgroundScope.launch { vm.nowNextByChannel.collect {} }
+        runCurrent()
+        assertEquals("First", vm.nowNextByChannel.value[1L to "a.tv"]?.now?.title)
+
+        clock.tick(61_000L)
+        runCurrent()
+
+        assertEquals("Second", vm.nowNextByChannel.value[1L to "a.tv"]?.now?.title)
     }
 
     @Test

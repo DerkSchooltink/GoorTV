@@ -16,7 +16,6 @@ import dev.goor.tv.data.db.dao.ChannelDao
 import dev.goor.tv.data.db.dao.ProgrammeDao
 import dev.goor.tv.data.db.dao.SourceDao
 import dev.goor.tv.data.model.Channel
-import dev.goor.tv.data.model.Programme
 import dev.goor.tv.data.preferences.SortOrder
 import dev.goor.tv.data.preferences.UserPreferencesRepository
 import dev.goor.tv.network.SourceSyncService
@@ -92,28 +91,74 @@ class HomeViewModel(
     val nowMs: StateFlow<Long> = timeProvider.nowMs
 
     /**
-     * "Now playing" programme per channel, keyed by `(sourceId, tvgChannelId)`.
+     * "Now and next" programme per channel, keyed by `(sourceId, tvgChannelId)`.
      * Recomputed whenever [nowMs] ticks or the Room programmes table changes.
+     * A channel with no EPG is simply absent from the map; the row then falls
+     * back to its group name.
      */
-    val nowByChannel: StateFlow<Map<Pair<Long, String>, Programme>> = nowMs
-        .flatMapLatest { now -> programmeDao.observeAllNow(now) }
-        .map { list -> list.associateBy { it.sourceId to it.tvgChannelId } }
+    val nowNextByChannel: StateFlow<Map<Pair<Long, String>, ChannelNowNext>> = nowMs
+        .flatMapLatest { now ->
+            combine(
+                programmeDao.observeAllNow(now),
+                programmeDao.observeAllNext(now),
+            ) { current, upcoming -> mergeNowNext(current, upcoming) }
+        }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    val pagingData = combine(_searchQuery, _showFavoritesOnly, prefsRepository.sortOrder) { query, favOnly, sort ->
-        Triple(query, favOnly, sort)
-    }.flatMapLatest { (query, favOnly, sort) ->
+    /**
+     * Trimmed search text — the single policy every consumer shares. Blank means
+     * "no search": the clock is pinned to 0, SQL receives an empty query, and
+     * group headers stay enabled. The raw text remains in [searchQuery] so the
+     * field shows exactly what the user typed.
+     */
+    private val effectiveQuery: Flow<String> = _searchQuery
+        .map { it.trim() }
+        .distinctUntilChanged()
+
+    /**
+     * Clock value handed to the paged search query. Pinned to 0 while the
+     * effective query is empty so the minute tick doesn't tear down and recreate
+     * the pager (which would reset the scroll position) when no programme-title
+     * search is needed.
+     */
+    private val searchNowMs: Flow<Long> = combine(nowMs, effectiveQuery) { now, query ->
+        if (query.isEmpty()) 0L else now
+    }.distinctUntilChanged()
+
+    private data class PagingRequest(
+        /** Trimmed user text, used for UI decisions such as group headers. */
+        val query: String,
+        /** [query] escaped for SQLite `LIKE … ESCAPE '\'`. */
+        val likeQuery: String,
+        val favOnly: Boolean,
+        val sort: SortOrder,
+        val nowMs: Long,
+    )
+
+    val pagingData = combine(
+        effectiveQuery,
+        _showFavoritesOnly,
+        prefsRepository.sortOrder,
+        searchNowMs,
+    ) { query, favOnly, sort, now ->
+        PagingRequest(query, escapeLikePattern(query), favOnly, sort, now)
+    }.distinctUntilChanged().flatMapLatest { request ->
         Pager(PagingConfig(pageSize = 30, prefetchDistance = 90, enablePlaceholders = false)) {
-            when (sort) {
-                SortOrder.BY_NAME -> channelDao.getChannelsPagedByName(null, query, favOnly)
-                SortOrder.BY_LAST_WATCHED -> channelDao.getChannelsPagedByLastWatched(null, query, favOnly)
-                SortOrder.BY_GROUP -> channelDao.getChannelsPaged(null, query, favOnly)
+            when (request.sort) {
+                SortOrder.BY_NAME ->
+                    channelDao.getChannelsPagedByName(null, request.likeQuery, request.favOnly, request.nowMs)
+                SortOrder.BY_LAST_WATCHED ->
+                    channelDao.getChannelsPagedByLastWatched(null, request.likeQuery, request.favOnly, request.nowMs)
+                SortOrder.BY_GROUP ->
+                    channelDao.getChannelsPaged(null, request.likeQuery, request.favOnly, request.nowMs)
             }
         }.flow.map { paging ->
             paging.map { ChannelListItem.Item(it) as ChannelListItem }
                 .insertSeparators { before, after ->
-                    if (sort != SortOrder.BY_GROUP || query.isNotBlank() || favOnly) return@insertSeparators null
+                    if (request.sort != SortOrder.BY_GROUP || request.query.isNotEmpty() || request.favOnly) {
+                        return@insertSeparators null
+                    }
                     val afterGroup = (after as? ChannelListItem.Item)?.channel?.group ?: return@insertSeparators null
                     val beforeGroup = (before as? ChannelListItem.Item)?.channel?.group
                     if (beforeGroup != afterGroup) ChannelListItem.Header(afterGroup) else null

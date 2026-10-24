@@ -38,6 +38,8 @@
     <string name="home_no_sources_added">No sources added</string>
     <string name="home_add_a_source">Add a source</string>
     <string name="home_no_channels_match">No channels match</string>
+    <string name="home_now_programme">NOW %1$s-%2$s %3$s</string>
+    <string name="home_next_programme">NEXT %1$s %2$s</string>
     <string name="home_sort_by_group">By group</string>
     <string name="home_sort_by_name">By name A–Z</string>
     <string name="home_sort_by_last_watched">By last watched</string>
