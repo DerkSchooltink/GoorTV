@@ -282,9 +282,10 @@ http://stream.example.com/foo.ts
     @Test
     fun `sync serializes concurrent calls for the same source id`() = runTest {
         val gate = CompletableDeferred<Unit>()
+        val firstRequestStarted = CompletableDeferred<Unit>()
         val started = AtomicInteger(0)
         val engine = MockEngine { _ ->
-            started.incrementAndGet()
+            if (started.incrementAndGet() == 1) firstRequestStarted.complete(Unit)
             gate.await()
             respond(
                 content = ByteReadChannel(SAMPLE_M3U),
@@ -296,6 +297,10 @@ http://stream.example.com/foo.ts
         val source = testSource(id = 1L, type = SourceType.M3U, url = "http://example.com/p")
 
         val a = async(start = CoroutineStart.UNDISPATCHED) { svc.sync(source) }
+        // Ktor may dispatch the engine handler onto another thread, so `runCurrent()`
+        // alone can race ahead of it: wait until the first request is actually in
+        // flight before starting the second sync.
+        firstRequestStarted.await()
         val b = async(start = CoroutineStart.UNDISPATCHED) { svc.sync(source) }
         runCurrent()
 
