@@ -8,7 +8,7 @@
 buildscript {
     configurations.named("classpath") {
         resolutionStrategy.force(
-            "org.bouncycastle:bcprov-jdk18on:1.86", // CVE-2026-8763, CVE-2026-13506, CVE-2026-0636
+            "org.bouncycastle:bcprov-jdk18on:1.87", // CVE-2026-8763, CVE-2026-13506, CVE-2026-0636
             "org.bouncycastle:bcpkix-jdk18on:1.86", // CVE-2026-5588
             "org.bitbucket.b_c:jose4j:0.9.7", // CVE-2024-29371
             "org.jdom:jdom2:2.0.6.1", // CVE-2021-33813
@@ -35,7 +35,7 @@ allprojects {
     // mirror the buildscript pins above so `lintDebug` also runs patched libs.
     configurations.matching { it.name == "androidLintTool" }.configureEach {
         resolutionStrategy.force(
-            "org.bouncycastle:bcprov-jdk18on:1.86",
+            "org.bouncycastle:bcprov-jdk18on:1.87",
             "org.bouncycastle:bcpkix-jdk18on:1.86",
             "org.bitbucket.b_c:jose4j:0.9.7",
             "org.jdom:jdom2:2.0.6.1",
