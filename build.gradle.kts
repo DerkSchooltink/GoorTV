@@ -12,7 +12,7 @@ buildscript {
             "org.bouncycastle:bcpkix-jdk18on:1.86", // CVE-2026-5588
             "org.bitbucket.b_c:jose4j:0.9.7", // CVE-2024-29371
             "org.jdom:jdom2:2.0.6.1", // CVE-2021-33813
-            "org.apache.commons:commons-lang3:3.21.0", // CVE-2025-48924
+            "org.apache.commons:commons-lang3:3.22.0", // CVE-2025-48924
             "org.apache.httpcomponents:httpclient:4.5.14", // CVE-2020-13956
         )
     }
@@ -39,7 +39,7 @@ allprojects {
             "org.bouncycastle:bcpkix-jdk18on:1.86",
             "org.bitbucket.b_c:jose4j:0.9.7",
             "org.jdom:jdom2:2.0.6.1",
-            "org.apache.commons:commons-lang3:3.21.0",
+            "org.apache.commons:commons-lang3:3.22.0",
             "org.apache.httpcomponents:httpclient:4.5.14",
         )
     }
